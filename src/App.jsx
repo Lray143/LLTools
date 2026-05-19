@@ -5,7 +5,7 @@
 // App.css is our component-level CSS file (mostly empty, we use Tailwind)
 // ============================================================
 import { useState } from 'react'
-import { LayoutDashboard, Users, ClipboardList, Calculator, BarChart3, Settings } from 'lucide-react'
+import { LayoutDashboard, Users, ClipboardList, Calculator, BarChart3, Settings, Store, Fingerprint } from 'lucide-react'
 import './App.css'
 
 
@@ -22,8 +22,14 @@ function Dashboard() {
 function Employees() {
   return <div><h1 className="text-2xl font-bold">Employees</h1></div>
 }
+function Biometrics() {
+  return <div><h1 className="text-2xl font-bold">Biometrics</h1></div>
+}
 function ClinicLog() {
   return <div><h1 className="text-2xl font-bold">Clinic Log</h1></div>
+}
+function Outlets() {
+  return <div><h1 className="text-2xl font-bold">Outlets</h1></div>
 }
 function Calculations() {
   return <div><h1 className="text-2xl font-bold">Calculations</h1></div>
@@ -42,7 +48,9 @@ function SettingsPage() {
 const navItems = [
   { id: 'dashboard',     label: 'Dashboard',    icon: LayoutDashboard },
   { id: 'employees',     label: 'Employees',    icon: Users           },
+  { id: 'biometrics',    label: 'Biometrics',   icon: Fingerprint        },
   { id: 'clinic',        label: 'Clinic Log',   icon: ClipboardList   },
+  { id: 'outlets',       label: 'Outlets',      icon: Store  },
   { id: 'calculations',  label: 'Calculations', icon: Calculator      },
   { id: 'reports',       label: 'Reports',      icon: BarChart3       },
 ]
@@ -62,7 +70,9 @@ const systemItems = [
 const pages = {
   dashboard:    <Dashboard />,
   employees:    <Employees />,
+  biometrics:   <Biometrics />,
   clinic:       <ClinicLog />,
+  outlets:      <Outlets />,
   calculations: <Calculations />,
   reports:      <Reports />,
   settings:     <SettingsPage />,
