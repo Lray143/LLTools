@@ -7,13 +7,16 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    icon: path.join(__dirname, 'public/Logo.png'), // ← app icon (taskbar + title bar)
+    icon: path.join(__dirname, 'public/Logo.png'), // App logo
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     }
   })
-
+  
+  // Remove menu bar
+  win.removeMenu()
+  
   if (isDev) {
     win.loadURL('http://localhost:5173')
   } else {
