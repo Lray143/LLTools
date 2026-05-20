@@ -1,0 +1,43 @@
+import { Pencil, Trash2 } from "lucide-react"
+import { Button } from "../../../components/ui/button"
+import { EmployeeStatusBadge } from "./EmployeeStatusBadge"
+import { getColor, getInitials } from "../employeeConstants"
+
+export function EmployeeCardGrid({ employees, onEdit, onDelete }) {
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {employees.map(emp => (
+        <div
+          key={emp.id}
+          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center gap-2 hover:shadow-md transition-shadow relative group"
+        >
+          <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-gray-400 hover:text-orange-500 hover:bg-orange-50"
+              onClick={() => onEdit(emp)}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50"
+              onClick={() => onDelete(emp)}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-lg ${getColor(emp.name)}`}>
+            {getInitials(emp.name)}
+          </div>
+          <p className="font-semibold text-gray-900 mt-1">{emp.name}</p>
+          <p className="text-sm text-gray-400">{emp.dept} · {emp.id}</p>
+          <EmployeeStatusBadge status={emp.status} />
+        </div>
+      ))}
+    </div>
+  )
+}
