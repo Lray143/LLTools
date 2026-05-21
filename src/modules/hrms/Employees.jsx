@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "../../components/ui/select"
 
-import { seedEmployees, DEPTS }        from "./employeeConstants"
+import { seedEmployees, DEPTS, STATUSES, getLiveStatus } from "./employeeConstants"
 import { EmployeeCardGrid }            from "./components/EmployeeCardGrid"
 import { EmployeeListView }            from "./components/EmployeeListView"
 import { EmployeeModal }               from "./components/EmployeeModal"
@@ -23,6 +23,7 @@ function Employees() {
   const [view, setView]           = useState("cards")
   const [search, setSearch]       = useState("")
   const [dept, setDept]           = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [modal, setModal]         = useState(null)
 
   function nextId() {
@@ -51,15 +52,35 @@ function Employees() {
     setArchived(prev => prev.filter(e => e.id !== emp.id))
   }
 
-  const filtered = employees.filter(e => {
-    const matchSearch = e.name.toLowerCase().includes(search.toLowerCase())
-    const matchDept   = dept === "all" || e.dept === dept
-    return matchSearch && matchDept
-  })
+  function handlePermanentDelete(id) {
+    setArchived(prev => prev.filter(e => e.id !== id))
+  }
+
+  const filtered = employees
+    .map(e => ({
+      ...e,
+      liveStatus: getLiveStatus(e)
+    }))
+    .filter(e => {
+      const matchSearch = e.name.toLowerCase().includes(search.toLowerCase())
+      const matchDept   = dept === "all" || e.dept === dept
+      const matchStatus = statusFilter === "all" || 
+                          e.liveStatus === statusFilter || 
+                          (statusFilter === "On Leave" && e.liveStatus !== "Active")
+
+      return matchSearch && matchDept && matchStatus
+    })
 
   return (
     <div className="flex flex-col w-full h-full bg-white">
-      <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
+      <style>{`
+        [role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}
+        [role="option"]:focus, [data-highlighted], [role="option"][data-disabled] {
+          outline: none !important;
+          border-color: transparent !important;
+          box-shadow: none !important;
+        }
+      `}</style>
 
       {/* TOP BAR */}
       <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
@@ -85,14 +106,33 @@ function Employees() {
 
       {/* FILTER BAR */}
       <div className="flex items-center justify-between px-8 py-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          
           <Select value={dept} onValueChange={setDept}>
             <SelectTrigger className="w-44 bg-white border-gray-200">
               <SelectValue placeholder="All Departments" />
             </SelectTrigger>
-            <SelectContent className="z-50">
-              <SelectItem value="all">All Departments</SelectItem>
-              {DEPTS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+            <SelectContent className="z-50 bg-white border border-gray-200">
+              <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Departments</SelectItem>
+              {DEPTS.map(d => (
+                <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40 bg-white border-gray-200">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent className="z-50 bg-white border border-gray-200">
+              <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Statuses</SelectItem>
+              {STATUSES.map(s => (
+                <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
+                  {s}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -114,6 +154,10 @@ function Employees() {
               List
             </button>
           </div>
+
+          <span className="text-sm text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg font-medium select-none">
+            {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -152,7 +196,7 @@ function Employees() {
         {filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <p className="text-lg font-medium">No employees found</p>
-            <p className="text-sm">Try adjusting your search or filter</p>
+            <p className="text-sm">Try adjusting your search or filters</p>
           </div>
         )}
       </div>
@@ -175,6 +219,7 @@ function Employees() {
         open={modal?.mode === "archive"}
         archived={archived}
         onUnarchive={handleUnarchive}
+        onPermanentDelete={handlePermanentDelete}
         onClose={() => setModal(null)}
       />
     </div>

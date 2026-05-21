@@ -35,7 +35,8 @@ export function EmployeeCardGrid({ employees, onEdit, onDelete }) {
           </div>
           <p className="font-semibold text-gray-900 mt-1">{emp.name}</p>
           <p className="text-sm text-gray-400">{emp.dept} · {emp.id}</p>
-          <EmployeeStatusBadge status={emp.status} />
+          {/* Use the dynamically resolved status value */}
+          <EmployeeStatusBadge status={emp.liveStatus} />
         </div>
       ))}
     </div>
