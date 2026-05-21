@@ -1,107 +1,194 @@
 // src/components/Sidebar.jsx
 
-// This component is responsible for ONLY the sidebar.
-// It receives these props from App.jsx:
-//   activePage   → which page is currently active
-//   setActivePage → function to change the active page
-//   onLogout     → function to log out
+import { useState } from 'react'
+import {
+  LayoutDashboard, Users, ClipboardList, Calculator,
+  BarChart3, Settings, Store, Fingerprint, LogOut,
+  SoapDispenserDroplet, Pin, PinOff
+} from 'lucide-react'
 
-import { LayoutDashboard, Users, ClipboardList, Calculator, BarChart3, Settings, Store, Fingerprint, LogOut } from 'lucide-react'
-
-// Nav items defined here since they belong to the sidebar
 const navItems = [
-  { id: 'dashboard',    label: 'Dashboard',    icon: LayoutDashboard },
-  { id: 'employees',    label: 'Employees',    icon: Users           },
-  { id: 'biometrics',   label: 'Biometrics',   icon: Fingerprint     },
-  { id: 'clinic',       label: 'Clinic Log',   icon: ClipboardList   },
-  { id: 'outlets',      label: 'Outlets',      icon: Store           },
-  { id: 'calculations', label: 'Calculations', icon: Calculator      },
-  { id: 'reports',      label: 'Reports',      icon: BarChart3       },
+  { id: 'dashboard',    label: 'Dashboard',    icon: LayoutDashboard      },
+  { id: 'employees',    label: 'Employees',    icon: Users                },
+  { id: 'biometrics',   label: 'Biometrics',   icon: Fingerprint          },
+  { id: 'clinic',       label: 'Clinic Log',   icon: ClipboardList        },
+  { id: 'products',     label: 'Products',     icon: SoapDispenserDroplet },
+  { id: 'outlets',      label: 'Outlets',      icon: Store                },
+  { id: 'calculations', label: 'Calculations', icon: Calculator           },
+  { id: 'reports',      label: 'Reports',      icon: BarChart3            },
 ]
 
 const systemItems = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
-function Sidebar({ activePage, setActivePage, onLogout }) {
-  return (
-    <aside className="w-52 bg-[#1e1b18] text-white flex flex-col justify-between py-6 px-3">
+function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
+  const [isPinned, setIsPinned]   = useState(true)
+  const [isHovered, setIsHovered] = useState(false)
 
-      {/* TOP + MIDDLE */}
-      <div>
+  const isExpanded = isPinned || isHovered
 
-        {/* TOP — Logo */}
-        <div className="px-2 mb-8">
-          <img
-            src="/Logo.png"
-            alt="Company Logo"
-            className="w-full object-contain max-h-16"
-          />
-        </div>
+  function handlePinToggle() {
+    const next = !isPinned
+    setIsPinned(next)
+    onPinChange?.(next)
+  }
 
-        {/* MIDDLE — Module nav */}
-        <p className="text-xs text-gray-500 uppercase px-2 mb-2">Overview</p>
-
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive = activePage === item.id
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActivePage(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm mb-1 transition-colors ${
-                isActive
-                  ? 'bg-orange-500 text-white'
-                  : 'text-gray-400 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <Icon size={16} />
-              {item.label}
-            </button>
-          )
-        })}
-
-        <p className="text-xs text-gray-500 uppercase px-2 mt-6 mb-2">System</p>
-
-        {systemItems.map((item) => {
-          const Icon = item.icon
-          const isActive = activePage === item.id
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActivePage(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm mb-1 transition-colors ${
-                isActive
-                  ? 'bg-orange-500 text-white'
-                  : 'text-gray-400 hover:bg-white/10 hover:text-white'
-              }`}
-            >
-              <Icon size={16} />
-              {item.label}
-            </button>
-          )
-        })}
-
-      </div>
-
-      {/* BOTTOM — User info + logout */}
-      <div className="flex items-center gap-3 px-2 py-2 rounded-md">
-        <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0">
-          MR
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium leading-none mb-1">Maria Reyes</p>
-          <p className="text-xs text-gray-400 leading-none">HR Manager</p>
-        </div>
-        <button
-          onClick={onLogout}
-          className="p-1 rounded text-gray-500 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+  function NavButton({ item }) {
+    const Icon = item.icon
+    const isActive = activePage === item.id
+    return (
+      <button
+        key={item.id}
+        onClick={() => setActivePage(item.id)}
+        title={!isExpanded ? item.label : undefined}
+        className={`
+          w-full flex items-center py-2 rounded-md text-sm mb-1
+          transition-all duration-200
+          ${isExpanded ? 'justify-start gap-3 px-3' : 'justify-center px-0'}
+          ${isActive
+            ? 'bg-orange-500 text-white'
+            : 'text-gray-400 hover:bg-white/10 hover:text-white'
+          }
+        `}
+      >
+        <Icon size={16} className="shrink-0" />
+        <span
+          className={`
+            whitespace-nowrap overflow-hidden transition-all duration-200
+            ${isExpanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0'}
+          `}
         >
-          <LogOut size={14} />
-        </button>
-      </div>
+          {item.label}
+        </span>
+      </button>
+    )
+  }
 
-    </aside>
+  return (
+    <div
+      className={`relative shrink-0 transition-all duration-300 ${isPinned ? 'w-52' : 'w-14'}`}
+      onMouseEnter={() => !isPinned && setIsHovered(true)}
+      onMouseLeave={() => !isPinned && setIsHovered(false)}
+    >
+      <aside
+        className={`
+          flex flex-col justify-between py-6 h-full
+          bg-[#1e1b18] text-white overflow-hidden
+          transition-[width,box-shadow] duration-300 ease-in-out
+          ${isPinned
+            ? 'relative w-52 px-3'
+            : `absolute top-0 left-0 z-50 h-screen px-3
+               ${isExpanded
+                 ? 'w-52 shadow-[4px_0_24px_rgba(0,0,0,0.5)]'
+                 : 'w-14'
+               }`
+          }
+        `}
+      >
+
+        {/* ── TOP ────────────────────────────────────────── */}
+        <div>
+
+          {/* Logo row */}
+          <div className="relative flex items-center justify-center mb-8 h-16">
+
+            {/* Full logo — visible when expanded */}
+            <img
+              src="/Logo.png"
+              alt="Company Logo"
+              className={`
+                absolute inset-0 w-full h-full object-contain px-2
+                transition-all duration-300
+                ${isExpanded ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}
+              `}
+            />
+
+            {/* Small logomark — visible when collapsed */}
+            <img
+              src="/Logo.png"
+              alt=""
+              aria-hidden="true"
+              className={`
+                w-7 h-7 object-contain
+                transition-all duration-300
+                ${isExpanded ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}
+              `}
+            />
+
+            {/* Pin/unpin button — only visible when expanded */}
+            <button
+              onClick={handlePinToggle}
+              title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
+              className={`
+                absolute right-1 top-1/2 -translate-y-1/2
+                p-1 rounded transition-all duration-200
+                ${isPinned ? 'text-orange-400 hover:text-orange-300' : 'text-gray-500 hover:text-white'}
+                ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+              `}
+            >
+              {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+            </button>
+          </div>
+
+          {/* Section label */}
+          <p className={`
+            text-xs text-gray-500 uppercase px-2 mb-2
+            transition-all duration-200 whitespace-nowrap overflow-hidden
+            ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
+          `}>
+            Overview
+          </p>
+
+          {navItems.map((item) => <NavButton key={item.id} item={item} />)}
+
+          <p className={`
+            text-xs text-gray-500 uppercase px-2 mt-6 mb-2
+            transition-all duration-200 whitespace-nowrap overflow-hidden
+            ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
+          `}>
+            System
+          </p>
+
+          {systemItems.map((item) => <NavButton key={item.id} item={item} />)}
+        </div>
+
+        {/* ── BOTTOM — User info + logout ────────────────── */}
+        <div className={`
+          flex items-center py-2 rounded-md
+          transition-all duration-200
+          ${isExpanded ? 'gap-3 px-2' : 'justify-center px-0'}
+        `}>
+
+          {/* Avatar — always visible, always centered when collapsed */}
+          <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0">
+            MR
+          </div>
+
+          {/* Name + role — collapses out */}
+          <div className={`
+            flex-1 transition-all duration-200 overflow-hidden whitespace-nowrap
+            ${isExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}
+          `}>
+            <p className="text-sm font-medium leading-none mb-1">Maria Reyes</p>
+            <p className="text-xs text-gray-400 leading-none">HR Manager</p>
+          </div>
+
+          {/* Logout — collapses out */}
+          <button
+            onClick={onLogout}
+            className={`
+              p-1 rounded text-gray-500 hover:bg-red-500/10 hover:text-red-400
+              transition-all duration-200 shrink-0
+              ${isExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0 pointer-events-none'}
+            `}
+          >
+            <LogOut size={14} />
+          </button>
+        </div>
+
+      </aside>
+    </div>
   )
 }
 
