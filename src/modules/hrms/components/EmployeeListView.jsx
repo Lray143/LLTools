@@ -32,7 +32,7 @@ export function EmployeeListView({ employees, onEdit, onDelete }) {
           <span className="text-sm text-gray-500">{emp.dept}</span>
 
           {/* 3. EMPLOYEE ID */}
-          <span className="text-sm text-gray-400">{emp.id}</span>
+          <span className="text-sm text-gray-400">{emp.employee_no}</span>
 
           {/* 4. CONTACT (EXCLUSIVE TO LIST VIEW) */}
           <span className="text-sm text-gray-600 font-medium flex items-center gap-1.5">

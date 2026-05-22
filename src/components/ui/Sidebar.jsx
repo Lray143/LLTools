@@ -1,11 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
   SoapDispenserDroplet, Pin, PinOff
 } from 'lucide-react'
 
-// Friendly display label for each role — shown under the username
 const ROLE_LABELS = {
   admin:     'Administrator',
   hr:        'HR Department',
@@ -14,7 +13,6 @@ const ROLE_LABELS = {
   outlets:   'Outlets',
 }
 
-// All possible nav items — filtered by allowedModules before rendering
 const ALL_NAV_ITEMS = [
   { id: 'dashboard',    label: 'Dashboard',    icon: LayoutDashboard      },
   { id: 'employees',    label: 'Employees',    icon: Users                },
@@ -34,13 +32,28 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
   const [isPinned, setIsPinned]   = useState(true)
   const [isHovered, setIsHovered] = useState(false)
 
+  // ── ONLINE STATUS ─────────────────────────────────────────────
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const goOnline  = () => setIsOnline(true)
+    const goOffline = () => setIsOnline(false)
+
+    window.addEventListener('online',  goOnline)
+    window.addEventListener('offline', goOffline)
+
+    return () => {
+      window.removeEventListener('online',  goOnline)
+      window.removeEventListener('offline', goOffline)
+    }
+  }, [])
+  // ─────────────────────────────────────────────────────────────
+
   const isExpanded = isPinned || isHovered
 
-  // Only show nav items this role can access
   const navItems = ALL_NAV_ITEMS.filter(item => allowedModules.includes(item.id))
 
-  // Generate initials from username (e.g. "hr" → "HR", "admin" → "AD")
-  const initials = currentUser?.username?.slice(0, 2).toUpperCase() ?? '??'
+  const initials  = currentUser?.username?.slice(0, 2).toUpperCase() ?? '??'
   const roleLabel = ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? ''
 
   function handlePinToggle() {
@@ -149,7 +162,6 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
 
           {navItems.map((item) => <NavButton key={item.id} item={item} />)}
 
-          {/* Only show Settings for admin */}
           {allowedModules.includes('settings') && (
             <>
               <p className={`
@@ -170,12 +182,25 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
           ${isExpanded ? 'gap-3 px-2' : 'justify-center px-0'}
         `}>
 
-          {/* Avatar */}
-          <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0">
-            {initials}
+          {/* Avatar with online/offline dot */}
+          <div className="relative shrink-0">
+            <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs">
+              {initials}
+            </div>
+
+            {/* Status dot — always visible even when sidebar is collapsed */}
+            <span
+              title={isOnline ? 'Online' : 'Offline'}
+              className={`
+                absolute -bottom-0.5 -right-0.5
+                w-2.5 h-2.5 rounded-full border-2 border-[#1e1b18]
+                transition-colors duration-500
+                ${isOnline ? 'bg-green-400' : 'bg-gray-500'}
+              `}
+            />
           </div>
 
-          {/* Name + role */}
+          {/* Name + role + status text */}
           <div className={`
             flex-1 transition-all duration-200 overflow-hidden whitespace-nowrap
             ${isExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}

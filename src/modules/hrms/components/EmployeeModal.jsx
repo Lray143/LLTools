@@ -20,6 +20,7 @@ import { DEPTS, STATUSES, LEAVE_TYPES } from "../employeeConstants"
 export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
   const isEdit = mode === "edit"
   const [form, setForm] = useState({ 
+    employee_no: "",      // ← added
     name: "", 
     dept: "Sales", 
     status: "Active", 
@@ -34,15 +35,20 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
       setForm(
         isEdit && employee
           ? { 
-              name: employee.name, 
-              dept: employee.dept, 
-              status: employee.status || "Active",
-              contact: employee.contact || "",
-              leaveType: employee.leaveType || "Paid Leave",
-              leaveStart: employee.leaveStart || "",
-              leaveEnd: employee.leaveEnd || ""
+              employee_no: employee.employee_no || "",   // ← added
+              name:        employee.name, 
+              dept:        employee.dept, 
+              status:      employee.status    || "Active",
+              contact:     employee.contact   || "",
+              leaveType:   employee.leaveType || "Paid Leave",
+              leaveStart:  employee.leaveStart || "",
+              leaveEnd:    employee.leaveEnd   || ""
             }
-          : { name: "", dept: "Sales", status: "Active", contact: "", leaveType: "Paid Leave", leaveStart: "", leaveEnd: "" }
+          : { 
+              employee_no: "",    // ← blank on add (Employees.jsx auto-generates it, but user can override)
+              name: "", dept: "Sales", status: "Active", contact: "", 
+              leaveType: "Paid Leave", leaveStart: "", leaveEnd: "" 
+            }
       )
     }
   }, [open, employee?.id, mode])
@@ -52,9 +58,9 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
     
     const submittedData = { ...form }
     if (submittedData.status !== "On Leave") {
-      submittedData.leaveType = ""
+      submittedData.leaveType  = ""
       submittedData.leaveStart = ""
-      submittedData.leaveEnd = ""
+      submittedData.leaveEnd   = ""
     }
     
     onSave(submittedData)
@@ -68,6 +74,22 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
         </DialogHeader>
 
         <div className="flex flex-col gap-4 py-2">
+
+          {/* EMPLOYEE NO */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">
+              Employee No.
+              {!isEdit && <span className="text-gray-400 font-normal ml-1">(auto-generated if left blank)</span>}
+            </label>
+            <Input
+              placeholder="e.g. EMP-007"
+              value={form.employee_no}
+              onChange={e => setForm({ ...form, employee_no: e.target.value })}
+              className="bg-white border-gray-200"
+            />
+          </div>
+
+          {/* FULL NAME */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Full Name</label>
             <Input
@@ -78,7 +100,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
             />
           </div>
 
-          {/* CONTACT NUMBER FIELD */}
+          {/* CONTACT */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Contact Info</label>
             <Input
@@ -89,6 +111,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
             />
           </div>
 
+          {/* DEPARTMENT */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Department</label>
             <Select value={form.dept} onValueChange={val => setForm({ ...form, dept: val })}>
@@ -105,6 +128,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
             </Select>
           </div>
 
+          {/* STATUS */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-gray-700">Status</label>
             <Select value={form.status} onValueChange={val => setForm({ ...form, status: val })}>
@@ -121,6 +145,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
             </Select>
           </div>
 
+          {/* LEAVE FIELDS — only shown when On Leave */}
           {form.status === "On Leave" && (
             <div className="flex flex-col gap-4 pt-1 animate-in fade-in duration-150">
               <div className="flex flex-col gap-1.5">
@@ -164,7 +189,9 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50" onClick={onClose}>
+            Cancel
+          </Button>
           <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={handleSave}>
             {isEdit ? "Save Changes" : "Add Employee"}
           </Button>

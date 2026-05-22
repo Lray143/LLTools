@@ -65,6 +65,9 @@ const initDb = async () => {
       department    TEXT,
       contact       TEXT,
       status        TEXT DEFAULT 'Active',
+      leave_type    TEXT DEFAULT NULL,
+      leave_start   TEXT DEFAULT NULL,
+      leave_end     TEXT DEFAULT NULL,
       created_at    TEXT DEFAULT (datetime('now')),
       synced_at     TEXT DEFAULT NULL,
       sync_status   TEXT DEFAULT 'pending'
@@ -96,24 +99,30 @@ const initDb = async () => {
     );
   `)
 
-  // Seed default accounts only if users table is empty
-  const existing = queryOne('SELECT id FROM users LIMIT 1')
-  if (!existing) {
-    const seedUsers = [
-      { username: 'admin',     password: 'admin123',     role: 'admin'     },
-      { username: 'hr',        password: 'hr123',        role: 'hr'        },
-      { username: 'clinic',    password: 'clinic123',    role: 'clinic'    },
-      { username: 'inventory', password: 'inventory123', role: 'inventory' },
-      { username: 'outlets',   password: 'outlets123',   role: 'outlets'   },
-    ]
-    for (const u of seedUsers) {
-      db.run(
-        'INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-        [u.username, bcrypt.hashSync(u.password, 10), u.role]
-      )
-    }
-    console.log('[DB] Seeded default accounts')
+  // ── MIGRATIONS — adds new columns to existing DBs without wiping data ──
+  const migrations = [
+    `ALTER TABLE employees ADD COLUMN leave_type  TEXT DEFAULT NULL`,
+    `ALTER TABLE employees ADD COLUMN leave_start TEXT DEFAULT NULL`,
+    `ALTER TABLE employees ADD COLUMN leave_end   TEXT DEFAULT NULL`,
+  ]
+  for (const sql of migrations) {
+    try { db.run(sql) } catch (_) { /* already exists, skip */ }
   }
+
+  // ── SEED DEFAULT ACCOUNTS ─────────────────────────────────────
+  const seedUsers = [
+    { username: 'admin@doublel.com',     password: 'admin123',     role: 'admin'     },
+    { username: 'hr@doublel.com',        password: 'hr123',        role: 'hr'        },
+    { username: 'clinic@doublel.com',    password: 'clinic123',    role: 'clinic'    },
+    { username: 'inventory@doublel.com', password: 'inventory123', role: 'inventory' },
+  ]
+  for (const u of seedUsers) {
+    db.run(
+      'INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)',
+      [u.username, bcrypt.hashSync(u.password, 10), u.role]
+    )
+  }
+  console.log('[DB] Department accounts verified ✓')
 
   save()
   console.log('[DB] Ready →', DB_PATH)
@@ -133,4 +142,45 @@ const loginUser = (username, password) => {
   }
 }
 
-module.exports = { initDb, loginUser, queryAll, queryOne, run }
+// ── EMPLOYEES ─────────────────────────────────────────────────────
+const getEmployees = () =>
+  queryAll("SELECT * FROM employees WHERE status != 'Archived' ORDER BY name")
+
+const getArchivedEmployees = () =>
+  queryAll("SELECT * FROM employees WHERE status = 'Archived' ORDER BY name")
+
+const upsertEmployee = (emp) => run(`
+  INSERT INTO employees (id, employee_no, name, position, department, contact, status, leave_type, leave_start, leave_end)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET
+    employee_no  = excluded.employee_no,
+    name         = excluded.name,
+    position     = excluded.position,
+    department   = excluded.department,
+    contact      = excluded.contact,
+    status       = excluded.status,
+    leave_type   = excluded.leave_type,
+    leave_start  = excluded.leave_start,
+    leave_end    = excluded.leave_end,
+    sync_status  = 'pending'
+`, [
+  emp.id, emp.employee_no, emp.name,
+  emp.position   ?? null, emp.department ?? null,
+  emp.contact    ?? null, emp.status     ?? 'Active',
+  emp.leave_type ?? null, emp.leave_start ?? null, emp.leave_end ?? null
+])
+
+const archiveEmployee = (id) =>
+  run("UPDATE employees SET status = 'Archived', sync_status = 'pending' WHERE id = ?", [id])
+
+const unarchiveEmployee = (id) =>
+  run("UPDATE employees SET status = 'Active', sync_status = 'pending' WHERE id = ?", [id])
+
+const permanentDeleteEmployee = (id) =>
+  run("DELETE FROM employees WHERE id = ?", [id])
+
+module.exports = {
+  initDb, loginUser, queryAll, queryOne, run,
+  getEmployees, getArchivedEmployees,
+  upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee
+}
