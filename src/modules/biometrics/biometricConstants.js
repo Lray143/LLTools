@@ -27,7 +27,7 @@ export const MOCK_STATS = { present: 131, late: 9, absent: 5, onLeave: 3 }
 // ── DEPARTMENTS ──────────────────────────────────────────────
 // TODO: fetch from Employees table → SELECT DISTINCT department
 export const DEPARTMENTS = [
-  'All Departments','Sales','Production','Marketing','Finance','HR','IT'
+  'All Departments','Sales','HR','Accounting','Admin','Intern','Warehouse'
 ]
 
 // ── MONTHS ───────────────────────────────────────────────────
