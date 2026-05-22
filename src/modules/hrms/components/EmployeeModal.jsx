@@ -118,7 +118,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               <SelectTrigger className="w-full bg-white border-gray-200">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="z-[200] bg-white border border-gray-200">
+              <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
                 {DEPTS.map(d => (
                   <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
                     {d}
@@ -135,7 +135,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               <SelectTrigger className="w-full bg-white border-gray-200">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="z-[200] bg-white border border-gray-200">
+              <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
                 {STATUSES.map(s => (
                   <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
                     {s}
@@ -154,7 +154,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                   <SelectTrigger className="w-full bg-white border-gray-200">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="z-[200] bg-white border border-gray-200">
+                  <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
                     {LEAVE_TYPES.map(t => (
                       <SelectItem key={t} value={t} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
                         {t}
