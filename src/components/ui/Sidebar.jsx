@@ -1,5 +1,3 @@
-// src/components/Sidebar.jsx
-
 import { useState } from 'react'
 import {
   LayoutDashboard, Users, ClipboardList, Calculator,
@@ -7,7 +5,17 @@ import {
   SoapDispenserDroplet, Pin, PinOff
 } from 'lucide-react'
 
-const navItems = [
+// Friendly display label for each role — shown under the username
+const ROLE_LABELS = {
+  admin:     'Administrator',
+  hr:        'HR Department',
+  clinic:    'Clinic Staff',
+  inventory: 'Inventory',
+  outlets:   'Outlets',
+}
+
+// All possible nav items — filtered by allowedModules before rendering
+const ALL_NAV_ITEMS = [
   { id: 'dashboard',    label: 'Dashboard',    icon: LayoutDashboard      },
   { id: 'employees',    label: 'Employees',    icon: Users                },
   { id: 'biometrics',   label: 'Biometrics',   icon: Fingerprint          },
@@ -18,15 +26,22 @@ const navItems = [
   { id: 'reports',      label: 'Reports',      icon: BarChart3            },
 ]
 
-const systemItems = [
+const SYSTEM_ITEMS = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
-function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
+function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange }) {
   const [isPinned, setIsPinned]   = useState(true)
   const [isHovered, setIsHovered] = useState(false)
 
   const isExpanded = isPinned || isHovered
+
+  // Only show nav items this role can access
+  const navItems = ALL_NAV_ITEMS.filter(item => allowedModules.includes(item.id))
+
+  // Generate initials from username (e.g. "hr" → "HR", "admin" → "AD")
+  const initials = currentUser?.username?.slice(0, 2).toUpperCase() ?? '??'
+  const roleLabel = ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? ''
 
   function handlePinToggle() {
     const next = !isPinned
@@ -39,7 +54,6 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
     const isActive = activePage === item.id
     return (
       <button
-        key={item.id}
         onClick={() => setActivePage(item.id)}
         title={!isExpanded ? item.label : undefined}
         className={`
@@ -87,13 +101,11 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
         `}
       >
 
-        {/* ── TOP ────────────────────────────────────────── */}
+        {/* ── TOP ─────────────────────────────────────── */}
         <div>
 
           {/* Logo row */}
           <div className="relative flex items-center justify-center mb-8 h-16">
-
-            {/* Full logo — visible when expanded */}
             <img
               src="/Logo.png"
               alt="Company Logo"
@@ -103,20 +115,15 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
                 ${isExpanded ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}
               `}
             />
-
-            {/* Small logomark — visible when collapsed */}
             <img
               src="/Logo.png"
               alt=""
               aria-hidden="true"
               className={`
-                w-7 h-7 object-contain
-                transition-all duration-300
+                w-7 h-7 object-contain transition-all duration-300
                 ${isExpanded ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}
               `}
             />
-
-            {/* Pin/unpin button — only visible when expanded */}
             <button
               onClick={handlePinToggle}
               title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
@@ -142,41 +149,45 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
 
           {navItems.map((item) => <NavButton key={item.id} item={item} />)}
 
-          <p className={`
-            text-xs text-gray-500 uppercase px-2 mt-6 mb-2
-            transition-all duration-200 whitespace-nowrap overflow-hidden
-            ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
-          `}>
-            System
-          </p>
-
-          {systemItems.map((item) => <NavButton key={item.id} item={item} />)}
+          {/* Only show Settings for admin */}
+          {allowedModules.includes('settings') && (
+            <>
+              <p className={`
+                text-xs text-gray-500 uppercase px-2 mt-6 mb-2
+                transition-all duration-200 whitespace-nowrap overflow-hidden
+                ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
+              `}>
+                System
+              </p>
+              {SYSTEM_ITEMS.map((item) => <NavButton key={item.id} item={item} />)}
+            </>
+          )}
         </div>
 
-        {/* ── BOTTOM — User info + logout ────────────────── */}
+        {/* ── BOTTOM — User info + logout ────────────── */}
         <div className={`
-          flex items-center py-2 rounded-md
-          transition-all duration-200
+          flex items-center py-2 rounded-md transition-all duration-200
           ${isExpanded ? 'gap-3 px-2' : 'justify-center px-0'}
         `}>
 
-          {/* Avatar — always visible, always centered when collapsed */}
+          {/* Avatar */}
           <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0">
-            MR
+            {initials}
           </div>
 
-          {/* Name + role — collapses out */}
+          {/* Name + role */}
           <div className={`
             flex-1 transition-all duration-200 overflow-hidden whitespace-nowrap
             ${isExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}
           `}>
-            <p className="text-sm font-medium leading-none mb-1">Maria Reyes</p>
-            <p className="text-xs text-gray-400 leading-none">HR Manager</p>
+            <p className="text-sm font-medium leading-none mb-1">{currentUser?.username}</p>
+            <p className="text-xs text-gray-400 leading-none">{roleLabel}</p>
           </div>
 
-          {/* Logout — collapses out */}
+          {/* Logout */}
           <button
             onClick={onLogout}
+            title="Log out"
             className={`
               p-1 rounded text-gray-500 hover:bg-red-500/10 hover:text-red-400
               transition-all duration-200 shrink-0

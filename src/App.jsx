@@ -1,26 +1,21 @@
-// src/App.jsx
-// App.jsx is now just a manager — imports components and decides what to show.
-// No big chunks of JSX here anymore.
-
 import { useState } from 'react'
 import './App.css'
 
-// Import components from their own files
-import LoginPage from './components/ui/LoginPage'
-import Sidebar from './components/ui/Sidebar'
+import LoginPage   from './components/ui/LoginPage'
+import Sidebar     from './components/ui/Sidebar'
 
-// Import placeholder pages (move these to modules/ later)
-import Dashboard from './modules/dashboard/Dashboard'
-import Employees from './modules/hrms/Employees'
-import Biometrics from './modules/biometrics/Biometrics'
-import ClinicLog from './modules/clinic/ClinicLog'
-import Outlets from './modules/outlets/Outlets'
+import Dashboard   from './modules/dashboard/Dashboard'
+import Employees   from './modules/hrms/Employees'
+import Biometrics  from './modules/biometrics/Biometrics'
+import ClinicLog   from './modules/clinic/ClinicLog'
+import Outlets     from './modules/outlets/Outlets'
 import Calculations from './modules/calculations/Calculations'
-import Reports from './modules/reports/Reports'
-import Settings from './modules/settings/Settings'
+import Reports     from './modules/reports/Reports'
+import Settings    from './modules/settings/Settings'
 
-// Pages map — id to component
-const pages = {
+import { MODULE_ACCESS } from './lib/permissions'
+
+const ALL_PAGES = {
   dashboard:    <Dashboard />,
   employees:    <Employees />,
   biometrics:   <Biometrics />,
@@ -32,33 +27,37 @@ const pages = {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState('dashboard')
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)   // { id, username, role }
+  const [activePage,  setActivePage]  = useState('dashboard')
 
-  function handleLogin() {
-    setIsLoggedIn(true)
-  }
-
-  function handleLogout() {
-    setIsLoggedIn(false)
+  const handleLogin = (user) => {
+    setCurrentUser(user)
     setActivePage('dashboard')
   }
 
-  // Show login page if not logged in
-  if (!isLoggedIn) {
+  const handleLogout = () => {
+    setCurrentUser(null)
+    setActivePage('dashboard')
+  }
+
+  if (!currentUser) {
     return <LoginPage onLogin={handleLogin} />
   }
 
-  // Show full app if logged in
+  // Only render pages this role is allowed to see
+  const allowedModules = MODULE_ACCESS[currentUser.role] ?? []
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
         onLogout={handleLogout}
+        allowedModules={allowedModules}
+        currentUser={currentUser}
       />
       <main className="flex-1 overflow-auto">
-        {pages[activePage]}
+        {ALL_PAGES[activePage]}
       </main>
     </div>
   )
