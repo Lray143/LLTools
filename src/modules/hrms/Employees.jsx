@@ -107,34 +107,6 @@ function Employees() {
       {/* FILTER BAR */}
       <div className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center gap-3">
-          
-          <Select value={dept} onValueChange={setDept}>
-            <SelectTrigger className="w-44 bg-white border-gray-200">
-              <SelectValue placeholder="All Departments" />
-            </SelectTrigger>
-            <SelectContent className="z-50 bg-white border border-gray-200">
-              <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Departments</SelectItem>
-              {DEPTS.map(d => (
-                <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
-                  {d}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 bg-white border-gray-200">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent className="z-50 bg-white border border-gray-200">
-              <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Statuses</SelectItem>
-              {STATUSES.map(s => (
-                <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
             <button
@@ -155,7 +127,35 @@ function Employees() {
             </button>
           </div>
 
-          <span className="text-sm text-gray-600 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-lg font-medium select-none">
+          <Select value={dept} onValueChange={setDept}>
+            <SelectTrigger className="w-44 bg-white border-gray-200">
+              <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent align="start" className="z-50 bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
+              <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Departments</SelectItem>
+              {DEPTS.map(d => (
+                <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40 bg-white border-gray-200">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent align="start" className="z-50 bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
+              <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Statuses</SelectItem>
+              {STATUSES.map(s => (
+                <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <span className="text-sm text-gray-400 font-normal select-none">
             {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
           </span>
         </div>
