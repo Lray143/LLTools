@@ -4,7 +4,8 @@ const path = require('path')
 const {
   initDb, loginUser,
   getEmployees, getArchivedEmployees,
-  upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee
+  upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
+  getAttendance, getAttendanceByDate, importAttendance,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -32,22 +33,25 @@ function createWindow() {
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────
-ipcMain.handle('auth:login', (event, { username, password }) => {
-  return loginUser(username, password)
-})
+ipcMain.handle('auth:login', (_, creds) => loginUser(creds.username, creds.password))
 
 // ── EMPLOYEES ─────────────────────────────────────────────────────
-ipcMain.handle('employees:getAll',      ()        => getEmployees())
-ipcMain.handle('employees:getArchived', ()        => getArchivedEmployees())
-ipcMain.handle('employees:upsert',      (e, emp)  => upsertEmployee(emp))
-ipcMain.handle('employees:archive',     (e, id)   => archiveEmployee(id))
-ipcMain.handle('employees:unarchive',   (e, id)   => unarchiveEmployee(id))
-ipcMain.handle('employees:permDelete',  (e, id)   => permanentDeleteEmployee(id))
+ipcMain.handle('employees:getAll',      ()       => getEmployees())
+ipcMain.handle('employees:getArchived', ()       => getArchivedEmployees())
+ipcMain.handle('employees:upsert',      (_, emp) => upsertEmployee(emp))
+ipcMain.handle('employees:archive',     (_, id)  => archiveEmployee(id))
+ipcMain.handle('employees:unarchive',   (_, id)  => unarchiveEmployee(id))
+ipcMain.handle('employees:permDelete',  (_, id)  => permanentDeleteEmployee(id))
+
+// ── ATTENDANCE ────────────────────────────────────────────────────
+ipcMain.handle('attendance:getAll',     ()         => getAttendance())
+ipcMain.handle('attendance:getByDate',  (_, date)  => getAttendanceByDate(date))
+ipcMain.handle('attendance:import',     (_, records) => importAttendance(records))
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────
 app.whenReady().then(async () => {
-  await initDb()    // DB and tables ready first
-  createWindow()    // then open the window
+  await initDb()
+  createWindow()
 })
 
 app.on('window-all-closed', () => {

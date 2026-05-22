@@ -12,4 +12,9 @@ window.electronAPI = {
   archiveEmployee:         (id)    => ipcRenderer.invoke('employees:archive', id),
   unarchiveEmployee:       (id)    => ipcRenderer.invoke('employees:unarchive', id),
   permanentDeleteEmployee: (id)    => ipcRenderer.invoke('employees:permDelete', id),
+
+  // Attendance
+  getAttendance:           ()      => ipcRenderer.invoke('attendance:getAll'),
+  getAttendanceByDate:     (date)  => ipcRenderer.invoke('attendance:getByDate', date),
+  importAttendance:        (recs)  => ipcRenderer.invoke('attendance:import', recs),
 }

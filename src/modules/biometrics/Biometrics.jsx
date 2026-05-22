@@ -17,24 +17,40 @@
 //       └── BiometricTable.jsx        ← attendance table
 // ─────────────────────────────────────────────────────────────
 
-import { useState, useRef }                              from 'react'
-import { MOCK_RECORDS, MOCK_STATS, DEPARTMENTS, MONTHS } from './biometricConstants'
-import { parseRawBiometrics }                            from './parseRawBiometrics'
-import { exportToXLSX }                                  from './exportToXLSX'
-import { BiometricHeader }                               from './components/BiometricHeader'
-import { BiometricStatCards }                            from './components/BiometricStatCards'
-import { BiometricFilterBar }                            from './components/BiometricFilterBar'
-import { BiometricTable }                                from './components/BiometricTable'
+import { useState, useRef, useEffect }    from 'react'
+import { DEPARTMENTS, MONTHS }            from './biometricConstants'
+import { parseRawBiometrics }             from './parseRawBiometrics'
+import { exportToXLSX }                   from './exportToXLSX'
+import { BiometricHeader }                from './components/BiometricHeader'
+import { BiometricStatCards }             from './components/BiometricStatCards'
+import { BiometricFilterBar }             from './components/BiometricFilterBar'
+import { BiometricTable }                 from './components/BiometricTable'
+
+// ── helper: map a DB attendance row → UI record shape ────────
+const mapRow = (r) => ({
+  employee_no : r.employee_no,
+  date        : r.date,
+  shift_in    : r.shift_in,
+  lunch_out   : r.lunch_out,
+  lunch_in    : r.lunch_in,
+  shift_out   : r.shift_out,
+  status      : r.status,
+  id          : `EMP-${r.employee_no}`,
+  name        : r.name || r.employee_no,
+  department  : r.department || '—',
+  timeframe   : `${new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', {
+                  month: 'long', day: 'numeric', year: 'numeric',
+                })} · Morning`,
+  shiftIn     : r.shift_in,
+  lunchOut    : r.lunch_out,
+  lunchIn     : r.lunch_in,
+  shiftOut    : r.shift_out,
+})
 
 function Biometrics() {
 
   // ── RECORDS STATE ────────────────────────────────────────────
-  // TODO: load from SQLite on mount:
-  //   useEffect(() => {
-  //     const rows = db.prepare('SELECT * FROM attendance WHERE date = ?').all(today)
-  //     setRecords(rows)
-  //   }, [])
-  const [records,       setRecords]       = useState(MOCK_RECORDS)
+  const [records,       setRecords]       = useState([])
 
   // ── FILTER STATE ─────────────────────────────────────────────
   const [selectedMonth, setSelectedMonth] = useState('May 2025')
@@ -49,6 +65,13 @@ function Biometrics() {
   // Ref for the hidden file input — triggered by Import button
   const fileInputRef = useRef(null)
 
+  // ── LOAD FROM DB ON MOUNT ────────────────────────────────────
+  useEffect(() => {
+    window.electronAPI.getAttendance().then(rows => {
+      setRecords(rows.map(mapRow))
+    })
+  }, [])
+
   // ── DERIVED — filtered records ───────────────────────────────
   const filteredRecords = records.filter(r => {
     const matchDept   = selectedDept === 'All Departments' || r.department === selectedDept
@@ -59,19 +82,15 @@ function Biometrics() {
   })
 
   // ── DERIVED — stat counts ────────────────────────────────────
-  // Falls back to MOCK_STATS when records array is the mock set
   const stats = {
-    present : records.filter(r => r.status === 'Present').length || MOCK_STATS.present,
-    late    : records.filter(r => r.status === 'Late').length    || MOCK_STATS.late,
-    absent  : records.filter(r => r.status === 'Absent').length  || MOCK_STATS.absent,
-    onLeave : records.filter(r => r.status === 'Leave').length   || MOCK_STATS.onLeave,
+    present : records.filter(r => r.status === 'Present').length,
+    late    : records.filter(r => r.status === 'Late').length,
+    absent  : records.filter(r => r.status === 'Absent').length,
+    onLeave : records.filter(r => r.status === 'Leave').length,
   }
 
   // ── IMPORT HANDLER ───────────────────────────────────────────
-  // Reads a raw .txt/.dat file from the biometrics device,
-  // parses it with parseRawBiometrics, and updates records state.
-  // TODO: also INSERT parsed rows into SQLite attendance table.
-  function handleFileImport(e) {
+  async function handleFileImport(e) {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -79,17 +98,28 @@ function Biometrics() {
     setImportSuccess('')
 
     const reader = new FileReader()
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const parsed = parseRawBiometrics(evt.target.result)
         if (parsed.length === 0) {
           setImportError('No records could be read. Check the file matches the expected device format.')
           return
         }
-        setRecords(parsed)
-        setImportSuccess(`Imported ${parsed.length} records from ${file.name}`)
+
+        // Save to DB — also creates stub employees for new IDs
+        const result = await window.electronAPI.importAttendance(parsed)
+
+        // Reload from DB so table always reflects what's actually saved
+        const rows = await window.electronAPI.getAttendance()
+        setRecords(rows.map(mapRow))
+
+        setImportSuccess(
+          `Imported ${result.newRecords} records from ${file.name}` +
+          (result.skippedRecords > 0 ? ` · ${result.skippedRecords} already existed (skipped)` : '') +
+          (result.newEmployees   > 0 ? ` · ${result.newEmployees} new employee stubs created`   : '')
+        )
       } catch (err) {
-        setImportError(`Parse error: ${err.message}`)
+        setImportError(`Import error: ${err.message}`)
       }
     }
     reader.onerror = () => setImportError('Could not read the file.')
@@ -98,7 +128,6 @@ function Biometrics() {
   }
 
   // ── EXPORT HANDLER ───────────────────────────────────────────
-  // Exports the currently filtered records as a formatted .xlsx
   async function handleExport() {
     const date     = new Date().toISOString().slice(0, 10)
     const safeName = selectedMonth.replace(' ', '_')
@@ -107,16 +136,11 @@ function Biometrics() {
 
   // ─────────────────────────────────────────────────────────────
   // RENDER
-  // Matches Employees.jsx container style:
-  //   flex flex-col w-full h-full bg-white
-  // No negative margins or custom background — keeps it consistent
-  // with the rest of the app's module pages.
   // ─────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col w-full h-full bg-white">
 
-      {/* TOP BAR — title + search + icon buttons
-          Matches the Employees top bar layout exactly */}
+      {/* TOP BAR — title + search + icon buttons */}
       <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
         <BiometricHeader
           searchQuery={searchQuery}
