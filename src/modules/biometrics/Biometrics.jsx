@@ -85,7 +85,6 @@ function isoToDate(iso) {
 
 function pad2(n) { return String(n).padStart(2, '0') }
 
-// Build a lookup map from employee list for the parser
 function buildEmployeeMap(employees) {
   const map = {}
   for (const e of employees) {
@@ -102,8 +101,8 @@ function buildEmployeeMap(employees) {
 
 function Biometrics() {
 
-  const [records,      setRecords]      = useState([])
-  const [employeeMap,  setEmployeeMap]  = useState({})
+  const [records,     setRecords]     = useState([])
+  const [employeeMap, setEmployeeMap] = useState({})
 
   const [searchQuery,      setSearchQuery]      = useState('')
   const [selectedDept,     setSelectedDept]     = useState('All Departments')
@@ -180,9 +179,8 @@ function Biometrics() {
     setImportError('')
     setImportSuccess('')
 
-    // Refresh employee map right before parsing so it's always current
-    const empRows       = await window.electronAPI.getEmployees()
-    const freshEmpMap   = buildEmployeeMap(empRows)
+    const empRows     = await window.electronAPI.getEmployees()
+    const freshEmpMap = buildEmployeeMap(empRows)
     setEmployeeMap(freshEmpMap)
 
     const reader = new FileReader()
@@ -316,7 +314,13 @@ function Biometrics() {
           </div>
         )}
 
-        <BiometricTable records={filteredRecords} total={filteredRecords.length} viewMode={viewMode} />
+        {/* key forces full remount on search/dept/viewMode change — fixes stale pagination bug */}
+        <BiometricTable
+          key={searchQuery + '|' + selectedDept + '|' + viewMode}
+          records={filteredRecords}
+          total={filteredRecords.length}
+          viewMode={viewMode}
+        />
 
       </div>
     </div>
