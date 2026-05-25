@@ -11,23 +11,27 @@ import { BiometricStatCards }             from './components/BiometricStatCards'
 import { BiometricFilterBar }             from './components/BiometricFilterBar'
 import { BiometricTable }                 from './components/BiometricTable'
 
-// ── helper: map a DB attendance row → UI record shape ────────
+// Converts a raw DB attendance row into the shape the UI components expect
 const mapRow = (r) => ({
   employee_no : r.employee_no,
   date        : r.date,
   shift_in    : r.shift_in,
+  lunch_out   : r.lunch_out,
+  lunch_in    : r.lunch_in,
   shift_out   : r.shift_out,
   total_hours : r.total_hours,
   status      : r.status,
-  id          : `EMP-${r.employee_no}`,
-  name        : r.name || r.employee_no,
+  id          : String(r.employee_no),   // ← fix: always a string so .toLowerCase() works
+  name        : r.name || '—',
   department  : r.department || '—',
   timeframe   : `${new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', {
                   month: 'long', day: 'numeric', year: 'numeric',
                 })} · Morning`,
-  shiftIn     : r.shift_in,
-  shiftOut    : r.shift_out,
-  totalHours  : r.total_hours,
+  shiftIn    : r.shift_in,
+  lunchOut   : r.lunch_out,
+  lunchIn    : r.lunch_in,
+  shiftOut   : r.shift_out,
+  totalHours : r.total_hours,
 })
 
 // ── helpers ───────────────────────────────────────────────────
@@ -36,6 +40,7 @@ const MONTH_MAP = {
   july:7, august:8, september:9, october:10, november:11, december:12,
 }
 
+// Converts a timeframe string like "May 13, 2026 · Morning" to "2026-05-13"
 function timeframeToISO(tf) {
   if (!tf) return ''
   try {
@@ -52,6 +57,7 @@ function timeframeToISO(tf) {
 function isoYear(iso)  { return iso ? Number(iso.slice(0,4)) : null }
 function isoMonth(iso) { return iso ? Number(iso.slice(5,7)) : null }
 
+// Finds the most recent date present in a list of records
 function latestDateIn(records) {
   let best = null
   for (const r of records) {
@@ -62,6 +68,7 @@ function latestDateIn(records) {
   return best
 }
 
+// Converts an ISO date string to a local Date object
 function isoToDate(iso) {
   if (!iso) return new Date()
   const [y, m, d] = iso.split('-').map(Number)
@@ -75,25 +82,25 @@ function Biometrics() {
   const [records, setRecords] = useState([])
 
   // ── FILTER STATE ─────────────────────────────────────────────
-  const [searchQuery,    setSearchQuery]    = useState('')
-  const [selectedDept,   setSelectedDept]   = useState('All Departments')
-  const [viewMode,       setViewMode]       = useState('Daily')
+  const [searchQuery,      setSearchQuery]      = useState('')
+  const [selectedDept,     setSelectedDept]     = useState('All Departments')
+  const [viewMode,         setViewMode]         = useState('Daily')
 
-  // Daily
-  const [selectedDate,   setSelectedDate]   = useState(new Date())
+  // Daily view: tracks a single selected date
+  const [selectedDate,     setSelectedDate]     = useState(new Date())
 
-  // Monthly
-  const [selectedMonth,  setSelectedMonth]  = useState(new Date().getMonth() + 1)
-  const [selectedYear,   setSelectedYear]   = useState(new Date().getFullYear())
+  // Monthly view: tracks month + year separately
+  const [selectedMonth,    setSelectedMonth]    = useState(new Date().getMonth() + 1)
+  const [selectedYear,     setSelectedYear]     = useState(new Date().getFullYear())
 
-  // Yearly
+  // Yearly view: tracks year only
   const [selectedYearOnly, setSelectedYearOnly] = useState(new Date().getFullYear())
 
   // ── IMPORT FEEDBACK STATE ────────────────────────────────────
   const [importError,   setImportError]   = useState('')
   const [importSuccess, setImportSuccess] = useState('')
 
-  // Ref for the hidden file input
+  // Hidden file input ref used for the Import button
   const fileInputRef = useRef(null)
 
   // ── LOAD FROM DB ON MOUNT ────────────────────────────────────
@@ -102,21 +109,22 @@ function Biometrics() {
       const mapped = rows.map(mapRow)
       setRecords(mapped)
 
-      // Auto-jump Daily view to the latest date in DB
+      // Automatically jump the Daily view to the most recent date in the DB
       const latest = latestDateIn(mapped)
       if (latest) setSelectedDate(isoToDate(latest))
     })
   }, [])
 
-  // ── DERIVED — available years for yearly picker ───────────────
+  // ── DERIVED — list of years that actually have records ───────
   const availableYears = [...new Set(
     records.map(r => isoYear(timeframeToISO(r.timeframe))).filter(Boolean)
   )].sort((a, b) => b - a)
 
-  // ── DERIVED — filtered records ───────────────────────────────
+  // ── DERIVED — records after applying all active filters ──────
   const filteredRecords = records.filter(r => {
     const iso = timeframeToISO(r.timeframe)
 
+    // Filter by the active view mode (Daily / Monthly / Yearly)
     const matchView = (() => {
       if (viewMode === 'Daily') {
         const d = selectedDate instanceof Date ? selectedDate : new Date()
@@ -134,14 +142,15 @@ function Biometrics() {
 
     const matchDept = selectedDept === 'All Departments' || r.department === selectedDept
 
+    // fix: String(r.id) ensures .toLowerCase() never crashes on a number
     const matchSearch = !searchQuery ||
       r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.id.toLowerCase().includes(searchQuery.toLowerCase())
+      String(r.id).toLowerCase().includes(searchQuery.toLowerCase())
 
     return matchView && matchDept && matchSearch
   })
 
-  // ── DERIVED — stat counts ────────────────────────────────────
+  // ── DERIVED — stat card counts ───────────────────────────────
   const stats = {
     present : filteredRecords.filter(r => r.status === 'Present').length,
     late    : filteredRecords.filter(r => r.status === 'Late').length,
@@ -167,11 +176,12 @@ function Biometrics() {
 
         const result = await window.electronAPI.importAttendance(parsed)
 
-        const rows = await window.electronAPI.getAttendance()
+        // Reload all records from DB after import so the table is up to date
+        const rows   = await window.electronAPI.getAttendance()
         const mapped = rows.map(mapRow)
         setRecords(mapped)
 
-        // Jump Daily view to the latest imported date
+        // Jump Daily view to the most recently imported date
         const latest = latestDateIn(mapped)
         if (latest) setSelectedDate(isoToDate(latest))
 

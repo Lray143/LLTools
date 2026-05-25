@@ -1,4 +1,3 @@
-// db.cjs
 const initSqlJs = require('sql.js')
 const fs        = require('fs')
 const path      = require('path')
@@ -9,11 +8,13 @@ const DB_PATH = path.join(app.getPath('userData'), 'lltools.db')
 
 let db = null
 
+// Writes the in-memory database to disk after every change
 const save = () => {
   const data = db.export()
   fs.writeFileSync(DB_PATH, Buffer.from(data))
 }
 
+// Returns all rows from a query as an array of plain objects
 const queryAll = (sql, params = []) => {
   const stmt = db.prepare(sql)
   if (params.length) stmt.bind(params)
@@ -23,8 +24,10 @@ const queryAll = (sql, params = []) => {
   return rows
 }
 
+// Returns the first row only, or null if nothing matched
 const queryOne = (sql, params = []) => queryAll(sql, params)[0] ?? null
 
+// Runs a write query (INSERT / UPDATE / DELETE) and immediately saves to disk
 const run = (sql, params = []) => {
   db.run(sql, params)
   save()
@@ -36,6 +39,7 @@ const initDb = async () => {
     locateFile: () => path.join(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm')
   })
 
+  // Load existing DB file if it exists, otherwise start fresh
   if (fs.existsSync(DB_PATH)) {
     db = new SQL.Database(fs.readFileSync(DB_PATH))
   } else {
@@ -73,8 +77,10 @@ const initDb = async () => {
       id            TEXT PRIMARY KEY,
       employee_id   TEXT REFERENCES employees(id),
       date          TEXT NOT NULL,
-      shift_in      TEXT,
-      shift_out     TEXT,
+      shift_in      TEXT,                           -- tap 1: start of shift
+      lunch_out     TEXT,                           -- tap 2: leaving for lunch
+      lunch_in      TEXT,                           -- tap 3: back from lunch
+      shift_out     TEXT,                           -- tap 4: end of shift
       total_hours   REAL,
       status        TEXT,
       created_at    TEXT DEFAULT (datetime('now')),
@@ -94,14 +100,11 @@ const initDb = async () => {
     );
   `)
 
-  // ── UNIQUE CONSTRAINT ─────────────────────────────────────────
-  const migrations = [
-    `CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date
-       ON attendance(employee_id, date)`,
-  ]
-  for (const sql of migrations) {
-    try { db.run(sql) } catch (_) {}
-  }
+  // Prevent duplicate attendance rows for the same employee on the same date
+  try {
+    db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date
+              ON attendance(employee_id, date)`)
+  } catch (_) {}
 
   // ── SEED DEFAULT ACCOUNTS ─────────────────────────────────────
   const seedUsers = [
@@ -168,18 +171,25 @@ const permanentDeleteEmployee = (id) =>
   run("DELETE FROM employees WHERE id = ?", [id])
 
 // ── ATTENDANCE ────────────────────────────────────────────────────
+
+// Returns all attendance records joined with employee name and department
 const getAttendance = () => queryAll(`
   SELECT
-    a.id, a.date, a.shift_in, a.shift_out, a.total_hours, a.status,
+    a.id, a.date,
+    a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
+    a.total_hours, a.status,
     e.employee_no, e.name, e.department
   FROM attendance a
   LEFT JOIN employees e ON e.id = a.employee_id
   ORDER BY a.date DESC, e.name
 `)
 
+// Returns attendance records for a single date only
 const getAttendanceByDate = (date) => queryAll(`
   SELECT
-    a.id, a.date, a.shift_in, a.shift_out, a.total_hours, a.status,
+    a.id, a.date,
+    a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
+    a.total_hours, a.status,
     e.employee_no, e.name, e.department
   FROM attendance a
   LEFT JOIN employees e ON e.id = a.employee_id
@@ -187,18 +197,19 @@ const getAttendanceByDate = (date) => queryAll(`
   ORDER BY e.name
 `, [date])
 
+// Bulk-inserts parsed biometric records. Creates employee stubs for unknown IDs.
+// Skips any record that already exists for that employee + date combination.
 const importAttendance = (records) => {
   let newEmployees   = 0
   let newRecords     = 0
   let skippedRecords = 0
 
   for (const rec of records) {
-    // ── 1. Ensure employee exists ──────────────────────────────
+    // 1. Find the employee row; create a minimal stub if they're not in the DB yet
     let emp = queryOne(
       'SELECT id FROM employees WHERE employee_no = ?',
       [rec.employee_no]
     )
-
     if (!emp) {
       const newId = crypto.randomUUID()
       db.run(`
@@ -210,29 +221,30 @@ const importAttendance = (records) => {
       newEmployees++
     }
 
-    // ── 2. Skip if already exists ──────────────────────────────
+    // 2. Skip if this employee already has a record on this date (no overwriting)
     const existing = queryOne(
       'SELECT id FROM attendance WHERE employee_id = ? AND date = ?',
       [emp.id, rec.date]
     )
-    if (existing) {
-      skippedRecords++
-      continue
-    }
+    if (existing) { skippedRecords++; continue }
 
-    // ── 3. Insert ──────────────────────────────────────────────
+    // 3. Insert the full attendance row with all 4 tap columns
     db.run(`
       INSERT INTO attendance
-        (id, employee_id, date, shift_in, shift_out, total_hours, status, sync_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+        (id, employee_id, date,
+         shift_in, lunch_out, lunch_in, shift_out,
+         total_hours, status, sync_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     `, [
       crypto.randomUUID(),
       emp.id,
       rec.date,
-      rec.shift_in   ?? null,
-      rec.shift_out  ?? null,
+      rec.shift_in    ?? null,
+      rec.lunch_out   ?? null,
+      rec.lunch_in    ?? null,
+      rec.shift_out   ?? null,
       rec.total_hours ?? null,
-      rec.status     ?? 'Absent',
+      rec.status      ?? 'Absent',
     ])
     newRecords++
   }
