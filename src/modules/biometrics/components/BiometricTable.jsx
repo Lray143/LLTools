@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { STATUS_STYLES } from '../biometricConstants'
 
 const Dash = () => <span style={{ color: '#c9bfaf' }}>-</span>
 
-// 10 columns now — added Lunch Out and Lunch In between Shift In and Shift Out
 const COLUMNS = [
   { label: '#',           width: '100px' },
   { label: 'Name',        width: '180px' },
@@ -18,7 +17,6 @@ const COLUMNS = [
   { label: 'Status',      width: '90px'  },
 ]
 
-// Converts "8:02 AM" to total minutes since midnight for arithmetic
 function parseTime(t) {
   if (!t) return null
   const [time, meridiem] = t.split(' ')
@@ -28,7 +26,6 @@ function parseTime(t) {
   return h * 60 + m
 }
 
-// Calculates total worked hours as "Xh Ym", deducting the actual lunch break if available
 function calcTotalHours(r) {
   const inMin  = parseTime(r.shiftIn)
   const outMin = parseTime(r.shiftOut)
@@ -36,13 +33,11 @@ function calcTotalHours(r) {
 
   let diff = outMin - inMin
 
-  // If both lunch times exist, deduct the real break duration instead of a fixed amount
   const lunchOutMin = parseTime(r.lunchOut)
   const lunchInMin  = parseTime(r.lunchIn)
   if (lunchOutMin != null && lunchInMin != null) {
     diff -= (lunchInMin - lunchOutMin)
   } else {
-    // Fallback: deduct 1.5 hours (90 min) if no lunch taps recorded
     diff -= 90
   }
 
@@ -52,13 +47,117 @@ function calcTotalHours(r) {
   return mn > 0 ? `${h}h ${mn}m` : `${h}h`
 }
 
+// ── Extra-taps tooltip ────────────────────────────────────────
+function ExtraTapsTooltip({ extraTaps }) {
+  const [visible, setVisible] = useState(false)
+  const [pos, setPos]         = useState({ x: 0, y: 0 })
+
+  if (!extraTaps || extraTaps.length === 0) return null
+
+  return (
+    <>
+      {/* Orange badge — shows number of extra taps */}
+      <span
+        onMouseEnter={e => { setPos({ x: e.clientX, y: e.clientY }); setVisible(true) }}
+        onMouseMove={e  => setPos({ x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => setVisible(false)}
+        style={{
+          display        : 'inline-flex',
+          alignItems     : 'center',
+          justifyContent : 'center',
+          width          : '18px',
+          height         : '18px',
+          borderRadius   : '50%',
+          background     : '#f97316',
+          color          : '#fff',
+          fontSize       : '9px',
+          fontWeight     : 700,
+          marginLeft     : '6px',
+          flexShrink     : 0,
+          cursor         : 'default',
+          userSelect     : 'none',
+          verticalAlign  : 'middle',
+        }}
+      >
+        +{extraTaps.length}
+      </span>
+
+      {/* Tooltip — fixed so it's never clipped by table overflow */}
+      {visible && (
+        <div
+          style={{
+            position     : 'fixed',
+            top          : pos.y - 12,
+            left         : pos.x + 14,
+            transform    : 'translateY(-100%)',
+            zIndex       : 99999,
+            background   : '#1c1008',
+            color        : '#fff',
+            borderRadius : '10px',
+            padding      : '10px 14px',
+            minWidth     : '200px',
+            boxShadow    : '0 8px 28px rgba(0,0,0,0.25)',
+            pointerEvents: 'none',
+          }}
+        >
+          <p style={{
+            fontSize     : '10px',
+            color        : '#a09278',
+            fontWeight   : 600,
+            letterSpacing: '0.07em',
+            textTransform: 'uppercase',
+            marginBottom : '8px',
+          }}>
+            Additional taps detected
+          </p>
+
+          {extraTaps.map((t, i) => (
+            <div
+              key={i}
+              style={{
+                display      : 'flex',
+                alignItems   : 'center',
+                gap          : '8px',
+                marginBottom : i < extraTaps.length - 1 ? '5px' : 0,
+              }}
+            >
+              <span style={{
+                fontSize  : '9px',
+                fontWeight: 700,
+                color     : t.type === 'IN' ? '#4ade80' : '#f87171',
+                background: t.type === 'IN'
+                  ? 'rgba(74,222,128,0.18)'
+                  : 'rgba(248,113,113,0.18)',
+                padding     : '2px 6px',
+                borderRadius: '4px',
+                letterSpacing: '0.04em',
+              }}>
+                {t.type}
+              </span>
+              <span style={{ fontSize: '12px', color: '#e8ddd0' }}>{t.time}</span>
+            </div>
+          ))}
+
+          <p style={{
+            fontSize    : '10px',
+            color       : '#6b5040',
+            marginTop   : '8px',
+            lineHeight  : 1.4,
+          }}>
+            Ignored — only the 4 main taps were used for calculation.
+          </p>
+        </div>
+      )}
+    </>
+  )
+}
+
 const PAGE_SIZE = 10
 const ROW_HEIGHT = 52
 
 export function BiometricTable({ records, total, viewMode }) {
   const [page, setPage] = useState(1)
 
-  // Reset to page 1 whenever the record list changes (filter, search, import)
   useEffect(() => { setPage(1) }, [records])
 
   const totalPages  = Math.max(1, Math.ceil(records.length / PAGE_SIZE))
@@ -66,8 +165,6 @@ export function BiometricTable({ records, total, viewMode }) {
   const paginated   = records.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
   const fillerCount = PAGE_SIZE - paginated.length
 
-  // Builds the array of page numbers shown in the pagination bar,
-  // collapsing distant pages into ellipsis when there are many pages
   function getPageNumbers() {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1)
     if (safePage <= 3)   return [1, 2, 3, 4, 'ellipsis1', totalPages]
@@ -79,11 +176,11 @@ export function BiometricTable({ records, total, viewMode }) {
     <div
       className="rounded-2xl flex flex-col"
       style={{
-        background: '#fff',
-        border: '1px solid rgba(0,0,0,0.07)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-        flex: 1,
-        minHeight: 0,
+        background : '#fff',
+        border     : '1px solid rgba(0,0,0,0.07)',
+        boxShadow  : '0 2px 8px rgba(0,0,0,0.06)',
+        flex       : 1,
+        minHeight  : 0,
       }}
     >
       {/* Title bar */}
@@ -103,13 +200,13 @@ export function BiometricTable({ records, total, viewMode }) {
                   key={i}
                   className="text-left px-4 py-3"
                   style={{
-                    width: col.width,
-                    fontSize: '11px',
-                    color: '#a09278',
-                    fontWeight: 500,
+                    width        : col.width,
+                    fontSize     : '11px',
+                    color        : '#a09278',
+                    fontWeight   : 500,
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
-                    whiteSpace: 'nowrap',
+                    whiteSpace   : 'nowrap',
                   }}
                 >
                   {col.label}
@@ -120,7 +217,6 @@ export function BiometricTable({ records, total, viewMode }) {
 
           <tbody>
             {records.length === 0 ? (
-              // Empty state — show a message in the first row, then fill remaining rows
               <>
                 <tr>
                   <td colSpan={10} className="text-center" style={{ height: ROW_HEIGHT + 'px', color: '#c9bfaf', fontSize: '13px' }}>
@@ -142,23 +238,26 @@ export function BiometricTable({ records, total, viewMode }) {
                     <tr
                       key={r.id}
                       style={{
-                        background: rowBg,
+                        background  : rowBg,
                         borderBottom: '1px solid rgba(0,0,0,0.04)',
-                        transition: 'background 100ms',
-                        cursor: 'pointer',
-                        height: ROW_HEIGHT + 'px',
+                        transition  : 'background 100ms',
+                        cursor      : 'pointer',
+                        height      : ROW_HEIGHT + 'px',
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#fff8f2' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = rowBg }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#fff8f2' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = rowBg }}
                     >
                       {/* Employee ID */}
                       <td className="px-4" style={{ fontSize: '12px', color: '#b0a090', whiteSpace: 'nowrap' }}>
                         {r.id}
                       </td>
 
-                      {/* Name */}
+                      {/* Name — extra-taps badge lives here */}
                       <td className="px-4" style={{ fontSize: '13px', color: '#2c2010', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        {r.name}
+                        <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          {r.name}
+                          <ExtraTapsTooltip extraTaps={r.extraTaps} />
+                        </span>
                       </td>
 
                       {/* Department */}
@@ -171,22 +270,22 @@ export function BiometricTable({ records, total, viewMode }) {
                         {r.timeframe}
                       </td>
 
-                      {/* Tap 1 — Shift In (darker, it's a key time) */}
+                      {/* Shift In */}
                       <td className="px-4" style={{ fontSize: '13px', color: '#4b3a2a', whiteSpace: 'nowrap' }}>
                         {r.shiftIn  != null ? r.shiftIn  : <Dash />}
                       </td>
 
-                      {/* Tap 2 — Lunch Out (muted, it's a break column) */}
+                      {/* Lunch Out */}
                       <td className="px-4" style={{ fontSize: '13px', color: '#a09278', whiteSpace: 'nowrap' }}>
                         {r.lunchOut != null ? r.lunchOut : <Dash />}
                       </td>
 
-                      {/* Tap 3 — Lunch In (muted, it's a break column) */}
+                      {/* Lunch In */}
                       <td className="px-4" style={{ fontSize: '13px', color: '#a09278', whiteSpace: 'nowrap' }}>
                         {r.lunchIn  != null ? r.lunchIn  : <Dash />}
                       </td>
 
-                      {/* Tap 4 — Shift Out (darker, it's a key time) */}
+                      {/* Shift Out */}
                       <td className="px-4" style={{ fontSize: '13px', color: '#4b3a2a', whiteSpace: 'nowrap' }}>
                         {r.shiftOut != null ? r.shiftOut : <Dash />}
                       </td>
@@ -206,7 +305,6 @@ export function BiometricTable({ records, total, viewMode }) {
                   )
                 })}
 
-                {/* Filler rows to keep the table height fixed at PAGE_SIZE rows */}
                 {Array.from({ length: fillerCount }).map((_, i) => {
                   const fillerBg = (paginated.length + i) % 2 === 0 ? '#fff' : '#faf9f6'
                   return (
@@ -224,7 +322,6 @@ export function BiometricTable({ records, total, viewMode }) {
         </table>
       </div>
 
-      {/* Pushes the footer to the bottom of the card */}
       <div className="flex-1" />
 
       {/* Pagination footer */}
@@ -237,7 +334,6 @@ export function BiometricTable({ records, total, viewMode }) {
         </p>
 
         <div className="flex items-center gap-1">
-          {/* Previous page arrow */}
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={safePage === 1}
@@ -247,7 +343,6 @@ export function BiometricTable({ records, total, viewMode }) {
             <ChevronLeft className="w-4 h-4" strokeWidth={2.5} />
           </button>
 
-          {/* Page number pills */}
           {getPageNumbers().map((num) =>
             typeof num === 'string' && num.startsWith('ellipsis') ? (
               <span key={num} style={{ fontSize: '11px', color: '#b0a090', padding: '0 2px' }}>…</span>
@@ -256,18 +351,18 @@ export function BiometricTable({ records, total, viewMode }) {
                 key={num}
                 onClick={() => setPage(num)}
                 style={{
-                  width: '24px',
-                  height: '24px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
-                  fontWeight: safePage === num ? 600 : 400,
-                  background: safePage === num ? '#f97316' : 'transparent',
-                  color: safePage === num ? '#fff' : '#6b5c4c',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  width          : '24px',
+                  height         : '24px',
+                  borderRadius   : '6px',
+                  fontSize       : '11px',
+                  fontWeight     : safePage === num ? 600 : 400,
+                  background     : safePage === num ? '#f97316' : 'transparent',
+                  color          : safePage === num ? '#fff' : '#6b5c4c',
+                  border         : 'none',
+                  cursor         : 'pointer',
+                  display        : 'inline-flex',
+                  alignItems     : 'center',
+                  justifyContent : 'center',
                 }}
               >
                 {num}
@@ -275,7 +370,6 @@ export function BiometricTable({ records, total, viewMode }) {
             )
           )}
 
-          {/* Next page arrow */}
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={safePage === totalPages}
