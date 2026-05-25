@@ -1,22 +1,19 @@
-// src/modules/hrms/Employees.jsx
 import { useState, useEffect, useCallback } from "react"
 import { Bell, Plus, Search, User, Archive } from "lucide-react"
 import { Button }  from "../../components/ui/button"
 import { Input }   from "../../components/ui/input"
 import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../components/ui/select"
 import { v4 as uuidv4 } from 'uuid'
 
-import { DEPTS, STATUSES, getLiveStatus } from "./employeeConstants"
+import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS } from "./employeeConstants"
 import { EmployeeCardGrid }     from "./components/EmployeeCardGrid"
 import { EmployeeListView }     from "./components/EmployeeListView"
 import { EmployeeModal }        from "./components/EmployeeModal"
 import { EmployeeDeleteModal }  from "./components/EmployeeDeleteModal"
 import { EmployeeArchiveModal } from "./components/EmployeeArchiveModal"
 
-// DB row → component shape
 function fromDb(row) {
   return {
     id:          row.id,
@@ -29,10 +26,14 @@ function fromDb(row) {
     leaveType:   row.leave_type  ?? '',
     leaveStart:  row.leave_start ?? '',
     leaveEnd:    row.leave_end   ?? '',
+    shiftStart:  row.shift_start ?? DEFAULT_SHIFT_START,
+    shiftEnd:    row.shift_end   ?? DEFAULT_SHIFT_END,
+    dayOffs:     row.day_offs
+                   ? row.day_offs.split(',').map(d => d.trim()).filter(Boolean)
+                   : DEFAULT_DAY_OFFS,
   }
 }
 
-// Component shape → DB row
 function toDb(emp) {
   return {
     id:          emp.id,
@@ -45,11 +46,16 @@ function toDb(emp) {
     leave_type:  emp.leaveType  ?? null,
     leave_start: emp.leaveStart ?? null,
     leave_end:   emp.leaveEnd   ?? null,
+    shift_start: emp.shiftStart ?? DEFAULT_SHIFT_START,
+    shift_end:   emp.shiftEnd   ?? DEFAULT_SHIFT_END,
+    day_offs:    Array.isArray(emp.dayOffs)
+                   ? emp.dayOffs.join(',')
+                   : (emp.dayOffs ?? DEFAULT_DAY_OFFS.join(',')),
   }
 }
 
 function Employees() {
-  const [employees, setEmployees]   = useState([])   // ← starts empty, loads from DB
+  const [employees, setEmployees]   = useState([])
   const [archived,  setArchived]    = useState([])
   const [loading,   setLoading]     = useState(true)
   const [view,      setView]        = useState("cards")
@@ -58,7 +64,6 @@ function Employees() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [modal,     setModal]       = useState(null)
 
-  // ── LOAD FROM DB ────────────────────────────────────────────────
   const loadEmployees = useCallback(async () => {
     const [active, arch] = await Promise.all([
       window.electronAPI.getEmployees(),
@@ -71,7 +76,6 @@ function Employees() {
 
   useEffect(() => { loadEmployees() }, [loadEmployees])
 
-  // ── NEXT EMPLOYEE NO ─────────────────────────────────────────
   function nextEmployeeNo() {
     const all  = [...employees, ...archived]
     const nums = all.map(e => parseInt(e.employee_no?.split("-")[1] ?? 0))
@@ -79,13 +83,10 @@ function Employees() {
     return `EMP-${String(max + 1).padStart(3, "0")}`
   }
 
-  // ── SAVE (add or edit) ───────────────────────────────────────
-  // In Employees.jsx — replace handleSave
   async function handleSave(form) {
     const isNew = modal.mode === "add"
     const emp = {
       id:          isNew ? uuidv4() : modal.employee.id,
-      // Use whatever the user typed, fall back to auto-generate if left blank
       employee_no: form.employee_no?.trim() || (isNew ? nextEmployeeNo() : modal.employee.employee_no),
       ...form,
     }
@@ -94,26 +95,22 @@ function Employees() {
     setModal(null)
   }
 
-  // ── ARCHIVE ─────────────────────────────────────────────────
   async function handleDelete() {
     await window.electronAPI.archiveEmployee(modal.employee.id)
     await loadEmployees()
     setModal(null)
   }
 
-  // ── UNARCHIVE ────────────────────────────────────────────────
   async function handleUnarchive(emp) {
     await window.electronAPI.unarchiveEmployee(emp.id)
     await loadEmployees()
   }
 
-  // ── PERMANENT DELETE ─────────────────────────────────────────
   async function handlePermanentDelete(id) {
     await window.electronAPI.permanentDeleteEmployee(id)
     await loadEmployees()
   }
 
-  // ── FILTER ───────────────────────────────────────────────────
   const filtered = employees
     .map(e => ({ ...e, liveStatus: getLiveStatus(e) }))
     .filter(e => {
@@ -134,7 +131,6 @@ function Employees() {
         }
       `}</style>
 
-      {/* TOP BAR */}
       <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Employees</h1>
         <div className="flex items-center gap-3">
@@ -156,10 +152,8 @@ function Employees() {
         </div>
       </div>
 
-      {/* FILTER BAR */}
       <div className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center gap-3">
-
           <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-white">
             <button
               onClick={() => setView("cards")}
@@ -178,9 +172,7 @@ function Employees() {
             <SelectContent align="start" className="z-50 bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
               <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Departments</SelectItem>
               {DEPTS.map(d => (
-                <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
-                  {d}
-                </SelectItem>
+                <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">{d}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -192,9 +184,7 @@ function Employees() {
             <SelectContent align="start" className="z-50 bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
               <SelectItem value="all" className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">All Statuses</SelectItem>
               {STATUSES.map(s => (
-                <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
-                  {s}
-                </SelectItem>
+                <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">{s}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -221,7 +211,6 @@ function Employees() {
         </div>
       </div>
 
-      {/* CONTENT */}
       <div className="px-8 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">
@@ -248,7 +237,6 @@ function Employees() {
         )}
       </div>
 
-      {/* MODALS */}
       <EmployeeModal
         open={modal?.mode === "add" || modal?.mode === "edit"}
         mode={modal?.mode}

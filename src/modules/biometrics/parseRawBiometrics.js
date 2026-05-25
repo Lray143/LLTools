@@ -1,12 +1,33 @@
-export function parseRawBiometrics(text) {
+// employeeMap shape: { [employee_no]: { shiftStart: "07:00", shiftEnd: "17:30", dayOffs: ["Saturday","Sunday"] } }
+export function parseRawBiometrics(text, employeeMap = {}) {
 
-  const MIN_VALID_EMP_ID = 100
-  const SHIFT_START_HOUR = 7
-  const LATE_CUTOFF_MIN  = 15
-  const MIN_HOURS        = 8.5
+  const MIN_VALID_EMP_ID  = 100
+  const DEFAULT_START     = "07:00"
+  const DEFAULT_END       = "17:30"
+  const DEFAULT_DAY_OFFS  = ["Saturday", "Sunday"]
+  const LATE_CUTOFF_MIN   = 15   // grace period in minutes
+
+  // Parse "HH:MM" → { hours, minutes }
+  function parseHHMM(str) {
+    if (!str) return null
+    const [h, m] = str.split(":").map(Number)
+    if (isNaN(h) || isNaN(m)) return null
+    return { hours: h, minutes: m }
+  }
+
+  // Total shift duration in hours from shiftStart/shiftEnd strings
+  function expectedHours(startStr, endStr) {
+    const s = parseHHMM(startStr)
+    const e = parseHHMM(endStr)
+    if (!s || !e) return 8.5
+    const diff = (e.hours * 60 + e.minutes) - (s.hours * 60 + s.minutes)
+    // subtract standard 1hr lunch
+    return Math.max(0, (diff / 60) - 1)
+  }
+
+  const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
 
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
-
   const punchMap = {}
 
   for (const line of lines) {
@@ -53,8 +74,24 @@ export function parseRawBiometrics(text) {
     entry.ins.sort((a, b)  => a - b)
     entry.outs.sort((a, b) => a - b)
 
-    const totalTaps = entry.ins.length + entry.outs.length
+    // ── Per-employee schedule ─────────────────────────────────
+    const empSchedule  = employeeMap[entry.employee_no] ?? {}
+    const shiftStartStr = empSchedule.shiftStart ?? DEFAULT_START
+    const shiftEndStr   = empSchedule.shiftEnd   ?? DEFAULT_END
+    const dayOffs       = empSchedule.dayOffs     ?? DEFAULT_DAY_OFFS
+    const minHours      = expectedHours(shiftStartStr, shiftEndStr)
 
+    // Parse shift start into hours + minutes for late check
+    const shiftStartParsed = parseHHMM(shiftStartStr) ?? { hours: 7, minutes: 0 }
+
+    // ── Check if this date is a day off ───────────────────────
+    const dateObj    = new Date(entry.date + 'T00:00:00')
+    const dayName    = DAY_NAMES[dateObj.getDay()]
+    const isDayOff   = dayOffs.includes(dayName)
+
+    const totalTaps  = entry.ins.length + entry.outs.length
+
+    // ── Resolve tap slots ─────────────────────────────────────
     const insUsed  = new Set()
     const outsUsed = new Set()
 
@@ -95,6 +132,7 @@ export function parseRawBiometrics(text) {
       }
     }
 
+    // ── Extra taps ────────────────────────────────────────────
     const rawExtras = []
     entry.ins.forEach((d, i) => {
       if (!insUsed.has(i)) rawExtras.push({ dt: d, time: fmt(d), type: 'IN' })
@@ -107,28 +145,35 @@ export function parseRawBiometrics(text) {
       ? rawExtras.map(({ time, type }) => ({ time, type }))
       : null
 
+    // ── Total Hours ───────────────────────────────────────────
     let totalHours = null
     if (shiftIn && shiftOut) {
       const shiftHrs = (shiftOut - shiftIn) / (1000 * 60 * 60)
-      let deduction = 1.5
+      let deduction = 1
       if (lunchOut && lunchIn) {
         deduction = (lunchIn - lunchOut) / (1000 * 60 * 60)
       }
-      const net  = shiftHrs - deduction
+      const net = shiftHrs - deduction
       totalHours = net > 0 ? Math.round(net * 100) / 100 : 0
     }
 
+    // ── Status ────────────────────────────────────────────────
     let status
 
-    if (totalTaps === 0) {
+    if (isDayOff && totalTaps === 0) {
+      // No taps on a scheduled day off → just skip / mark as day off
+      status = 'Day Off'
+    } else if (totalTaps === 0) {
       status = 'Absent'
     } else if (!shiftIn || !shiftOut) {
       status = 'Incomplete'
     } else {
+      // Late = arrived more than LATE_CUTOFF_MIN after their shift start
       const minsAfterStart =
-        (shiftIn.getHours() - SHIFT_START_HOUR) * 60 + shiftIn.getMinutes()
+        (shiftIn.getHours() - shiftStartParsed.hours) * 60 +
+        (shiftIn.getMinutes() - shiftStartParsed.minutes)
       const isLate      = minsAfterStart > LATE_CUTOFF_MIN
-      const isUndertime = totalHours !== null && totalHours < MIN_HOURS
+      const isUndertime = totalHours !== null && totalHours < minHours
 
       if      (isLate && isUndertime) status = 'Late & Undertime'
       else if (isLate)                status = 'Late'
@@ -148,7 +193,6 @@ export function parseRawBiometrics(text) {
       total_hours : totalHours,
       status,
       extraTaps,
-
       id         : `EMP-${entry.employee_no}`,
       name       : '',
       department : '—',

@@ -85,9 +85,25 @@ function isoToDate(iso) {
 
 function pad2(n) { return String(n).padStart(2, '0') }
 
+// Build a lookup map from employee list for the parser
+function buildEmployeeMap(employees) {
+  const map = {}
+  for (const e of employees) {
+    map[String(e.employee_no)] = {
+      shiftStart : e.shift_start ?? '07:00',
+      shiftEnd   : e.shift_end   ?? '17:30',
+      dayOffs    : e.day_offs
+                     ? e.day_offs.split(',').map(d => d.trim()).filter(Boolean)
+                     : ['Saturday', 'Sunday'],
+    }
+  }
+  return map
+}
+
 function Biometrics() {
 
-  const [records, setRecords] = useState([])
+  const [records,      setRecords]      = useState([])
+  const [employeeMap,  setEmployeeMap]  = useState({})
 
   const [searchQuery,      setSearchQuery]      = useState('')
   const [selectedDept,     setSelectedDept]     = useState('All Departments')
@@ -104,12 +120,18 @@ function Biometrics() {
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    window.electronAPI.getAttendance().then(rows => {
+    async function load() {
+      const [rows, empRows] = await Promise.all([
+        window.electronAPI.getAttendance(),
+        window.electronAPI.getEmployees(),
+      ])
       const mapped = rows.map(mapRow)
       setRecords(mapped)
+      setEmployeeMap(buildEmployeeMap(empRows))
       const latest = latestDateIn(mapped)
       if (latest) setSelectedDate(isoToDate(latest))
-    })
+    }
+    load()
   }, [])
 
   const availableYears = [...new Set(
@@ -158,10 +180,15 @@ function Biometrics() {
     setImportError('')
     setImportSuccess('')
 
+    // Refresh employee map right before parsing so it's always current
+    const empRows       = await window.electronAPI.getEmployees()
+    const freshEmpMap   = buildEmployeeMap(empRows)
+    setEmployeeMap(freshEmpMap)
+
     const reader = new FileReader()
     reader.onload = async (evt) => {
       try {
-        const parsed = parseRawBiometrics(evt.target.result)
+        const parsed = parseRawBiometrics(evt.target.result, freshEmpMap)
         if (parsed.length === 0) {
           setImportError('No records could be read. Check the file matches the expected device format.')
           return
