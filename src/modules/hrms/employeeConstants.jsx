@@ -11,6 +11,14 @@ export const LEAVE_TYPES = [
   "Paternity Leave"
 ]
 
+export const DAYS_OF_WEEK = [
+  "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"
+]
+
+export const DEFAULT_SHIFT_START = "07:00"
+export const DEFAULT_SHIFT_END   = "17:30"
+export const DEFAULT_DAY_OFFS    = ["Saturday", "Sunday"]
+
 export const avatarColors = [
   "bg-orange-500", "bg-blue-600",  "bg-purple-500",
   "bg-teal-600",   "bg-yellow-500","bg-red-700",
@@ -25,20 +33,13 @@ export function getLiveStatus(emp) {
   if (emp.status === "On Leave" && emp.leaveStart && emp.leaveEnd) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
     const start = new Date(emp.leaveStart)
     start.setHours(0, 0, 0, 0)
-    
     const end = new Date(emp.leaveEnd)
     end.setHours(0, 0, 0, 0)
-
-    if (today < start || today > end) {
-      return "Active"
-    }
-    
+    if (today < start || today > end) return "Active"
     return emp.leaveType || "On Leave"
   }
-  
   return emp.status || "Active"
 }
 

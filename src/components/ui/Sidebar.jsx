@@ -1,13 +1,19 @@
-// src/components/Sidebar.jsx
-
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
   SoapDispenserDroplet, Pin, PinOff
 } from 'lucide-react'
 
-const navItems = [
+const ROLE_LABELS = {
+  admin:     'Administrator',
+  hr:        'HR Department',
+  clinic:    'Clinic Staff',
+  inventory: 'Inventory',
+  outlets:   'Outlets',
+}
+
+const ALL_NAV_ITEMS = [
   { id: 'dashboard',    label: 'Dashboard',    icon: LayoutDashboard      },
   { id: 'employees',    label: 'Employees',    icon: Users                },
   { id: 'biometrics',   label: 'Biometrics',   icon: Fingerprint          },
@@ -18,15 +24,37 @@ const navItems = [
   { id: 'reports',      label: 'Reports',      icon: BarChart3            },
 ]
 
-const systemItems = [
+const SYSTEM_ITEMS = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ]
 
-function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
+function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange }) {
   const [isPinned, setIsPinned]   = useState(true)
   const [isHovered, setIsHovered] = useState(false)
 
+  // ── ONLINE STATUS ─────────────────────────────────────────────
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const goOnline  = () => setIsOnline(true)
+    const goOffline = () => setIsOnline(false)
+
+    window.addEventListener('online',  goOnline)
+    window.addEventListener('offline', goOffline)
+
+    return () => {
+      window.removeEventListener('online',  goOnline)
+      window.removeEventListener('offline', goOffline)
+    }
+  }, [])
+  // ─────────────────────────────────────────────────────────────
+
   const isExpanded = isPinned || isHovered
+
+  const navItems = ALL_NAV_ITEMS.filter(item => allowedModules.includes(item.id))
+
+  const initials  = currentUser?.username?.slice(0, 2).toUpperCase() ?? '??'
+  const roleLabel = ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? ''
 
   function handlePinToggle() {
     const next = !isPinned
@@ -39,7 +67,6 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
     const isActive = activePage === item.id
     return (
       <button
-        key={item.id}
         onClick={() => setActivePage(item.id)}
         title={!isExpanded ? item.label : undefined}
         className={`
@@ -87,13 +114,11 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
         `}
       >
 
-        {/* ── TOP ────────────────────────────────────────── */}
+        {/* ── TOP ─────────────────────────────────────── */}
         <div>
 
           {/* Logo row */}
           <div className="relative flex items-center justify-center mb-8 h-16">
-
-            {/* Full logo — visible when expanded */}
             <img
               src="/Logo.png"
               alt="Company Logo"
@@ -103,20 +128,15 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
                 ${isExpanded ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}
               `}
             />
-
-            {/* Small logomark — visible when collapsed */}
             <img
               src="/Logo.png"
               alt=""
               aria-hidden="true"
               className={`
-                w-7 h-7 object-contain
-                transition-all duration-300
+                w-7 h-7 object-contain transition-all duration-300
                 ${isExpanded ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}
               `}
             />
-
-            {/* Pin/unpin button — only visible when expanded */}
             <button
               onClick={handlePinToggle}
               title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
@@ -142,41 +162,57 @@ function Sidebar({ activePage, setActivePage, onLogout, onPinChange }) {
 
           {navItems.map((item) => <NavButton key={item.id} item={item} />)}
 
-          <p className={`
-            text-xs text-gray-500 uppercase px-2 mt-6 mb-2
-            transition-all duration-200 whitespace-nowrap overflow-hidden
-            ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
-          `}>
-            System
-          </p>
-
-          {systemItems.map((item) => <NavButton key={item.id} item={item} />)}
+          {allowedModules.includes('settings') && (
+            <>
+              <p className={`
+                text-xs text-gray-500 uppercase px-2 mt-6 mb-2
+                transition-all duration-200 whitespace-nowrap overflow-hidden
+                ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
+              `}>
+                System
+              </p>
+              {SYSTEM_ITEMS.map((item) => <NavButton key={item.id} item={item} />)}
+            </>
+          )}
         </div>
 
-        {/* ── BOTTOM — User info + logout ────────────────── */}
+        {/* ── BOTTOM — User info + logout ────────────── */}
         <div className={`
-          flex items-center py-2 rounded-md
-          transition-all duration-200
+          flex items-center py-2 rounded-md transition-all duration-200
           ${isExpanded ? 'gap-3 px-2' : 'justify-center px-0'}
         `}>
 
-          {/* Avatar — always visible, always centered when collapsed */}
-          <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0">
-            MR
+          {/* Avatar with online/offline dot */}
+          <div className="relative shrink-0">
+            <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs">
+              {initials}
+            </div>
+
+            {/* Status dot — always visible even when sidebar is collapsed */}
+            <span
+              title={isOnline ? 'Online' : 'Offline'}
+              className={`
+                absolute -bottom-0.5 -right-0.5
+                w-2.5 h-2.5 rounded-full border-2 border-[#1e1b18]
+                transition-colors duration-500
+                ${isOnline ? 'bg-green-400' : 'bg-gray-500'}
+              `}
+            />
           </div>
 
-          {/* Name + role — collapses out */}
+          {/* Name + role + status text */}
           <div className={`
             flex-1 transition-all duration-200 overflow-hidden whitespace-nowrap
             ${isExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}
           `}>
-            <p className="text-sm font-medium leading-none mb-1">Maria Reyes</p>
-            <p className="text-xs text-gray-400 leading-none">HR Manager</p>
+            <p className="text-sm font-medium leading-none mb-1">{currentUser?.username}</p>
+            <p className="text-xs text-gray-400 leading-none">{roleLabel}</p>
           </div>
 
-          {/* Logout — collapses out */}
+          {/* Logout */}
           <button
             onClick={onLogout}
+            title="Log out"
             className={`
               p-1 rounded text-gray-500 hover:bg-red-500/10 hover:text-red-400
               transition-all duration-200 shrink-0

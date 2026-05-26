@@ -34,7 +34,8 @@ export function EmployeeCardGrid({ employees, onEdit, onDelete }) {
             {getInitials(emp.name)}
           </div>
           <p className="font-semibold text-gray-900 mt-1">{emp.name}</p>
-          <p className="text-sm text-gray-400">{emp.dept} · {emp.id}</p>
+          <p className="text-sm text-gray-400">{emp.dept} · {emp.employee_no}</p>
+          {/* Use the dynamically resolved status value */}
           <EmployeeStatusBadge status={emp.liveStatus} />
           {formatShiftTime(emp.shiftStart, emp.shiftEnd) ? (
             <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-400">
