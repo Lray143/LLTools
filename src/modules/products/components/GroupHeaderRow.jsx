@@ -1,0 +1,114 @@
+// src/modules/products/components/GroupHeaderRow.jsx
+import { useState, useRef, useEffect } from 'react'
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
+
+export default function GroupHeaderRow({
+  group, collapsed,
+  onToggleCollapse, onRenameGroup, onAddRow, onDeleteGroup,
+  editMode,   // ← new
+}) {
+  const [editing,   setEditing]   = useState(false)
+  const [draftName, setDraftName] = useState(group.name)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  // If edit mode is turned off while renaming, cancel the rename
+  useEffect(() => {
+    if (!editMode && editing) cancelRename()
+  }, [editMode])
+
+  const commitRename = () => {
+    const trimmed = draftName.trim()
+    if (trimmed) onRenameGroup(group.id, trimmed)
+    else setDraftName(group.name)
+    setEditing(false)
+  }
+
+  const cancelRename = () => {
+    setDraftName(group.name)
+    setEditing(false)
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter')  commitRename()
+    if (e.key === 'Escape') cancelRename()
+  }
+
+  return (
+    <tr className="bg-orange-50 border-y border-orange-200">
+      <td colSpan={8} className="px-4 py-2">
+        <div className="flex items-center gap-2">
+
+          {/* Collapse toggle — always available */}
+          <button
+            onClick={() => onToggleCollapse(group.id)}
+            className="text-orange-400 hover:text-orange-600 transition-colors"
+            title={collapsed ? 'Expand' : 'Collapse'}
+          >
+            {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+          </button>
+
+          {/* Group name — editable only in edit mode */}
+          {editing ? (
+            <div className="flex items-center gap-1.5 flex-1">
+              <input
+                ref={inputRef}
+                type="text"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={commitRename}
+                className="text-sm font-bold text-orange-700 bg-white border border-orange-300
+                           rounded px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-orange-400 w-64"
+              />
+              <button onClick={commitRename} className="text-green-500 hover:text-green-700"><Check size={14} /></button>
+              <button onClick={cancelRename} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+            </div>
+          ) : (
+            <span className="text-sm font-bold tracking-wider text-orange-700 flex-1">
+              {group.name}
+              <span className="ml-2 text-xs font-normal text-orange-400">
+                ({group.rows.length} item{group.rows.length !== 1 ? 's' : ''})
+              </span>
+            </span>
+          )}
+
+          {/* Action buttons — only visible in edit mode */}
+          {editMode && (
+            <div className="flex items-center gap-1 ml-auto">
+              {!editing && (
+                <button
+                  onClick={() => setEditing(true)}
+                  title="Rename group"
+                  className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-700
+                             px-2 py-1 rounded hover:bg-orange-100 transition-colors"
+                >
+                  <Pencil size={12} /> Rename
+                </button>
+              )}
+              <button
+                onClick={() => onAddRow(group.id)}
+                title="Add row to group"
+                className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-700
+                           px-2 py-1 rounded hover:bg-orange-100 transition-colors"
+              >
+                <Plus size={12} /> Add Row
+              </button>
+              <button
+                onClick={() => onDeleteGroup(group.id)}
+                title="Delete group"
+                className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600
+                           px-2 py-1 rounded hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={12} /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </td>
+    </tr>
+  )
+}

@@ -8,6 +8,7 @@ import Dashboard   from './modules/dashboard/Dashboard'
 import Employees   from './modules/hrms/Employees'
 import Biometrics  from './modules/biometrics/Biometrics'
 import ClinicLog   from './modules/clinic/ClinicLog'
+import Products    from './modules/products/Products'
 import Outlets     from './modules/outlets/Outlets'
 import Calculations from './modules/calculations/Calculations'
 import Reports     from './modules/reports/Reports'
@@ -20,6 +21,7 @@ const ALL_PAGES = {
   employees:    <Employees />,
   biometrics:   <Biometrics />,
   clinic:       <ClinicLog />,
+  products:     <Products />,
   outlets:      <Outlets />,
   calculations: <Calculations />,
   reports:      <Reports />,
