@@ -8,11 +8,14 @@ const DB_PATH = path.join(app.getPath('userData'), 'lltools.db')
 
 let db = null
 
+// Writes the in-memory SQLite database back to disk after every change.
+// sql.js keeps everything in memory, so we have to manually flush it.
 const save = () => {
   const data = db.export()
   fs.writeFileSync(DB_PATH, Buffer.from(data))
 }
 
+// Runs a SELECT and returns all matching rows as plain JS objects.
 const queryAll = (sql, params = []) => {
   const stmt = db.prepare(sql)
   if (params.length) stmt.bind(params)
@@ -22,8 +25,10 @@ const queryAll = (sql, params = []) => {
   return rows
 }
 
+// Same as queryAll but only returns the first row (or null if nothing matched).
 const queryOne = (sql, params = []) => queryAll(sql, params)[0] ?? null
 
+// Runs an INSERT / UPDATE / DELETE and immediately saves to disk.
 const run = (sql, params = []) => {
   db.run(sql, params)
   save()
@@ -35,6 +40,7 @@ const initDb = async () => {
     locateFile: () => path.join(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm')
   })
 
+  // Load existing DB file from disk, or create a fresh one.
   if (fs.existsSync(DB_PATH)) {
     db = new SQL.Database(fs.readFileSync(DB_PATH))
   } else {
@@ -81,6 +87,10 @@ const initDb = async () => {
       shift_out     TEXT,
       total_hours   REAL,
       status        TEXT,
+      -- extra_taps stores any taps beyond the 4 main ones as a JSON string.
+      -- Example: '[{"type":"IN","time":"08:45 AM"},{"type":"OUT","time":"05:10 PM"}]'
+      -- Null means no extra taps were detected for this record.
+      extra_taps    TEXT DEFAULT NULL,
       created_at    TEXT DEFAULT (datetime('now')),
       synced_at     TEXT DEFAULT NULL,
       sync_status   TEXT DEFAULT 'pending'
@@ -98,22 +108,14 @@ const initDb = async () => {
     );
   `)
 
-  // ── MIGRATIONS — safely add new columns to existing DBs ──────
-  const migrations = [
-    `ALTER TABLE employees ADD COLUMN shift_start TEXT DEFAULT '07:00'`,
-    `ALTER TABLE employees ADD COLUMN shift_end   TEXT DEFAULT '17:30'`,
-    `ALTER TABLE employees ADD COLUMN day_offs    TEXT DEFAULT 'Saturday,Sunday'`,
-  ]
-  for (const sql of migrations) {
-    try { db.run(sql) } catch (_) { /* column already exists, skip */ }
-  }
-
+  // Prevents duplicate attendance rows for the same employee on the same day.
   try {
     db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date
               ON attendance(employee_id, date)`)
   } catch (_) {}
 
   // ── SEED DEFAULT ACCOUNTS ─────────────────────────────────────
+  // These only insert if the username doesn't already exist (INSERT OR IGNORE).
   const seedUsers = [
     { username: 'admin@doublel.com',     password: 'admin123',     role: 'admin'     },
     { username: 'hr@doublel.com',        password: 'hr123',        role: 'hr'        },
@@ -190,11 +192,14 @@ const permanentDeleteEmployee = (id) =>
   run("DELETE FROM employees WHERE id = ?", [id])
 
 // ── ATTENDANCE ────────────────────────────────────────────────────
+
+// Returns every attendance row joined with its employee's info.
+// extra_taps comes back as a raw JSON string — the frontend parses it.
 const getAttendance = () => queryAll(`
   SELECT
     a.id, a.date,
     a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
-    a.total_hours, a.status,
+    a.total_hours, a.status, a.extra_taps,
     e.employee_no, e.name, e.department,
     e.shift_start, e.shift_end, e.day_offs
   FROM attendance a
@@ -206,7 +211,7 @@ const getAttendanceByDate = (date) => queryAll(`
   SELECT
     a.id, a.date,
     a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
-    a.total_hours, a.status,
+    a.total_hours, a.status, a.extra_taps,
     e.employee_no, e.name, e.department,
     e.shift_start, e.shift_end, e.day_offs
   FROM attendance a
@@ -215,16 +220,23 @@ const getAttendanceByDate = (date) => queryAll(`
   ORDER BY e.name
 `, [date])
 
+// Processes a batch of parsed biometric records and inserts them into the DB.
+// Skips any record that already exists for that employee+date combination.
+// If an employee number isn't in the DB yet, a stub employee row is created.
 const importAttendance = (records) => {
   let newEmployees   = 0
   let newRecords     = 0
   let skippedRecords = 0
 
   for (const rec of records) {
+    // Look up the employee by their biometric device number.
     let emp = queryOne(
       'SELECT id FROM employees WHERE employee_no = ?',
       [rec.employee_no]
     )
+
+    // Employee not found — create a minimal stub so the attendance row has
+    // something to reference. HR can fill in the real details later.
     if (!emp) {
       const newId = crypto.randomUUID()
       db.run(`
@@ -236,18 +248,25 @@ const importAttendance = (records) => {
       newEmployees++
     }
 
+    // Skip if this employee already has a record for this date.
     const existing = queryOne(
       'SELECT id FROM attendance WHERE employee_id = ? AND date = ?',
       [emp.id, rec.date]
     )
     if (existing) { skippedRecords++; continue }
 
+    // Serialize extra taps array to JSON for storage.
+    // If there are no extra taps, we store NULL to keep things clean.
+    const extraTapsJson = rec.extraTaps?.length > 0
+      ? JSON.stringify(rec.extraTaps)
+      : null
+
     db.run(`
       INSERT INTO attendance
         (id, employee_id, date,
          shift_in, lunch_out, lunch_in, shift_out,
-         total_hours, status, sync_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+         total_hours, status, extra_taps, sync_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
     `, [
       crypto.randomUUID(),
       emp.id,
@@ -258,6 +277,7 @@ const importAttendance = (records) => {
       rec.shift_out   ?? null,
       rec.total_hours ?? null,
       rec.status      ?? 'Absent',
+      extraTapsJson,
     ])
     newRecords++
   }

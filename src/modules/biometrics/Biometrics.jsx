@@ -12,6 +12,7 @@ const MONTH_NAMES = [
   'July','August','September','October','November','December',
 ]
 
+// Looks at the shift-in time and decides which part of the day the shift belongs to.
 function shiftPeriodFromString(timeStr) {
   if (!timeStr) return 'Morning'
   const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
@@ -24,33 +25,52 @@ function shiftPeriodFromString(timeStr) {
   return 'Evening'
 }
 
-const mapRow = (r) => ({
-  employee_no : r.employee_no,
-  date        : r.date,
-  shift_in    : r.shift_in,
-  lunch_out   : r.lunch_out,
-  lunch_in    : r.lunch_in,
-  shift_out   : r.shift_out,
-  total_hours : r.total_hours,
-  status      : r.status,
-  id          : String(r.employee_no),
-  name        : r.name       || '—',
-  department  : r.department || '—',
-  timeframe   : `${new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', {
-                  month: 'long', day: 'numeric', year: 'numeric',
-                })} · ${shiftPeriodFromString(r.shift_in)}`,
-  shiftIn    : r.shift_in,
-  lunchOut   : r.lunch_out,
-  lunchIn    : r.lunch_in,
-  shiftOut   : r.shift_out,
-  totalHours : r.total_hours,
-})
+// Transforms a raw DB row into the shape the UI components expect.
+// extra_taps is stored as a JSON string in the DB, so we parse it back
+// into an array here. If it's null or invalid, we fall back to null.
+const mapRow = (r) => {
+  let extraTaps = null
+  if (r.extra_taps) {
+    try {
+      extraTaps = JSON.parse(r.extra_taps)
+    } catch {
+      // Corrupted JSON in the DB — treat as no extra taps.
+      extraTaps = null
+    }
+  }
+
+  return {
+    employee_no : r.employee_no,
+    date        : r.date,
+    shift_in    : r.shift_in,
+    lunch_out   : r.lunch_out,
+    lunch_in    : r.lunch_in,
+    shift_out   : r.shift_out,
+    total_hours : r.total_hours,
+    status      : r.status,
+    extraTaps,                   // parsed array (or null) — used by ExtraTapsTooltip
+    id          : String(r.employee_no),
+    name        : r.name       || '—',
+    department  : r.department || '—',
+    timeframe   : `${new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', {
+                    month: 'long', day: 'numeric', year: 'numeric',
+                  })} · ${shiftPeriodFromString(r.shift_in)}`,
+    shiftIn    : r.shift_in,
+    lunchOut   : r.lunch_out,
+    lunchIn    : r.lunch_in,
+    shiftOut   : r.shift_out,
+    totalHours : r.total_hours,
+  }
+}
+
+// ── Date helpers ──────────────────────────────────────────────────
 
 const MONTH_MAP = {
   january:1, february:2, march:3, april:4, may:5, june:6,
   july:7, august:8, september:9, october:10, november:11, december:12,
 }
 
+// Converts a timeframe string like "May 14, 2025 · Morning" into an ISO date "2025-05-14".
 function timeframeToISO(tf) {
   if (!tf) return ''
   try {
@@ -67,6 +87,8 @@ function timeframeToISO(tf) {
 function isoYear(iso)  { return iso ? Number(iso.slice(0,4)) : null }
 function isoMonth(iso) { return iso ? Number(iso.slice(5,7)) : null }
 
+// Scans all records and returns the most recent ISO date found.
+// Used to auto-select the latest date after a load or import.
 function latestDateIn(records) {
   let best = null
   for (const r of records) {
@@ -77,6 +99,7 @@ function latestDateIn(records) {
   return best
 }
 
+// Converts an ISO date string into a JS Date object at local midnight.
 function isoToDate(iso) {
   if (!iso) return new Date()
   const [y, m, d] = iso.split('-').map(Number)
@@ -85,6 +108,8 @@ function isoToDate(iso) {
 
 function pad2(n) { return String(n).padStart(2, '0') }
 
+// Builds a lookup map from employee_no → { shiftStart, shiftEnd, dayOffs }
+// so we can quickly check schedule rules without querying the DB again.
 function buildEmployeeMap(employees) {
   const map = {}
   for (const e of employees) {
@@ -118,6 +143,8 @@ function Biometrics() {
 
   const fileInputRef = useRef(null)
 
+  // On mount: load all attendance rows from the DB and map them to UI shape.
+  // extra_taps is parsed inside mapRow, so extraTaps will be correct right away.
   useEffect(() => {
     async function load() {
       const [rows, empRows] = await Promise.all([
@@ -127,16 +154,20 @@ function Biometrics() {
       const mapped = rows.map(mapRow)
       setRecords(mapped)
       setEmployeeMap(buildEmployeeMap(empRows))
+
+      // Jump the date picker to the most recent record in the DB.
       const latest = latestDateIn(mapped)
       if (latest) setSelectedDate(isoToDate(latest))
     }
     load()
   }, [])
 
+  // Build the list of years that actually have records, for the year picker.
   const availableYears = [...new Set(
     records.map(r => isoYear(timeframeToISO(r.timeframe))).filter(Boolean)
   )].sort((a, b) => b - a)
 
+  // Filter records based on the current view mode, department, and search query.
   const filteredRecords = records.filter(r => {
     const iso = timeframeToISO(r.timeframe)
 
@@ -163,6 +194,7 @@ function Biometrics() {
     return matchView && matchDept && matchSearch
   })
 
+  // Tally up each status category for the stat cards at the top.
   const stats = {
     fullTime      : filteredRecords.filter(r => r.status === 'Full Time').length,
     late          : filteredRecords.filter(r => r.status === 'Late').length,
@@ -179,6 +211,8 @@ function Biometrics() {
     setImportError('')
     setImportSuccess('')
 
+    // Re-fetch the employee map fresh so we have the latest shift rules
+    // in case someone updated employees between imports.
     const empRows     = await window.electronAPI.getEmployees()
     const freshEmpMap = buildEmployeeMap(empRows)
     setEmployeeMap(freshEmpMap)
@@ -186,28 +220,23 @@ function Biometrics() {
     const reader = new FileReader()
     reader.onload = async (evt) => {
       try {
+        // parseRawBiometrics returns records that already include an extraTaps array.
         const parsed = parseRawBiometrics(evt.target.result, freshEmpMap)
         if (parsed.length === 0) {
           setImportError('No records could be read. Check the file matches the expected device format.')
           return
         }
 
-        const extraTapsLookup = {}
-        parsed.forEach(p => {
-          if (p.extraTaps?.length > 0) {
-            extraTapsLookup[`${p.employee_no}_${p.date}`] = p.extraTaps
-          }
-        })
-
+        // importAttendance saves extra_taps as JSON in the DB alongside each record.
         const result = await window.electronAPI.importAttendance(parsed)
 
+        // Re-load from DB — mapRow will parse extra_taps back into the extraTaps array
+        // automatically, so we don't need to track it in a separate lookup anymore.
         const rows   = await window.electronAPI.getAttendance()
-        const mapped = rows.map(r => ({
-          ...mapRow(r),
-          extraTaps: extraTapsLookup[`${r.employee_no}_${r.date}`] ?? null,
-        }))
+        const mapped = rows.map(mapRow)
         setRecords(mapped)
 
+        // Jump to the most recent date in the newly imported batch.
         const latest = latestDateIn(mapped)
         if (latest) setSelectedDate(isoToDate(latest))
 
