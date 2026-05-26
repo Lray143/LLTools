@@ -26,7 +26,9 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
     contact: "",
     leaveType: "Paid Leave", 
     leaveStart: "", 
-    leaveEnd: "" 
+    leaveEnd: "",
+    shiftStart: "",
+    shiftEnd: ""
   })
 
   useEffect(() => {
@@ -40,9 +42,11 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               contact: employee.contact || "",
               leaveType: employee.leaveType || "Paid Leave",
               leaveStart: employee.leaveStart || "",
-              leaveEnd: employee.leaveEnd || ""
+              leaveEnd: employee.leaveEnd || "",
+              shiftStart: employee.shiftStart || "",
+              shiftEnd: employee.shiftEnd || ""
             }
-          : { name: "", dept: "Sales", status: "Active", contact: "", leaveType: "Paid Leave", leaveStart: "", leaveEnd: "" }
+          : { name: "", dept: "Sales", status: "Active", contact: "", leaveType: "Paid Leave", leaveStart: "", leaveEnd: "", shiftStart: "", shiftEnd: "" }
       )
     }
   }, [open, employee?.id, mode])
@@ -87,6 +91,31 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               onChange={e => setForm({ ...form, contact: e.target.value })}
               className="bg-white border-gray-200"
             />
+          </div>
+
+          {/* SHIFT TIME FIELDS */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-gray-700">Shift Time</label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-gray-400">Start</span>
+                <Input
+                  type="time"
+                  value={form.shiftStart}
+                  onChange={e => setForm({ ...form, shiftStart: e.target.value })}
+                  className="bg-white border-gray-200"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-gray-400">End</span>
+                <Input
+                  type="time"
+                  value={form.shiftEnd}
+                  onChange={e => setForm({ ...form, shiftEnd: e.target.value })}
+                  className="bg-white border-gray-200"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">

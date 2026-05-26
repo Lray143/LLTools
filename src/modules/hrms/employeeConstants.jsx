@@ -43,12 +43,12 @@ export function getLiveStatus(emp) {
 }
 
 export const seedEmployees = [
-  { id: "EMP-001", name: "Ana Santos",     dept: "Sales",      status: "On Leave", leaveType: "Sick Leave", leaveStart: "2026-05-22", leaveEnd: "2026-05-23", contact: "0917-123-4567" },
-  { id: "EMP-002", name: "Rico Dela Cruz", dept: "Warehouse",  status: "Active", contact: "0918-987-6543" },
-  { id: "EMP-003", name: "Gina Flores",    dept: "Accounting", status: "Active", contact: "0922-456-7890" },
-  { id: "EMP-004", name: "Ben Castillo",   dept: "Admin",      status: "Active", contact: "0915-333-4444" },
-  { id: "EMP-005", name: "Lita Mendoza",   dept: "HR",         status: "Active", contact: "0999-888-7777" },
-  { id: "EMP-006", name: "Jun Ramos",      dept: "Intern",     status: "Active", contact: "0906-111-2222" },
+  { id: "EMP-001", name: "Ana Santos",     dept: "Sales",      status: "On Leave", leaveType: "Sick Leave", leaveStart: "2026-05-22", leaveEnd: "2026-05-23", contact: "0917-123-4567", shiftStart: "08:00", shiftEnd: "17:00" },
+  { id: "EMP-002", name: "Rico Dela Cruz", dept: "Warehouse",  status: "Active", contact: "0918-987-6543", shiftStart: "06:00", shiftEnd: "14:00" },
+  { id: "EMP-003", name: "Gina Flores",    dept: "Accounting", status: "Active", contact: "0922-456-7890", shiftStart: "09:00", shiftEnd: "18:00" },
+  { id: "EMP-004", name: "Ben Castillo",   dept: "Admin",      status: "Active", contact: "0915-333-4444", shiftStart: "08:00", shiftEnd: "17:00" },
+  { id: "EMP-005", name: "Lita Mendoza",   dept: "HR",         status: "Active", contact: "0999-888-7777", shiftStart: "08:00", shiftEnd: "17:00" },
+  { id: "EMP-006", name: "Jun Ramos",      dept: "Intern",     status: "Active", contact: "0906-111-2222", shiftStart: "10:00", shiftEnd: "16:00" },
 ]
 
 export function getInitials(name) {
@@ -59,4 +59,16 @@ export function getColor(name) {
   let h = 0
   for (let c of name) h += c.charCodeAt(0)
   return avatarColors[h % avatarColors.length]
+}
+
+export function formatShiftTime(start, end) {
+  if (!start && !end) return null
+  const fmt = t => {
+    if (!t) return "?"
+    const [h, m] = t.split(":").map(Number)
+    const ampm = h >= 12 ? "PM" : "AM"
+    const hour = h % 12 || 12
+    return m === 0 ? `${hour}${ampm}` : `${hour}:${String(m).padStart(2, "0")}${ampm}`
+  }
+  return `${fmt(start)} – ${fmt(end)}`
 }
