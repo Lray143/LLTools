@@ -1,8 +1,7 @@
 import { useState } from "react"
-import { Bell, Search, User } from "lucide-react"
+import { Bell, Search, User, Maximize2, Minimize2 } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
-import DetailModal from "./components/DetailModal"
 import NewEntryForm from "./components/NewEntryForm"
 import VisitsTable from "./components/VisitsTable"
 import VisitModal from "./components/VisitModal"
@@ -21,11 +20,9 @@ export default function ClinicLog() {
   const todayISO = new Date().toISOString().split("T")[0]
   const nowTime  = new Date().toTimeString().slice(0, 5)
 
-  // ── VISITS STATE (seeded from constants) ──────────────────────────────────
   const [visits,   setVisits]   = useState(RECENT_VISITS)
   const [archived, setArchived] = useState([])
 
-  // ── NEW-ENTRY FORM STATE ──────────────────────────────────────────────────
   const [form, setForm] = useState({
     date:        todayISO,
     time:        nowTime,
@@ -38,19 +35,15 @@ export default function ClinicLog() {
   })
   const [saved, setSaved] = useState(false)
 
-  // ── UI STATE ──────────────────────────────────────────────────────────────
-  const [selectedMonth, setSelectedMonth] = useState("All")
-  const [selectedVisit, setSelectedVisit] = useState(null)   // detail modal
-  const [modal, setModal]                 = useState(null)   // {mode, visit?}
+  const [modal, setModal]                 = useState(null)
+  const [tableExpanded, setTableExpanded] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  // ── HANDLERS ──────────────────────────────────────────────────────────────
-
-  /** Save new entry from the side-panel form */
   function handleSave() {
     const d       = new Date(form.date + "T00:00:00")
     const month   = d.toLocaleString("en-US", { month: "short" })
+    const year    = d.getFullYear()                               // ← year extracted
     const dateStr = `${month} ${d.getDate()}`
 
     const [h, m]  = form.time.split(":")
@@ -67,6 +60,7 @@ export default function ClinicLog() {
     const newVisit = {
       date:        dateStr,
       month,
+      year,                                                        // ← stored in visit
       employee:    shortName,
       fullName:    form.employee.trim(),
       complaint:   form.complaint,
@@ -94,26 +88,22 @@ export default function ClinicLog() {
     }, 2000)
   }
 
-  /** Save edits from the Edit modal */
   function handleEditSave(updatedVisit) {
     setVisits(prev => prev.map(v => v === modal.visit ? updatedVisit : v))
     setModal(null)
   }
 
-  /** Move record to archive (soft delete) */
   function handleDelete() {
     setArchived(prev => [...prev, modal.visit])
     setVisits(prev => prev.filter(v => v !== modal.visit))
     setModal(null)
   }
 
-  /** Restore a visit from the archive back to the table */
   function handleUnarchive(visit) {
     setVisits(prev => [visit, ...prev])
     setArchived(prev => prev.filter(v => v !== visit))
   }
 
-  /** Permanently remove a visit from the archive */
   function handlePermanentDelete(visit) {
     setArchived(prev => prev.filter(v => v !== visit))
   }
@@ -121,11 +111,6 @@ export default function ClinicLog() {
   return (
     <div className="flex flex-col w-full h-full bg-white">
 
-      {/* ── MODALS ─────────────────────────────────────────────────────────── */}
-      <DetailModal
-        visit={selectedVisit}
-        onClose={() => setSelectedVisit(null)}
-      />
       <VisitModal
         open={modal?.mode === "edit"}
         visit={modal?.visit}
@@ -146,7 +131,7 @@ export default function ClinicLog() {
         onClose={() => setModal(null)}
       />
 
-      {/* ── TOP BAR ────────────────────────────────────────────────────────── */}
+      {/* TOP BAR */}
       <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Clinic Log</h1>
         <div className="flex items-center gap-3">
@@ -163,22 +148,25 @@ export default function ClinicLog() {
         </div>
       </div>
 
-      {/* ── CONTENT ────────────────────────────────────────────────────────── */}
-      <div className="flex gap-5 px-8 py-6 flex-1 overflow-auto">
-        <NewEntryForm
-          form={form}
-          set={set}
-          saved={saved}
-          onSave={handleSave}
-        />
+      {/* CONTENT */}
+      <div className="flex gap-5 px-8 py-6 flex-1 overflow-auto min-h-0">
+        {!tableExpanded && (
+          <div className="w-[580px] flex-shrink-0">
+            <NewEntryForm
+              form={form}
+              set={set}
+              saved={saved}
+              onSave={handleSave}
+            />
+          </div>
+        )}
         <VisitsTable
           visits={visits}
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
-          onViewVisit={setSelectedVisit}
           onEditVisit={v  => setModal({ mode: "edit",    visit: v })}
           onDeleteVisit={v => setModal({ mode: "delete", visit: v })}
           onOpenArchive={() => setModal({ mode: "archive" })}
+          tableExpanded={tableExpanded}
+          onToggleExpand={() => setTableExpanded(e => !e)}
         />
       </div>
 

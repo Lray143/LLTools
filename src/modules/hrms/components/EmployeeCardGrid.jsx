@@ -1,7 +1,7 @@
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, Clock } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { EmployeeStatusBadge } from "./EmployeeStatusBadge"
-import { getColor, getInitials } from "../employeeConstants"
+import { getColor, getInitials, formatShiftTime } from "../employeeConstants"
 
 export function EmployeeCardGrid({ employees, onEdit, onDelete }) {
   return (
@@ -37,6 +37,17 @@ export function EmployeeCardGrid({ employees, onEdit, onDelete }) {
           <p className="text-sm text-gray-400">{emp.dept} · {emp.employee_no}</p>
           {/* Use the dynamically resolved status value */}
           <EmployeeStatusBadge status={emp.liveStatus} />
+          {formatShiftTime(emp.shiftStart, emp.shiftEnd) ? (
+            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-400">
+              <Clock className="w-3.5 h-3.5 text-gray-300" />
+              <span>{formatShiftTime(emp.shiftStart, emp.shiftEnd)}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 mt-0.5 text-xs text-gray-300 italic">
+              <Clock className="w-3.5 h-3.5" />
+              <span>No shift set</span>
+            </div>
+          )}
         </div>
       ))}
     </div>
