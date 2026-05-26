@@ -26,4 +26,12 @@ window.electronAPI = {
   archiveProduct:          (id)      => ipcRenderer.invoke('products:archive', id),
   restoreProduct:          (id)      => ipcRenderer.invoke('products:restore', id),
   permanentDeleteProduct:  (id)      => ipcRenderer.invoke('products:permDelete', id),
+
+  // ── Clinic Logs ─────────────────────────────────────────────────
+  getClinicLogs:           ()        => ipcRenderer.invoke('clinic:getAll'),
+  getArchivedClinicLogs:   ()        => ipcRenderer.invoke('clinic:getArchived'),
+  upsertClinicLog:         (log)     => ipcRenderer.invoke('clinic:upsert', log),
+  archiveClinicLog:        (id)      => ipcRenderer.invoke('clinic:archive', id),
+  unarchiveClinicLog:      (id)      => ipcRenderer.invoke('clinic:unarchive', id),
+  permanentDeleteClinicLog:(id)      => ipcRenderer.invoke('clinic:permDelete', id),
 }

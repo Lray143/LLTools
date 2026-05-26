@@ -36,10 +36,11 @@ export default function VisitsTable({
 
   // ── Filtering ─────────────────────────────────────────────────────────────
   const filteredVisits = visits.filter(v => {
+    const vYear = Number(v.year)
     if (mode === "monthly") {
-      return v.month === ALL_MONTHS[currentMonth] && v.year === currentYear
+      return v.month === ALL_MONTHS[currentMonth] && vYear === currentYear
     }
-    return v.year === currentYear
+    return vYear === currentYear
   })
 
   // ── Pagination ────────────────────────────────────────────────────────────
@@ -52,7 +53,7 @@ export default function VisitsTable({
   const pages        = getPaginationPages(safePage, totalPages)
 
   // ── Derive available years from visits for year bounds ───────────────────
-  const availableYears = [...new Set(visits.map(v => v.year).filter(Boolean))].sort((a, b) => a - b)
+  const availableYears = [...new Set(visits.map(v => Number(v.year)).filter(Boolean))].sort((a, b) => a - b)
   const minYear = availableYears[0] ?? currentYear
   const maxYear = availableYears[availableYears.length - 1] ?? currentYear
 

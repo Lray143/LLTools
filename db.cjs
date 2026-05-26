@@ -140,11 +140,18 @@ const initDb = async () => {
     );
     CREATE TABLE IF NOT EXISTS clinic_logs (
       id            TEXT PRIMARY KEY,
-      patient_name  TEXT NOT NULL,
       employee_id   TEXT REFERENCES employees(id),
-      service       TEXT,
-      notes         TEXT,
-      date          TEXT DEFAULT (datetime('now')),
+      full_name     TEXT NOT NULL,
+      employee_code TEXT,
+      date          TEXT NOT NULL,
+      time          TEXT NOT NULL,
+      complaint     TEXT,
+      disposition   TEXT,
+      bp            TEXT,
+      temp          TEXT,
+      treatment     TEXT,
+      status        TEXT DEFAULT 'Active',
+      created_at    TEXT DEFAULT (datetime('now')),
       synced_at     TEXT DEFAULT NULL,
       sync_status   TEXT DEFAULT 'pending'
     );
@@ -183,6 +190,19 @@ const initDb = async () => {
   try { db.run(`UPDATE products       SET price  = new_srp  WHERE price  IS NULL AND new_srp IS NOT NULL`) } catch (_) {}
   try { db.run(`UPDATE products       SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
   try { db.run(`UPDATE product_groups SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
+  // ── CLINIC LOGS MIGRATIONS (for existing DBs with old schema) ─
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN full_name     TEXT NOT NULL DEFAULT ''`)  } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN employee_code TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN time          TEXT NOT NULL DEFAULT ''`)  } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN complaint     TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN disposition   TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN bp            TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN temp          TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN treatment     TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN status        TEXT DEFAULT 'Active'`)      } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN created_at    TEXT DEFAULT (datetime('now'))`) } catch (_) {}
+  // backfill status for any old rows
+  try { db.run(`UPDATE clinic_logs SET status = 'Active' WHERE status IS NULL`) }             catch (_) {}
 
   // ── SEED USERS ────────────────────────────────────────────────
   const seedUsers = [
@@ -391,6 +411,65 @@ const restoreProduct = (id) => {
 
 const permanentDeleteProduct = (id) => run(`DELETE FROM products WHERE id=?`, [id])
 
+
+// ── CLINIC LOGS ───────────────────────────────────────────────────
+const mapClinicLog = (r) => ({
+  id:           r.id,
+  employeeId:   r.employee_id   ?? null,
+  fullName:     r.full_name     ?? '',
+  employeeCode: r.employee_code ?? '',
+  date:         r.date          ?? '',
+  time:         r.time          ?? '',
+  complaint:    r.complaint     ?? '',
+  disposition:  r.disposition   ?? '',
+  bp:           r.bp            ?? '',
+  temp:         r.temp          ?? '',
+  treatment:    r.treatment     ?? '',
+  status:       r.status        ?? 'Active',
+  createdAt:    r.created_at    ?? '',
+})
+
+const getClinicLogs = () =>
+  queryAll(`SELECT * FROM clinic_logs WHERE status = 'Active' ORDER BY date DESC, time DESC`)
+    .map(mapClinicLog)
+
+const getArchivedClinicLogs = () =>
+  queryAll(`SELECT * FROM clinic_logs WHERE status = 'Archived' ORDER BY date DESC, time DESC`)
+    .map(mapClinicLog)
+
+const upsertClinicLog = (log) => run(`
+  INSERT INTO clinic_logs
+    (id, employee_id, full_name, employee_code, date, time,
+     complaint, disposition, bp, temp, treatment, status)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
+  ON CONFLICT(id) DO UPDATE SET
+    employee_id   = excluded.employee_id,
+    full_name     = excluded.full_name,
+    employee_code = excluded.employee_code,
+    date          = excluded.date,
+    time          = excluded.time,
+    complaint     = excluded.complaint,
+    disposition   = excluded.disposition,
+    bp            = excluded.bp,
+    temp          = excluded.temp,
+    treatment     = excluded.treatment,
+    sync_status   = 'pending'
+`, [
+  log.id, log.employeeId ?? null, log.fullName, log.employeeCode ?? null,
+  log.date, log.time,
+  log.complaint ?? null, log.disposition ?? null,
+  log.bp ?? null, log.temp ?? null, log.treatment ?? null,
+])
+
+const archiveClinicLog = (id) =>
+  run(`UPDATE clinic_logs SET status='Archived', sync_status='pending' WHERE id=?`, [id])
+
+const unarchiveClinicLog = (id) =>
+  run(`UPDATE clinic_logs SET status='Active', sync_status='pending' WHERE id=?`, [id])
+
+const permanentDeleteClinicLog = (id) =>
+  run(`DELETE FROM clinic_logs WHERE id=?`, [id])
+
 module.exports = {
   initDb, loginUser, queryAll, queryOne, run,
   getEmployees, getArchivedEmployees,
@@ -399,4 +478,6 @@ module.exports = {
   getProductGroups, getArchivedProducts,
   upsertProductGroup, deleteProductGroup,
   upsertProduct, archiveProduct, restoreProduct, permanentDeleteProduct,
+  getClinicLogs, getArchivedClinicLogs,
+  upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
 }

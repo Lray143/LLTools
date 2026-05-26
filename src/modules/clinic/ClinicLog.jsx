@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Bell, Search, User, Maximize2, Minimize2 } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import { Bell, Search, User } from "lucide-react"
 import { Button } from "../../components/ui/button"
 import { Input } from "../../components/ui/input"
 import NewEntryForm from "./components/NewEntryForm"
@@ -7,7 +7,6 @@ import VisitsTable from "./components/VisitsTable"
 import VisitModal from "./components/VisitModal"
 import VisitDeleteModal from "./components/VisitDeleteModal"
 import VisitArchiveModal from "./components/VisitArchiveModal"
-import { RECENT_VISITS } from "./components/clinicConstants"
 
 const DISP_MAP = {
   "sent-back":  "Back to work",
@@ -16,12 +15,51 @@ const DISP_MAP = {
   "monitoring": "Monitoring",
 }
 
+function dbToVisit(r) {
+  const [y, mo, day] = (r.date ?? "").split("-").map(Number)
+  const month   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][mo - 1] ?? ""
+  const year    = y
+  const dateStr = `${month} ${day}`
+  return {
+    id:          r.id,
+    date:        dateStr,
+    month,
+    year,
+    time:        r.time        ?? "",
+    employee:    r.employeeCode ?? shortName(r.fullName),
+    fullName:    r.fullName    ?? "",
+    complaint:   r.complaint   ?? "",
+    disposition: r.disposition ?? "",
+    bp:          r.bp          ?? "",
+    temp:        r.temp        ?? "",
+    treatment:   r.treatment   ?? "",
+    _rawDate:    r.date,
+  }
+}
+
+function shortName(full = "") {
+  const parts = full.trim().split(" ")
+  return parts.length > 1
+    ? `${parts[0]} ${parts[parts.length - 1][0]}.`
+    : full.trim()
+}
+
+function to12(timeStr = "") {
+  if (!timeStr) return ""
+  const [h, m] = timeStr.split(":")
+  const hour = parseInt(h)
+  const ampm = hour >= 12 ? "PM" : "AM"
+  const hour12 = hour % 12 || 12
+  return `${hour12}:${m} ${ampm}`
+}
+
 export default function ClinicLog() {
   const todayISO = new Date().toISOString().split("T")[0]
   const nowTime  = new Date().toTimeString().slice(0, 5)
 
-  const [visits,   setVisits]   = useState(RECENT_VISITS)
+  const [visits,   setVisits]   = useState([])
   const [archived, setArchived] = useState([])
+  const [loading,  setLoading]  = useState(true)
 
   const [form, setForm] = useState({
     date:        todayISO,
@@ -40,38 +78,61 @@ export default function ClinicLog() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  function handleSave() {
-    const d       = new Date(form.date + "T00:00:00")
-    const month   = d.toLocaleString("en-US", { month: "short" })
-    const year    = d.getFullYear()                               // ← year extracted
-    const dateStr = `${month} ${d.getDate()}`
+  // ── Load from DB ───────────────────────────────────────────────
+  const loadVisits = useCallback(async () => {
+    try {
+      const rows = await window.electronAPI.getClinicLogs()
+      setVisits(rows.map(dbToVisit))
+    } catch (err) {
+      console.error("[ClinicLog] getClinicLogs failed:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-    const [h, m]  = form.time.split(":")
-    const hour    = parseInt(h)
-    const ampm    = hour >= 12 ? "PM" : "AM"
-    const hour12  = hour % 12 || 12
-    const timeStr = `${hour12}:${m} ${ampm}`
+  const loadArchived = useCallback(async () => {
+    try {
+      const rows = await window.electronAPI.getArchivedClinicLogs()
+      setArchived(rows.map(dbToVisit))
+    } catch (err) {
+      console.error("[ClinicLog] getArchivedClinicLogs failed:", err)
+    }
+  }, [])
 
-    const parts     = form.employee.trim().split(" ")
-    const shortName = parts.length > 1
-      ? `${parts[0]} ${parts[parts.length - 1][0]}.`
-      : form.employee.trim()
+  useEffect(() => {
+    loadVisits()
+    loadArchived()
+  }, [loadVisits, loadArchived])
 
-    const newVisit = {
-      date:        dateStr,
-      month,
-      year,                                                        // ← stored in visit
-      employee:    shortName,
-      fullName:    form.employee.trim(),
-      complaint:   form.complaint,
-      disposition: DISP_MAP[form.disposition] || form.disposition,
-      bp:          form.bp,
-      temp:        form.temp,
-      treatment:   form.treatment,
-      time:        timeStr,
+  // ── Save new entry ─────────────────────────────────────────────
+  async function handleSave() {
+    if (!form.employee.trim()) return
+
+    const id       = crypto.randomUUID()
+    const fullName = form.employee.trim()
+    const timeStr  = to12(form.time)
+
+    const log = {
+      id,
+      employeeId:   null,
+      fullName,
+      employeeCode: shortName(fullName),
+      date:         form.date,
+      time:         timeStr,
+      complaint:    form.complaint,
+      disposition:  DISP_MAP[form.disposition] || form.disposition,
+      bp:           form.bp,
+      temp:         form.temp,
+      treatment:    form.treatment,
     }
 
-    setVisits(prev => [newVisit, ...prev])
+    try {
+      await window.electronAPI.upsertClinicLog(log)
+      await loadVisits()
+    } catch (err) {
+      console.error("[ClinicLog] upsertClinicLog failed:", err)
+    }
+
     setSaved(true)
     setTimeout(() => {
       setSaved(false)
@@ -88,24 +149,61 @@ export default function ClinicLog() {
     }, 2000)
   }
 
-  function handleEditSave(updatedVisit) {
-    setVisits(prev => prev.map(v => v === modal.visit ? updatedVisit : v))
+  // ── Edit ───────────────────────────────────────────────────────
+  async function handleEditSave(updatedVisit) {
+    const log = {
+      id:           modal.visit.id,
+      employeeId:   null,
+      fullName:     updatedVisit.fullName,
+      employeeCode: shortName(updatedVisit.fullName),
+      date:         modal.visit._rawDate,
+      time:         modal.visit.time,
+      complaint:    updatedVisit.complaint,
+      disposition:  updatedVisit.disposition,
+      bp:           updatedVisit.bp,
+      temp:         updatedVisit.temp,
+      treatment:    updatedVisit.treatment,
+    }
+    try {
+      await window.electronAPI.upsertClinicLog(log)
+      await loadVisits()
+    } catch (err) {
+      console.error("[ClinicLog] edit upsert failed:", err)
+    }
     setModal(null)
   }
 
-  function handleDelete() {
-    setArchived(prev => [...prev, modal.visit])
-    setVisits(prev => prev.filter(v => v !== modal.visit))
+  // ── Archive ────────────────────────────────────────────────────
+  async function handleDelete() {
+    try {
+      await window.electronAPI.archiveClinicLog(modal.visit.id)
+      await loadVisits()
+      await loadArchived()
+    } catch (err) {
+      console.error("[ClinicLog] archiveClinicLog failed:", err)
+    }
     setModal(null)
   }
 
-  function handleUnarchive(visit) {
-    setVisits(prev => [visit, ...prev])
-    setArchived(prev => prev.filter(v => v !== visit))
+  // ── Restore ────────────────────────────────────────────────────
+  async function handleUnarchive(visit) {
+    try {
+      await window.electronAPI.unarchiveClinicLog(visit.id)
+      await loadVisits()
+      await loadArchived()
+    } catch (err) {
+      console.error("[ClinicLog] unarchiveClinicLog failed:", err)
+    }
   }
 
-  function handlePermanentDelete(visit) {
-    setArchived(prev => prev.filter(v => v !== visit))
+  // ── Permanent delete ───────────────────────────────────────────
+  async function handlePermanentDelete(visit) {
+    try {
+      await window.electronAPI.permanentDeleteClinicLog(visit.id)
+      await loadArchived()
+    } catch (err) {
+      console.error("[ClinicLog] permanentDeleteClinicLog failed:", err)
+    }
   }
 
   return (
@@ -162,8 +260,9 @@ export default function ClinicLog() {
         )}
         <VisitsTable
           visits={visits}
-          onEditVisit={v  => setModal({ mode: "edit",    visit: v })}
-          onDeleteVisit={v => setModal({ mode: "delete", visit: v })}
+          loading={loading}
+          onEditVisit={v   => setModal({ mode: "edit",    visit: v })}
+          onDeleteVisit={v => setModal({ mode: "delete",  visit: v })}
           onOpenArchive={() => setModal({ mode: "archive" })}
           tableExpanded={tableExpanded}
           onToggleExpand={() => setTableExpanded(e => !e)}

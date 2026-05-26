@@ -8,6 +8,8 @@ const {
   getProductGroups, getArchivedProducts,
   upsertProductGroup, deleteProductGroup,
   upsertProduct, archiveProduct, restoreProduct, permanentDeleteProduct,
+  getClinicLogs, getArchivedClinicLogs,
+  upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -57,6 +59,14 @@ ipcMain.handle('products:upsertProduct', (_, product) => upsertProduct(product))
 ipcMain.handle('products:archive',       (_, id)      => archiveProduct(id))
 ipcMain.handle('products:restore',       (_, id)      => restoreProduct(id))
 ipcMain.handle('products:permDelete',    (_, id)      => permanentDeleteProduct(id))
+
+// ── CLINIC LOGS ───────────────────────────────────────────────────
+ipcMain.handle('clinic:getAll',       ()        => getClinicLogs())
+ipcMain.handle('clinic:getArchived',  ()        => getArchivedClinicLogs())
+ipcMain.handle('clinic:upsert',       (_, log)  => upsertClinicLog(log))
+ipcMain.handle('clinic:archive',      (_, id)   => archiveClinicLog(id))
+ipcMain.handle('clinic:unarchive',    (_, id)   => unarchiveClinicLog(id))
+ipcMain.handle('clinic:permDelete',   (_, id)   => permanentDeleteClinicLog(id))
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────
 app.whenReady().then(async () => {
