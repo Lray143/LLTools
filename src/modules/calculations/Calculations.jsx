@@ -1,4 +1,10 @@
-function Calculations() {
-  return <div><h1 className="text-2xl font-bold">Calculations</h1></div>
+// src/modules/calculations/Calculations.jsx
+import CalculationsTable from './components/CalculationsTable'
+
+export default function Calculations() {
+  return (
+    <div className="h-full flex flex-col bg-gray-50">
+      <CalculationsTable />
+    </div>
+  )
 }
-export default Calculations
