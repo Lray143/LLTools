@@ -47,4 +47,10 @@ window.electronAPI = {
   archiveClinicLog:        (id)      => ipcRenderer.invoke('clinic:archive', id),
   unarchiveClinicLog:      (id)      => ipcRenderer.invoke('clinic:unarchive', id),
   permanentDeleteClinicLog:(id)      => ipcRenderer.invoke('clinic:permDelete', id),
+
+  // ── User Management (admin) ─────────────────────────────────────
+  getUsers:                ()                   => ipcRenderer.invoke('users:getAll'),
+  updateUserRole:          (id, role)           => ipcRenderer.invoke('users:updateRole', id, role),
+  resetUserPassword:       (id, newPassword)    => ipcRenderer.invoke('users:resetPassword', id, newPassword),
+  deleteUserAccount:       (id)                 => ipcRenderer.invoke('users:delete', id),
 }

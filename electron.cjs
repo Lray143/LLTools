@@ -13,6 +13,7 @@ const {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
+  getUsers, updateUserRole, resetUserPassword, deleteUserAccount,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -83,6 +84,12 @@ ipcMain.handle('clinic:upsert',       (_, log)  => upsertClinicLog(log))
 ipcMain.handle('clinic:archive',      (_, id)   => archiveClinicLog(id))
 ipcMain.handle('clinic:unarchive',    (_, id)   => unarchiveClinicLog(id))
 ipcMain.handle('clinic:permDelete',   (_, id)   => permanentDeleteClinicLog(id))
+
+// ── USER MANAGEMENT ───────────────────────────────────────────────
+ipcMain.handle('users:getAll',         ()                    => getUsers())
+ipcMain.handle('users:updateRole',     (_, id, role)         => updateUserRole(id, role))
+ipcMain.handle('users:resetPassword',  (_, id, newPassword)  => resetUserPassword(id, newPassword))
+ipcMain.handle('users:delete',         (_, id)               => deleteUserAccount(id))
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────
 app.whenReady().then(async () => {

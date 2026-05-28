@@ -101,6 +101,7 @@ const initDb = async () => {
       username      TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role          TEXT NOT NULL DEFAULT 'hr',
+      employee_id   TEXT DEFAULT NULL REFERENCES employees(id) ON DELETE SET NULL,
       created_at    TEXT DEFAULT (datetime('now')),
       synced_at     TEXT DEFAULT NULL,
       sync_status   TEXT DEFAULT 'pending'
@@ -209,6 +210,9 @@ const initDb = async () => {
   try { db.run(`UPDATE products       SET price  = new_srp  WHERE price  IS NULL AND new_srp IS NOT NULL`) } catch (_) {}
   try { db.run(`UPDATE products       SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
   try { db.run(`UPDATE product_groups SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
+  // ── USERS MIGRATIONS ────────────────────────────────────────────
+  try { db.run(`ALTER TABLE users ADD COLUMN employee_id TEXT DEFAULT NULL`) } catch (_) {}
+
   // ── CLINIC LOGS MIGRATIONS (for existing DBs with old schema) ─
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN full_name     TEXT NOT NULL DEFAULT ''`)  } catch (_) {}
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN employee_code TEXT`)                       } catch (_) {}
@@ -278,31 +282,119 @@ const loginUser = (username, password) => {
   const user = queryOne('SELECT * FROM users WHERE username = ?', [username])
   if (!user) return { success: false, message: 'User not found.' }
   if (!bcrypt.compareSync(password, user.password_hash)) return { success: false, message: 'Incorrect password.' }
-  return { success: true, user: { id: user.id, username: user.username, role: user.role } }
+  return { success: true, user: { id: user.id, username: user.username, role: user.role, employeeId: user.employee_id ?? null } }
 }
 
-// ── EMPLOYEES ─────────────────────────────────────────────────────
+// ── EMPLOYEE ACCOUNTS ─────────────────────────────────────────────
+
+// Maps a department name to the closest app role.
+// Adjust this table to match your org's access needs.
+const DEPT_ROLE_MAP = {
+  'HR'         : 'hr',
+  'Admin'      : 'hr',
+  'Sales'      : 'outlets',
+  'Warehouse'  : 'inventory',
+  'Accounting' : 'inventory',
+  'Finance'    : 'inventory',
+  'Intern'     : 'hr',
+  'Marketing'  : 'outlets',
+  'Production' : 'inventory',
+  'IT'         : 'admin',
+}
+
+function deptToRole(dept) {
+  return DEPT_ROLE_MAP[dept] ?? 'hr'
+}
+
+// Creates (or updates) a user account tied to an employee.
+// username = employee_no, password = employee_no (hashed).
+// If an account already exists for this employee_id, it updates
+// the username/role but does NOT reset the password — so a user
+// who changed their password won't lose it when their record is edited.
+const createEmployeeAccount = (employeeId, employeeNo, dept) => {
+  const role     = deptToRole(dept)
+  const existing = queryOne('SELECT id FROM users WHERE employee_id = ?', [employeeId])
+
+  if (existing) {
+    // Update username and role (e.g. dept changed), keep existing password_hash
+    db.run(
+      `UPDATE users SET username = ?, role = ?, sync_status = 'pending'
+       WHERE employee_id = ?`,
+      [employeeNo, role, employeeId]
+    )
+  } else {
+    // Brand-new account — default password is the employee number
+    const hash = bcrypt.hashSync(employeeNo, 10)
+    db.run(
+      `INSERT OR IGNORE INTO users (username, password_hash, role, employee_id)
+       VALUES (?, ?, ?, ?)`,
+      [employeeNo, hash, role, employeeId]
+    )
+  }
+  save()
+}
+
+// ── USER MANAGEMENT (for Settings / admin panel) ──────────────────
+
+const getUsers = () =>
+  queryAll(`
+    SELECT u.id, u.username, u.role, u.employee_id, u.created_at,
+           e.name AS employee_name, e.department
+    FROM users u
+    LEFT JOIN employees e ON e.id = u.employee_id
+    ORDER BY u.created_at
+  `).map(u => ({
+    id:           u.id,
+    username:     u.username,
+    role:         u.role,
+    employeeId:   u.employee_id   ?? null,
+    employeeName: u.employee_name ?? null,
+    department:   u.department    ?? null,
+    createdAt:    u.created_at    ?? '',
+  }))
+
+// Admin can change role or reset password for any user
+const updateUserRole = (id, role) => {
+  run(`UPDATE users SET role = ?, sync_status = 'pending' WHERE id = ?`, [role, id])
+}
+
+const resetUserPassword = (id, newPassword) => {
+  const hash = bcrypt.hashSync(newPassword, 10)
+  run(`UPDATE users SET password_hash = ?, sync_status = 'pending' WHERE id = ?`, [hash, id])
+}
+
+// Deletes only employee-linked accounts (not the seeded admin accounts)
+const deleteUserAccount = (id) => {
+  run(`DELETE FROM users WHERE id = ? AND employee_id IS NOT NULL`, [id])
+}
+
+
 const getEmployees         = () => queryAll("SELECT * FROM employees WHERE status != 'Archived' ORDER BY name")
 const getArchivedEmployees = () => queryAll("SELECT * FROM employees WHERE status = 'Archived' ORDER BY name")
 
-const upsertEmployee = (emp) => run(`
-  INSERT INTO employees
-    (id, employee_no, name, position, department, contact, status,
-     leave_type, leave_start, leave_end, shift_start, shift_end, day_offs)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  ON CONFLICT(id) DO UPDATE SET
-    employee_no = excluded.employee_no, name        = excluded.name,
-    position    = excluded.position,    department  = excluded.department,
-    contact     = excluded.contact,     status      = excluded.status,
-    leave_type  = excluded.leave_type,  leave_start = excluded.leave_start,
-    leave_end   = excluded.leave_end,   shift_start = excluded.shift_start,
-    shift_end   = excluded.shift_end,   day_offs    = excluded.day_offs,
-    sync_status = 'pending'
-`, [emp.id, emp.employee_no, emp.name,
-    emp.position ?? null, emp.department ?? null, emp.contact ?? null,
-    emp.status ?? 'Active',
-    emp.leave_type ?? null, emp.leave_start ?? null, emp.leave_end ?? null,
-    emp.shift_start ?? '07:00', emp.shift_end ?? '17:30', emp.day_offs ?? 'Saturday,Sunday'])
+const upsertEmployee = (emp) => {
+  run(`
+    INSERT INTO employees
+      (id, employee_no, name, position, department, contact, status,
+       leave_type, leave_start, leave_end, shift_start, shift_end, day_offs)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      employee_no = excluded.employee_no, name        = excluded.name,
+      position    = excluded.position,    department  = excluded.department,
+      contact     = excluded.contact,     status      = excluded.status,
+      leave_type  = excluded.leave_type,  leave_start = excluded.leave_start,
+      leave_end   = excluded.leave_end,   shift_start = excluded.shift_start,
+      shift_end   = excluded.shift_end,   day_offs    = excluded.day_offs,
+      sync_status = 'pending'
+  `, [emp.id, emp.employee_no, emp.name,
+      emp.position ?? null, emp.department ?? null, emp.contact ?? null,
+      emp.status ?? 'Active',
+      emp.leave_type ?? null, emp.leave_start ?? null, emp.leave_end ?? null,
+      emp.shift_start ?? '07:00', emp.shift_end ?? '17:30', emp.day_offs ?? 'Saturday,Sunday'])
+
+  // Auto-create or sync the employee's login account
+  createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
+}
 
 const archiveEmployee         = (id) => run("UPDATE employees SET status='Archived', sync_status='pending' WHERE id=?", [id])
 const unarchiveEmployee       = (id) => run("UPDATE employees SET status='Active',   sync_status='pending' WHERE id=?", [id])
@@ -336,6 +428,8 @@ const importAttendance = (records) => {
         [newId, rec.employee_no, rec.employee_no])
       emp = { id: newId }
       newEmployees++
+      // Create default login account for stub employee (username = password = employee_no)
+      createEmployeeAccount(newId, rec.employee_no, '')
     }
     const existing = queryOne('SELECT id FROM attendance WHERE employee_id=? AND date=?', [emp.id, rec.date])
     if (existing) { skippedRecords++; continue }
@@ -590,4 +684,5 @@ module.exports = {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
+  getUsers, updateUserRole, resetUserPassword, deleteUserAccount,
 }
