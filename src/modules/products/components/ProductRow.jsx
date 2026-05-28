@@ -1,16 +1,16 @@
 // src/modules/products/components/ProductRow.jsx
 import { useRef, useState } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, RotateCcw } from 'lucide-react'
 
-const FIELDS = [
+const BASE_FIELDS = [
   { key: 'caseBarcode', label: 'Case Barcode',    type: 'text',   align: 'left'   },
   { key: 'itemBarcode', label: 'Item Barcode',     type: 'text',   align: 'left'   },
   { key: 'description', label: 'Item Description', type: 'text',   align: 'left'   },
   { key: 'qty',         label: 'QTY / Case',       type: 'number', align: 'center' },
   { key: 'size',        label: 'Item Size',        type: 'text',   align: 'center' },
-  { key: 'price',       label: 'Price / Piece',    type: 'number', align: 'right'  },
 ]
 
+// ── Regular editable cell (non-price fields) ─────────────────────
 function EditableCell({ value, type, align, onCommit, editMode }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(value)
@@ -77,10 +77,109 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
   )
 }
 
+// ── Price cell — outlet-aware ─────────────────────────────────────
+// outletPrice = number (outlet override) | undefined (no override → fall back to base)
+// basePrice   = number (always the canonical price stored in products table)
+function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onResetOutlet, editMode, isOutletMode }) {
+  const [editing, setEditing] = useState(false)
+  const hasOverride = outletPrice !== undefined && outletPrice !== null
+  const displayPrice = isOutletMode
+    ? (hasOverride ? outletPrice : basePrice)
+    : basePrice
+  const [draft, setDraft] = useState('')
+  const inputRef = useRef(null)
+
+  const startEdit = () => {
+    if (!editMode) return
+    setDraft(String(displayPrice ?? ''))
+    setEditing(true)
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+
+  const commit = () => {
+    setEditing(false)
+    const val = parseFloat(draft) || 0
+    if (isOutletMode) {
+      onCommitOutlet(val)
+    } else {
+      onCommitBase(val)
+    }
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter')  commit()
+    if (e.key === 'Escape') setEditing(false)
+  }
+
+  const formatted =
+    displayPrice === '' || displayPrice === null || displayPrice === undefined
+      ? '—'
+      : Number(displayPrice).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  if (editing) {
+    return (
+      <td className="px-3 py-1.5 text-right">
+        <input
+          ref={inputRef}
+          type="number"
+          step="0.01"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
+          className="w-full border border-orange-400 rounded px-2 py-1 text-xs text-right
+                     focus:outline-none focus:ring-2 focus:ring-orange-300 bg-orange-50"
+        />
+      </td>
+    )
+  }
+
+  return (
+    <td
+      onClick={startEdit}
+      title={
+        !editMode ? undefined
+        : isOutletMode && hasOverride ? 'Click to edit outlet price · (i) has custom price'
+        : editMode ? 'Click to edit'
+        : undefined
+      }
+      className={`px-3 py-2 text-xs select-none transition-colors text-right relative group
+                  ${editMode ? 'cursor-pointer hover:bg-orange-50' : 'cursor-default'}`}
+    >
+      {/* Price value */}
+      <span className={
+        isOutletMode && hasOverride
+          ? 'text-orange-600 font-semibold'
+          : 'text-gray-700'
+      }>
+        {formatted}
+      </span>
+
+      {/* Reset-to-default button — shown on hover in outlet+edit mode when there's an override */}
+      {isOutletMode && hasOverride && editMode && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onResetOutlet() }}
+          title="Reset to default price"
+          className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100
+                     transition-opacity text-gray-400 hover:text-red-400 p-0.5 rounded"
+        >
+          <RotateCcw size={10} />
+        </button>
+      )}
+    </td>
+  )
+}
+
+// ── Main ProductRow ────────────────────────────────────────────────
 export default function ProductRow({
   row, rowIndex, groupId,
   onUpdateCell, onDeleteRow,
   editMode, selected, onToggleSelect,
+  // Outlet price props
+  isOutletMode,
+  outletPrice,         // number | undefined
+  onUpdateOutletPrice, // (productId, price) => void
+  onResetOutletPrice,  // (productId) => void
 }) {
   const isEven = rowIndex % 2 === 0
 
@@ -94,7 +193,7 @@ export default function ProductRow({
 
       {/* Checkbox */}
       <td className="px-3 py-2 w-8">
-        {editMode && (
+        {editMode && !isOutletMode && (
           <input
             type="checkbox"
             checked={selected}
@@ -105,20 +204,31 @@ export default function ProductRow({
         )}
       </td>
 
-      {FIELDS.map((field) => (
+      {BASE_FIELDS.map((field) => (
         <EditableCell
           key={field.key}
           value={row[field.key]}
           type={field.type}
           align={field.align}
           onCommit={(val) => onUpdateCell(groupId, row.id, field.key, val)}
-          editMode={editMode}
+          editMode={editMode && !isOutletMode}  // base fields locked in outlet mode
         />
       ))}
 
-      {/* Per-row delete */}
+      {/* Price cell — outlet-aware */}
+      <PriceCell
+        basePrice={row.price}
+        outletPrice={outletPrice}
+        onCommitBase={(val) => onUpdateCell(groupId, row.id, 'price', val)}
+        onCommitOutlet={(val) => onUpdateOutletPrice(row.id, val)}
+        onResetOutlet={() => onResetOutletPrice(row.id)}
+        editMode={editMode}
+        isOutletMode={isOutletMode}
+      />
+
+      {/* Per-row delete — only in default mode */}
       <td className="px-3 py-2 text-center">
-        {editMode && (
+        {editMode && !isOutletMode && (
           <button
             onClick={() => onDeleteRow(groupId, row.id)}
             title="Delete row"

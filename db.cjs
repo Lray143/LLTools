@@ -179,6 +179,25 @@ const initDb = async () => {
       synced_at     TEXT DEFAULT NULL,
       sync_status   TEXT DEFAULT 'pending'
     );
+    CREATE TABLE IF NOT EXISTS outlets (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      code        TEXT,
+      address     TEXT,
+      status      TEXT DEFAULT 'Active',
+      discounts   TEXT DEFAULT '[]',
+      archived    INTEGER DEFAULT 0,
+      created_at  TEXT DEFAULT (datetime('now')),
+      synced_at   TEXT DEFAULT NULL,
+      sync_status TEXT DEFAULT 'pending'
+    );
+    CREATE TABLE IF NOT EXISTS outlet_product_prices (
+      outlet_id   TEXT NOT NULL REFERENCES outlets(id) ON DELETE CASCADE,
+      product_id  TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      price       REAL NOT NULL,
+      updated_at  TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (outlet_id, product_id)
+    );
   `)
 
   try { db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date)`) } catch (_) {}
@@ -201,8 +220,25 @@ const initDb = async () => {
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN treatment     TEXT`)                       } catch (_) {}
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN status        TEXT DEFAULT 'Active'`)      } catch (_) {}
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN created_at    TEXT DEFAULT (datetime('now'))`) } catch (_) {}
-  // backfill status for any old rows
   try { db.run(`UPDATE clinic_logs SET status = 'Active' WHERE status IS NULL`) }             catch (_) {}
+  // ── OUTLETS MIGRATIONS (for existing DBs missing the outlets table) ─
+  try { db.run(`ALTER TABLE outlets ADD COLUMN code      TEXT`) }                             catch (_) {}
+  try { db.run(`ALTER TABLE outlets ADD COLUMN address   TEXT`) }                             catch (_) {}
+  try { db.run(`ALTER TABLE outlets ADD COLUMN status    TEXT DEFAULT 'Active'`) }            catch (_) {}
+  try { db.run(`ALTER TABLE outlets ADD COLUMN discounts TEXT DEFAULT '[]'`) }                catch (_) {}
+  try { db.run(`ALTER TABLE outlets ADD COLUMN archived  INTEGER DEFAULT 0`) }                catch (_) {}
+  try { db.run(`UPDATE outlets SET discounts = '[]' WHERE discounts IS NULL`) }               catch (_) {}
+  try { db.run(`UPDATE outlets SET archived  = 0    WHERE archived  IS NULL`) }               catch (_) {}
+  // ── OUTLET PRODUCT PRICES MIGRATION ─────────────────────────
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS outlet_product_prices (
+      outlet_id   TEXT NOT NULL,
+      product_id  TEXT NOT NULL,
+      price       REAL NOT NULL,
+      updated_at  TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (outlet_id, product_id)
+    )`)
+  } catch (_) {}
 
   // ── SEED USERS ────────────────────────────────────────────────
   const seedUsers = [
@@ -344,7 +380,6 @@ const getProductGroups = () => {
 }
 
 // All archived products — includes group name for display
-// Also flags whether the parent group itself is gone (archived or missing)
 const getArchivedProducts = () =>
   queryAll(`
     SELECT p.*, pg.name AS group_name, pg.status AS group_status
@@ -355,7 +390,7 @@ const getArchivedProducts = () =>
   `).map((p) => ({
     ...mapProduct(p),
     groupName:   p.group_name   ?? 'Unknown Group',
-    groupStatus: p.group_status ?? 'missing',   // 'Active' | 'Archived' | 'missing'
+    groupStatus: p.group_status ?? 'missing',
   }))
 
 const upsertProductGroup = (group) => run(`
@@ -367,7 +402,6 @@ const upsertProductGroup = (group) => run(`
     sync_status = 'pending'
 `, [group.id, group.name, group.sortOrder ?? 0])
 
-// Soft-archive the group AND all its active products
 const deleteProductGroup = (id) => {
   db.run(`UPDATE products      SET status='Archived', sync_status='pending' WHERE group_id=? AND status='Active'`, [id])
   db.run(`UPDATE product_groups SET status='Archived', sync_status='pending' WHERE id=?`, [id])
@@ -395,21 +429,94 @@ const upsertProduct = (p) => run(`
 const archiveProduct = (id) =>
   run(`UPDATE products SET status='Archived', sync_status='pending' WHERE id=?`, [id])
 
-// Restore product — AND also restore its parent group if it was archived
 const restoreProduct = (id) => {
-  // Find the product's group_id first
   const product = queryOne(`SELECT group_id FROM products WHERE id = ?`, [id])
   if (product?.group_id) {
-    // If the parent group is archived, bring it back to Active
     db.run(`UPDATE product_groups SET status='Active', sync_status='pending'
             WHERE id = ? AND status = 'Archived'`, [product.group_id])
   }
-  // Now restore the product itself
   db.run(`UPDATE products SET status='Active', sync_status='pending' WHERE id=?`, [id])
   save()
 }
 
 const permanentDeleteProduct = (id) => run(`DELETE FROM products WHERE id=?`, [id])
+
+
+// ── OUTLETS ───────────────────────────────────────────────────────
+const mapOutlet = (o) => ({
+  id:        o.id,
+  name:      o.name      ?? '',
+  code:      o.code      ?? '',
+  address:   o.address   ?? '',
+  status:    o.status    ?? 'Active',
+  discounts: (() => { try { return JSON.parse(o.discounts ?? '[]') } catch { return [] } })(),
+})
+
+const getOutlets = () =>
+  queryAll(`SELECT * FROM outlets WHERE archived = 0 ORDER BY name`)
+    .map(mapOutlet)
+
+const getArchivedOutlets = () =>
+  queryAll(`SELECT * FROM outlets WHERE archived = 1 ORDER BY name`)
+    .map(mapOutlet)
+
+const upsertOutlet = (o) => run(`
+  INSERT INTO outlets (id, name, code, address, status, discounts, archived)
+  VALUES (?, ?, ?, ?, ?, ?, 0)
+  ON CONFLICT(id) DO UPDATE SET
+    name        = excluded.name,
+    code        = excluded.code,
+    address     = excluded.address,
+    status      = excluded.status,
+    discounts   = excluded.discounts,
+    sync_status = 'pending'
+`, [
+  o.id,
+  o.name,
+  o.code    ?? null,
+  o.address ?? null,
+  o.status  ?? 'Active',
+  JSON.stringify(o.discounts ?? []),
+])
+
+const archiveOutlet = (id) =>
+  run(`UPDATE outlets SET archived = 1, sync_status = 'pending' WHERE id = ?`, [id])
+
+const unarchiveOutlet = (id) =>
+  run(`UPDATE outlets SET archived = 0, sync_status = 'pending' WHERE id = ?`, [id])
+
+const permanentDeleteOutlet = (id) =>
+  run(`DELETE FROM outlets WHERE id = ?`, [id])
+
+
+// ── OUTLET PRODUCT PRICES ─────────────────────────────────────────
+const getOutletProductPrices = (outletId) => {
+  const rows = queryAll(
+    `SELECT product_id, price FROM outlet_product_prices WHERE outlet_id = ?`,
+    [outletId]
+  )
+  const map = {}
+  for (const r of rows) map[r.product_id] = r.price
+  return map
+}
+
+const upsertOutletProductPrice = (outletId, productId, price) => {
+  run(
+    `INSERT INTO outlet_product_prices (outlet_id, product_id, price, updated_at)
+     VALUES (?, ?, ?, datetime('now'))
+     ON CONFLICT(outlet_id, product_id) DO UPDATE SET
+       price      = excluded.price,
+       updated_at = excluded.updated_at`,
+    [outletId, productId, price]
+  )
+}
+
+const deleteOutletProductPrice = (outletId, productId) => {
+  run(
+    `DELETE FROM outlet_product_prices WHERE outlet_id = ? AND product_id = ?`,
+    [outletId, productId]
+  )
+}
 
 
 // ── CLINIC LOGS ───────────────────────────────────────────────────
@@ -478,6 +585,9 @@ module.exports = {
   getProductGroups, getArchivedProducts,
   upsertProductGroup, deleteProductGroup,
   upsertProduct, archiveProduct, restoreProduct, permanentDeleteProduct,
+  getOutlets, getArchivedOutlets,
+  upsertOutlet, archiveOutlet, unarchiveOutlet, permanentDeleteOutlet,
+  getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
 }

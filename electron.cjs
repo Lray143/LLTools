@@ -8,6 +8,9 @@ const {
   getProductGroups, getArchivedProducts,
   upsertProductGroup, deleteProductGroup,
   upsertProduct, archiveProduct, restoreProduct, permanentDeleteProduct,
+  getOutlets, getArchivedOutlets,
+  upsertOutlet, archiveOutlet, unarchiveOutlet, permanentDeleteOutlet,
+  getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
 } = require('./db.cjs')
@@ -59,6 +62,19 @@ ipcMain.handle('products:upsertProduct', (_, product) => upsertProduct(product))
 ipcMain.handle('products:archive',       (_, id)      => archiveProduct(id))
 ipcMain.handle('products:restore',       (_, id)      => restoreProduct(id))
 ipcMain.handle('products:permDelete',    (_, id)      => permanentDeleteProduct(id))
+
+// ── OUTLETS ───────────────────────────────────────────────────────
+ipcMain.handle('outlets:getAll',      ()          => getOutlets())
+ipcMain.handle('outlets:getArchived', ()          => getArchivedOutlets())
+ipcMain.handle('outlets:upsert',      (_, outlet) => upsertOutlet(outlet))
+ipcMain.handle('outlets:archive',     (_, id)     => archiveOutlet(id))
+ipcMain.handle('outlets:unarchive',   (_, id)     => unarchiveOutlet(id))
+ipcMain.handle('outlets:permDelete',  (_, id)     => permanentDeleteOutlet(id))
+
+// ── OUTLET PRODUCT PRICES ────────────────────────────────────────
+ipcMain.handle('outletPrices:get',    (_, outletId)              => getOutletProductPrices(outletId))
+ipcMain.handle('outletPrices:upsert', (_, outletId, productId, price) => upsertOutletProductPrice(outletId, productId, price))
+ipcMain.handle('outletPrices:delete', (_, outletId, productId)   => deleteOutletProductPrice(outletId, productId))
 
 // ── CLINIC LOGS ───────────────────────────────────────────────────
 ipcMain.handle('clinic:getAll',       ()        => getClinicLogs())

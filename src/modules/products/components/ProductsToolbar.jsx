@@ -1,11 +1,15 @@
 // src/modules/products/components/ProductsToolbar.jsx
-import { Search, FolderPlus, Lock, Unlock, Archive } from 'lucide-react'
+import { Search, FolderPlus, Lock, Unlock, Archive, Store } from 'lucide-react'
 
 export default function ProductsToolbar({
   search, onSearchChange,
   onAddGroup, onOpenArchive,
   totalItems, totalGroups,
   editMode, onToggleEditMode,
+  // Outlet selector
+  outlets,
+  selectedOutletId,
+  onSelectOutlet,
 }) {
   return (
     <div className="px-6 pt-6 pb-4 bg-white border-b border-gray-100 flex flex-col gap-4">
@@ -18,6 +22,21 @@ export default function ProductsToolbar({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Outlet selector */}
+          <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-2 bg-white">
+            <Store size={14} className={selectedOutletId ? 'text-orange-500' : 'text-gray-400'} />
+            <select
+              value={selectedOutletId ?? ''}
+              onChange={(e) => onSelectOutlet(e.target.value || null)}
+              className="text-sm text-gray-700 bg-transparent focus:outline-none cursor-pointer pr-1"
+            >
+              <option value="">Default Prices</option>
+              {outlets.map((o) => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Archive viewer — always accessible */}
           <button
             onClick={onOpenArchive}
@@ -41,7 +60,7 @@ export default function ProductsToolbar({
             {editMode ? 'Editing' : 'Locked'}
           </button>
 
-          {editMode && (
+          {editMode && !selectedOutletId && (
             <button
               onClick={onAddGroup}
               className="flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-200
@@ -53,6 +72,18 @@ export default function ProductsToolbar({
           )}
         </div>
       </div>
+
+      {/* Outlet context banner */}
+      {selectedOutletId && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700">
+          <Store size={13} />
+          <span>
+            Viewing <strong>{outlets.find(o => o.id === selectedOutletId)?.name ?? 'outlet'}</strong> prices.
+            The <span className="italic">Price / Piece</span> column shows outlet-specific prices — orange means overridden, gray means using the default.
+            {editMode && ' Click any price to set a custom price for this outlet.'}
+          </span>
+        </div>
+      )}
 
       <div className="relative max-w-sm">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />

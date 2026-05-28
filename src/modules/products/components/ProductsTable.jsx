@@ -1,12 +1,12 @@
 // src/modules/products/components/ProductsTable.jsx
 import { useState, useMemo, useEffect, Fragment } from 'react'
-import { Trash2, Archive, RotateCcw, Trash } from 'lucide-react'
+import { Archive } from 'lucide-react'
 import { INITIAL_GROUPS } from '../productData'
 
-import ProductsToolbar from './ProductsToolbar'
-import GroupHeaderRow  from './GroupHeaderRow'
-import ProductRow      from './ProductRow'
-import AddGroupModal   from './AddGroupModal'
+import ProductsToolbar        from './ProductsToolbar'
+import GroupHeaderRow         from './GroupHeaderRow'
+import ProductRow             from './ProductRow'
+import AddGroupModal          from './AddGroupModal'
 import ArchivedProductsDrawer from './ArchivedProductsDrawer'
 
 const COLUMNS = [
@@ -36,6 +36,7 @@ const matchesSearch = (row, term) => {
 }
 
 export default function ProductsTable() {
+  // ── Core data ───────────────────────────────────────────────────
   const [groups,        setGroups]        = useState([])
   const [loading,       setLoading]       = useState(true)
   const [collapsed,     setCollapsed]     = useState({})
@@ -47,6 +48,13 @@ export default function ProductsTable() {
   const [archivedRows,  setArchivedRows]  = useState([])
   const [archiveLoading, setArchiveLoading] = useState(false)
 
+  // ── Outlet selector state ────────────────────────────────────────
+  const [outlets,           setOutlets]           = useState([])  // active outlets list
+  const [selectedOutletId,  setSelectedOutletId]  = useState(null) // null = default
+  // outletPrices: { [productId]: price } — only for the currently selected outlet
+  const [outletPrices,      setOutletPrices]      = useState({})
+
+  // ── Load base product data ───────────────────────────────────────
   useEffect(() => {
     window.electronAPI.getProductGroups()
       .then((data) => setGroups(data?.length ? data : INITIAL_GROUPS))
@@ -54,11 +62,30 @@ export default function ProductsTable() {
       .finally(() => setLoading(false))
   }, [])
 
+  // ── Load outlets list ────────────────────────────────────────────
+  useEffect(() => {
+    window.electronAPI.getOutlets()
+      .then((data) => setOutlets(data ?? []))
+      .catch(() => setOutlets([]))
+  }, [])
+
+  // ── Load outlet prices when selection changes ────────────────────
+  useEffect(() => {
+    if (!selectedOutletId) {
+      setOutletPrices({})
+      return
+    }
+    window.electronAPI.getOutletProductPrices(selectedOutletId)
+      .then((priceMap) => setOutletPrices(priceMap ?? {}))
+      .catch(() => setOutletPrices({}))
+  }, [selectedOutletId])
+
+  // ── Clear selection when edit mode turns off ─────────────────────
   useEffect(() => {
     if (!editMode) setSelectedRows(new Set())
   }, [editMode])
 
-  // Load archived when drawer opens
+  // ── Load archived when drawer opens ─────────────────────────────
   useEffect(() => {
     if (!showArchive) return
     setArchiveLoading(true)
@@ -68,6 +95,7 @@ export default function ProductsTable() {
       .finally(() => setArchiveLoading(false))
   }, [showArchive])
 
+  // ── Derived ──────────────────────────────────────────────────────
   const totalItems  = groups.reduce((s, g) => s + g.rows.length, 0)
   const totalGroups = groups.length
 
@@ -84,15 +112,16 @@ export default function ProductsTable() {
   )
   const allSelected  = allVisibleIds.length > 0 && allVisibleIds.every((id) => selectedRows.has(id))
   const someSelected = selectedRows.size > 0
+  const isOutletMode = !!selectedOutletId
 
-  // ── Selection ──────────────────────────────────────────────────
+  // ── Selection ────────────────────────────────────────────────────
   const handleToggleRow = (id) =>
     setSelectedRows((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const handleToggleAll = () =>
     allSelected ? setSelectedRows(new Set()) : setSelectedRows(new Set(allVisibleIds))
 
-  // ── Soft-delete (archive) helpers ──────────────────────────────
+  // ── Soft-delete helpers ──────────────────────────────────────────
   const removeFromGroups = (ids) => {
     const idSet = new Set(ids)
     setGroups((prev) =>
@@ -101,14 +130,14 @@ export default function ProductsTable() {
     setSelectedRows((prev) => { const n = new Set(prev); ids.forEach((id) => n.delete(id)); return n })
   }
 
-  // ── Bulk archive ───────────────────────────────────────────────
+  // ── Bulk archive ─────────────────────────────────────────────────
   const handleBulkArchive = () => {
     if (!window.confirm(`Archive ${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}? You can restore them from the Archive.`)) return
     selectedRows.forEach((id) => window.electronAPI.archiveProduct(id))
     removeFromGroups([...selectedRows])
   }
 
-  // ── Group operations ───────────────────────────────────────────
+  // ── Group operations ─────────────────────────────────────────────
   const handleAddGroup = (name) => {
     const newGroup = { id: crypto.randomUUID(), name, rows: [] }
     window.electronAPI.upsertProductGroup({ id: newGroup.id, name, sortOrder: groups.length })
@@ -130,7 +159,7 @@ export default function ProductsTable() {
   const handleToggleCollapse = (groupId) =>
     setCollapsed((prev) => ({ ...prev, [groupId]: !prev[groupId] }))
 
-  // ── Row operations ─────────────────────────────────────────────
+  // ── Row operations ────────────────────────────────────────────────
   const handleAddRow = (groupId) => {
     const newRow = makeBlankRow()
     window.electronAPI.upsertProduct({ ...newRow, groupId, sortOrder: 9999 })
@@ -157,17 +186,37 @@ export default function ProductsTable() {
     )
   }
 
-  // Single-row archive (from the row's own delete button)
   const handleArchiveRow = (groupId, rowId) => {
     window.electronAPI.archiveProduct(rowId)
     removeFromGroups([rowId])
   }
 
-  // ── Archive drawer actions ─────────────────────────────────────
+  // ── Outlet price operations ───────────────────────────────────────
+  const handleUpdateOutletPrice = (productId, price) => {
+    window.electronAPI.upsertOutletProductPrice(selectedOutletId, productId, price)
+    setOutletPrices((prev) => ({ ...prev, [productId]: price }))
+  }
+
+  const handleResetOutletPrice = (productId) => {
+    window.electronAPI.deleteOutletProductPrice(selectedOutletId, productId)
+    setOutletPrices((prev) => {
+      const next = { ...prev }
+      delete next[productId]
+      return next
+    })
+  }
+
+  // ── Outlet selection ─────────────────────────────────────────────
+  const handleSelectOutlet = (outletId) => {
+    setSelectedOutletId(outletId || null)
+    // Exit edit mode when switching outlet to avoid accidents
+    setEditMode(false)
+  }
+
+  // ── Archive drawer actions ────────────────────────────────────────
   const handleRestore = (id) => {
     window.electronAPI.restoreProduct(id)
     setArchivedRows((prev) => prev.filter((r) => r.id !== id))
-    // Re-fetch active groups so the restored row reappears in the right place
     window.electronAPI.getProductGroups().then(setGroups).catch(() => {})
   }
 
@@ -196,10 +245,13 @@ export default function ProductsTable() {
         editMode={editMode}
         onToggleEditMode={() => setEditMode((v) => !v)}
         onOpenArchive={() => setShowArchive(true)}
+        outlets={outlets}
+        selectedOutletId={selectedOutletId}
+        onSelectOutlet={handleSelectOutlet}
       />
 
-      {/* Bulk-action bar */}
-      {editMode && someSelected && (
+      {/* Bulk-action bar — only in default mode */}
+      {editMode && someSelected && !isOutletMode && (
         <div className="mx-6 mt-4 flex items-center justify-between
                         bg-orange-50 border border-orange-200 rounded-lg px-4 py-2.5">
           <span className="text-sm text-orange-700 font-medium">
@@ -231,7 +283,7 @@ export default function ProductsTable() {
             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-3 w-8">
-                  {editMode && (
+                  {editMode && !isOutletMode && (
                     <input
                       type="checkbox"
                       checked={allSelected}
@@ -249,6 +301,12 @@ export default function ProductsTable() {
                                 ${col.width}`}
                   >
                     {col.label}
+                    {/* Badge on Price header when in outlet mode */}
+                    {col.label === 'Price / Piece' && isOutletMode && (
+                      <span className="ml-1 text-orange-400 font-normal normal-case tracking-normal">
+                        (outlet)
+                      </span>
+                    )}
                   </th>
                 ))}
               </tr>
@@ -272,7 +330,7 @@ export default function ProductsTable() {
                     onRenameGroup={handleRenameGroup}
                     onAddRow={handleAddRow}
                     onDeleteGroup={handleDeleteGroup}
-                    editMode={editMode}
+                    editMode={editMode && !isOutletMode}
                   />
                   {!collapsed[group.id] &&
                     group.rows.map((row, rowIndex) => (
@@ -286,6 +344,10 @@ export default function ProductsTable() {
                         editMode={editMode}
                         selected={selectedRows.has(row.id)}
                         onToggleSelect={handleToggleRow}
+                        isOutletMode={isOutletMode}
+                        outletPrice={isOutletMode ? outletPrices[row.id] : undefined}
+                        onUpdateOutletPrice={handleUpdateOutletPrice}
+                        onResetOutletPrice={handleResetOutletPrice}
                       />
                     ))
                   }
@@ -296,7 +358,11 @@ export default function ProductsTable() {
         </div>
 
         <p className="text-xs text-gray-400 mt-3 text-center">
-          {editMode
+          {isOutletMode && editMode
+            ? 'Click the Price cell to set a custom outlet price · ↺ to reset to default'
+            : isOutletMode
+            ? 'Orange prices are outlet-specific overrides · enable Editing to change them'
+            : editMode
             ? 'Click any cell to edit · Check rows to multi-select · Deleted rows go to Archive'
             : 'Toggle "Locked" to enable editing'}
         </p>

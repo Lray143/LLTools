@@ -27,6 +27,19 @@ window.electronAPI = {
   restoreProduct:          (id)      => ipcRenderer.invoke('products:restore', id),
   permanentDeleteProduct:  (id)      => ipcRenderer.invoke('products:permDelete', id),
 
+  // ── Outlets ─────────────────────────────────────────────────────
+  getOutlets:              ()        => ipcRenderer.invoke('outlets:getAll'),
+  getArchivedOutlets:      ()        => ipcRenderer.invoke('outlets:getArchived'),
+  upsertOutlet:            (outlet)  => ipcRenderer.invoke('outlets:upsert', outlet),
+  archiveOutlet:           (id)      => ipcRenderer.invoke('outlets:archive', id),
+  unarchiveOutlet:         (id)      => ipcRenderer.invoke('outlets:unarchive', id),
+  permanentDeleteOutlet:   (id)      => ipcRenderer.invoke('outlets:permDelete', id),
+
+  // ── Outlet Product Prices ──────────────────────────────────────
+  getOutletProductPrices:    (outletId)                    => ipcRenderer.invoke('outletPrices:get', outletId),
+  upsertOutletProductPrice:  (outletId, productId, price)  => ipcRenderer.invoke('outletPrices:upsert', outletId, productId, price),
+  deleteOutletProductPrice:  (outletId, productId)         => ipcRenderer.invoke('outletPrices:delete', outletId, productId),
+
   // ── Clinic Logs ─────────────────────────────────────────────────
   getClinicLogs:           ()        => ipcRenderer.invoke('clinic:getAll'),
   getArchivedClinicLogs:   ()        => ipcRenderer.invoke('clinic:getArchived'),
