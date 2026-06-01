@@ -1,14 +1,146 @@
 import { useRef, useState, useEffect } from "react"
-import { ChevronDown, Check } from "lucide-react"
+import { ChevronDown, Check, Search, X } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
+// ── Inlined helpers (avoids cross-module import) ──────────────────────────────
+const avatarColors = [
+  "bg-orange-500", "bg-blue-600",  "bg-purple-500",
+  "bg-teal-600",   "bg-yellow-500","bg-red-700",
+  "bg-pink-500",   "bg-indigo-500","bg-lime-600",
+]
+function getInitials(name) {
+  return name.split(" ").map(n => n[0]).join("").toUpperCase()
+}
+function getColor(name) {
+  let h = 0
+  for (let c of name) h += c.charCodeAt(0)
+  return avatarColors[h % avatarColors.length]
+}
 
 const DISPOSITION_OPTIONS = [
-  { value: "sent-back", label: "Sent back to work" },
-  { value: "sent-home", label: "Sent home" },
-  { value: "referred",  label: "Referred to hospital" },
-  { value: "monitoring", label: "Monitoring" },
+  { value: "sent-back",   label: "Sent back to work" },
+  { value: "sent-home",   label: "Sent home" },
+  { value: "referred",    label: "Referred to hospital" },
+  { value: "monitoring",  label: "Monitoring" },
 ]
+
+// ── Employee autocomplete ─────────────────────────────────────────────────────
+function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
+  const [open,  setOpen]  = useState(false)
+  const [query, setQuery] = useState(value ?? "")
+  const containerRef      = useRef(null)
+  const inputRef          = useRef(null)
+
+  // Keep query in sync when form resets externally
+  useEffect(() => { setQuery(value ?? "") }, [value])
+
+  const filtered = query.trim().length > 0
+    ? employees.filter(e =>
+        e.name.toLowerCase().includes(query.toLowerCase()) ||
+        (e.employee_no ?? "").toLowerCase().includes(query.toLowerCase()) ||
+        (e.dept ?? "").toLowerCase().includes(query.toLowerCase())
+      )
+    : employees
+
+  // Close on outside click
+  useEffect(() => {
+    function onDown(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", onDown)
+    return () => document.removeEventListener("mousedown", onDown)
+  }, [])
+
+  function select(emp) {
+    setQuery(emp.name)
+    onChange(emp.name)
+    onSelect?.(emp)       // ← pass full employee object so parent can grab employee_no
+    setOpen(false)
+  }
+
+  function handleChange(e) {
+    setQuery(e.target.value)
+    onChange(e.target.value)
+    onSelect?.(null)      // ← typed freely, clear stored employee_no
+    setOpen(true)
+  }
+
+  function handleClear() {
+    setQuery("")
+    onChange("")
+    onSelect?.(null)      // ← cleared, so clear stored employee_no too
+    inputRef.current?.focus()
+    setOpen(true)
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      {/* Input row */}
+      <div className="relative flex items-center">
+        <Search
+          size={13}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+        />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          placeholder="Search name or ID…"
+          onChange={handleChange}
+          onFocus={() => setOpen(true)}
+          className="w-full h-9 pl-8 pr-8 text-sm border border-gray-200 rounded-md bg-white outline-none focus:border-orange-400 transition-colors placeholder:text-gray-400 text-gray-800"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+          >
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-[999] mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+          <div className="max-h-44 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-4">
+                No employees match &ldquo;{query}&rdquo;
+              </p>
+            ) : (
+              filtered.map(emp => {
+                const isActive = emp.name === value
+                return (
+                  <button
+                    key={emp.id}
+                    type="button"
+                    onClick={() => select(emp)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-gray-50 ${isActive ? "bg-orange-50" : ""}`}
+                  >
+                    <span className={`flex-shrink-0 inline-flex w-7 h-7 rounded-full items-center justify-center text-white text-xs font-bold ${getColor(emp.name)}`}>
+                      {getInitials(emp.name)}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="font-medium text-gray-900 block truncate">{emp.name}</span>
+                      <span className="text-xs text-gray-400">
+                        {[emp.dept, emp.employee_no].filter(Boolean).join(" · ")}
+                      </span>
+                    </span>
+                    {isActive && <Check size={13} color="#f97316" strokeWidth={2.5} className="flex-shrink-0" />}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function CustomSelect({ value, onChange, options }) {
   const [open, setOpen] = useState(false)
@@ -91,7 +223,7 @@ function CustomSelect({ value, onChange, options }) {
   )
 }
 
-export default function NewEntryForm({ form, set, saved, onSave }) {
+export default function NewEntryForm({ form, set, saved, onSave, employees = [] }) {
   return (
     <div className="w-full h-full bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
 
@@ -112,11 +244,14 @@ export default function NewEntryForm({ form, set, saved, onSave }) {
       {/* ── Row 2: Employee Name ── */}
       <div>
         <label className="block text-xs font-medium text-gray-500 mb-1.5">Employee Name</label>
-        <Input
-          placeholder="Full name"
+        <EmployeeAutocomplete
+          employees={employees}
           value={form.employee}
-          onChange={e => set("employee", e.target.value)}
-          className="bg-white border-gray-200 h-9"
+          onChange={v => set("employee", v)}
+          onSelect={emp => {
+            // Store as "employeeCode" to match the DB column name (employee_code)
+            set("employeeCode", emp ? (emp.employee_no ?? "") : "")
+          }}
         />
       </div>
 
