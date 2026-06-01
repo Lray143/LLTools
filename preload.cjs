@@ -53,4 +53,11 @@ window.electronAPI = {
   updateUserRole:          (id, role)           => ipcRenderer.invoke('users:updateRole', id, role),
   resetUserPassword:       (id, newPassword)    => ipcRenderer.invoke('users:resetPassword', id, newPassword),
   deleteUserAccount:       (id)                 => ipcRenderer.invoke('users:delete', id),
+
+  // ── Saved Orders ─────────────────────────────────────────────────
+  saveOrder:               (order)    => ipcRenderer.invoke('orders:save', order),
+  getOrdersByOutlet:       (outletId) => ipcRenderer.invoke('orders:getByOutlet', outletId),
+  getOrdersByDefault:      ()         => ipcRenderer.invoke('orders:getByDefault'),
+  getAllOrders:             ()         => ipcRenderer.invoke('orders:getAll'),
+  deleteOrder:             (id)       => ipcRenderer.invoke('orders:delete', id),
 }

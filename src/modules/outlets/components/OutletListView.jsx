@@ -1,7 +1,7 @@
-import { Pencil, Trash2, Tag } from 'lucide-react'
+import { Pencil, Trash2, Tag, ScrollText } from 'lucide-react'
 import { getOutletColor } from '../outletConstants'
 
-export default function OutletListView({ outlets, onEdit, onDelete }) {
+export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders }) {
   if (outlets.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
@@ -72,6 +72,13 @@ export default function OutletListView({ outlets, onEdit, onDelete }) {
 
                 <td className="px-4 py-3">
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                    <button
+                      onClick={() => onViewOrders(o)}
+                      title="View saved orders"
+                      className="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-orange-500 transition-colors"
+                    >
+                      <ScrollText size={14} />
+                    </button>
                     <button
                       onClick={() => onEdit(o)}
                       className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"

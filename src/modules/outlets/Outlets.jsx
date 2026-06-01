@@ -6,6 +6,7 @@ import OutletListView      from './components/OutletListView'
 import OutletModal         from './components/OutletModal'
 import OutletDeleteModal   from './components/OutletDeleteModal'
 import OutletArchiveDrawer from './components/OutletArchiveDrawer'
+import OutletOrdersDrawer  from './components/OutletOrdersDrawer'
 
 export default function Outlets() {
   const [outlets,         setOutlets]         = useState([])
@@ -18,9 +19,10 @@ export default function Outlets() {
   const [statusFilter, setStatusFilter] = useState('All Statuses')
 
   // Modal state
-  const [editTarget,  setEditTarget]  = useState(null)   // outlet obj | {} for new
-  const [deleteTarget, setDeleteTarget] = useState(null)  // outlet obj
-  const [showArchive, setShowArchive] = useState(false)
+  const [editTarget,    setEditTarget]    = useState(null)   // outlet obj | {} for new
+  const [deleteTarget,  setDeleteTarget]  = useState(null)   // outlet obj
+  const [showArchive,   setShowArchive]   = useState(false)
+  const [ordersTarget,  setOrdersTarget]  = useState(null)   // outlet obj | null
 
   // ── Data loading ────────────────────────────────────────────────
   const load = async () => {
@@ -100,12 +102,14 @@ export default function Outlets() {
           outlets={filtered}
           onEdit={(o) => setEditTarget(o)}
           onDelete={(o) => setDeleteTarget(o)}
+          onViewOrders={(o) => setOrdersTarget(o)}
         />
       ) : (
         <OutletListView
           outlets={filtered}
           onEdit={(o) => setEditTarget(o)}
           onDelete={(o) => setDeleteTarget(o)}
+          onViewOrders={(o) => setOrdersTarget(o)}
         />
       )}
 
@@ -134,6 +138,14 @@ export default function Outlets() {
           onRestore={handleRestore}
           onPermDelete={handlePermDelete}
           onClose={() => setShowArchive(false)}
+        />
+      )}
+
+      {/* Orders drawer */}
+      {ordersTarget !== null && (
+        <OutletOrdersDrawer
+          outlet={ordersTarget}
+          onClose={() => setOrdersTarget(null)}
         />
       )}
     </div>

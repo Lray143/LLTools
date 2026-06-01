@@ -1,10 +1,12 @@
 // src/modules/calculations/components/CalculationsReceiptModal.jsx
-import { X, Printer, Store, Tag } from 'lucide-react'
+import { useState } from 'react'
+import { X, Printer, Store, Tag, Save, CheckCircle, AlertCircle } from 'lucide-react'
 
 const fmt = (n) =>
   n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function CalculationsReceiptModal({
+  outletId,         // string | null
   outletName,
   groups,           // full group list with rows
   qtys,             // { productId: string }
@@ -49,6 +51,31 @@ export default function CalculationsReceiptModal({
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
   const timeStr = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+
+  // ── Save state ────────────────────────────────────────────────
+  const [series,     setSeries]     = useState('')
+  const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
+
+  const handleSave = async () => {
+    if (!series.trim() || saveStatus === 'saving') return
+    setSaveStatus('saving')
+    try {
+      await window.electronAPI.saveOrder({
+        id:           crypto.randomUUID(),
+        seriesNumber: series.trim(),
+        outletId:     outletId    ?? null,
+        outletName:   outletName  ?? null,
+        groups:       lines,
+        subtotal,
+        discounts,
+        grandTotal,
+      })
+      setSaveStatus('saved')
+    } catch (e) {
+      console.error(e)
+      setSaveStatus('error')
+    }
+  }
 
   const handlePrint = () => window.print()
 
@@ -155,6 +182,58 @@ export default function CalculationsReceiptModal({
               <span className="text-orange-500">●</span> Outlet-specific price
             </p>
           )}
+
+          <hr className="border-dashed border-gray-200" />
+
+          {/* Save receipt */}
+          <div className="space-y-2.5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Save to Records
+            </p>
+
+            {saveStatus === 'saved' ? (
+              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2.5">
+                <CheckCircle size={14} className="shrink-0" />
+                <span>Saved as <strong>{series}</strong></span>
+                <button
+                  onClick={() => { setSaveStatus('idle'); setSeries('') }}
+                  className="ml-auto text-xs text-green-600 underline hover:no-underline"
+                >
+                  Save another
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={series}
+                    onChange={(e) => { setSeries(e.target.value); if (saveStatus === 'error') setSaveStatus('idle') }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    placeholder="Series / reference no. (e.g. DR-001)"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent
+                               placeholder:text-gray-300"
+                  />
+                  <button
+                    onClick={handleSave}
+                    disabled={!series.trim() || saveStatus === 'saving'}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-500 text-white
+                               text-sm font-medium hover:bg-orange-600 transition-colors
+                               disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  >
+                    <Save size={13} />
+                    {saveStatus === 'saving' ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+                {saveStatus === 'error' && (
+                  <p className="flex items-center gap-1.5 text-xs text-red-500">
+                    <AlertCircle size={11} /> Failed to save. Please try again.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

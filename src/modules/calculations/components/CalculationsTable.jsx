@@ -246,6 +246,7 @@ export default function CalculationsTable() {
       {/* Receipt modal */}
       {showReceipt && (
         <CalculationsReceiptModal
+          outletId={selectedOutletId}
           outletName={outlets.find(o => o.id === selectedOutletId)?.name ?? null}
           groups={groups}
           qtys={qtys}

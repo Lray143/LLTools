@@ -199,6 +199,17 @@ const initDb = async () => {
       updated_at  TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (outlet_id, product_id)
     );
+    CREATE TABLE IF NOT EXISTS saved_orders (
+      id             TEXT PRIMARY KEY,
+      series_number  TEXT NOT NULL,
+      outlet_id      TEXT,
+      outlet_name    TEXT,
+      groups_json    TEXT NOT NULL DEFAULT '[]',
+      subtotal       REAL NOT NULL DEFAULT 0,
+      discounts_json TEXT NOT NULL DEFAULT '[]',
+      grand_total    REAL NOT NULL DEFAULT 0,
+      created_at     TEXT DEFAULT (datetime('now'))
+    );
   `)
 
   try { db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date)`) } catch (_) {}
@@ -241,6 +252,21 @@ const initDb = async () => {
       price       REAL NOT NULL,
       updated_at  TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (outlet_id, product_id)
+    )`)
+  } catch (_) {}
+
+  // ── SAVED ORDERS MIGRATION ────────────────────────────────────
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS saved_orders (
+      id             TEXT PRIMARY KEY,
+      series_number  TEXT NOT NULL,
+      outlet_id      TEXT,
+      outlet_name    TEXT,
+      groups_json    TEXT NOT NULL DEFAULT '[]',
+      subtotal       REAL NOT NULL DEFAULT 0,
+      discounts_json TEXT NOT NULL DEFAULT '[]',
+      grand_total    REAL NOT NULL DEFAULT 0,
+      created_at     TEXT DEFAULT (datetime('now'))
     )`)
   } catch (_) {}
 
@@ -671,6 +697,46 @@ const unarchiveClinicLog = (id) =>
 const permanentDeleteClinicLog = (id) =>
   run(`DELETE FROM clinic_logs WHERE id=?`, [id])
 
+// ── SAVED ORDERS ─────────────────────────────────────────────────
+const mapOrder = (r) => ({
+  id:           r.id,
+  seriesNumber: r.series_number,
+  outletId:     r.outlet_id    ?? null,
+  outletName:   r.outlet_name  ?? null,
+  groups:       (() => { try { return JSON.parse(r.groups_json    ?? '[]') } catch { return [] } })(),
+  subtotal:     r.subtotal     ?? 0,
+  discounts:    (() => { try { return JSON.parse(r.discounts_json ?? '[]') } catch { return [] } })(),
+  grandTotal:   r.grand_total  ?? 0,
+  createdAt:    r.created_at   ?? '',
+})
+
+const saveOrder = (order) => run(`
+  INSERT INTO saved_orders
+    (id, series_number, outlet_id, outlet_name, groups_json, subtotal, discounts_json, grand_total)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+`, [
+  order.id,
+  order.seriesNumber,
+  order.outletId    ?? null,
+  order.outletName  ?? null,
+  JSON.stringify(order.groups     ?? []),
+  order.subtotal    ?? 0,
+  JSON.stringify(order.discounts  ?? []),
+  order.grandTotal  ?? 0,
+])
+
+const getOrdersByOutlet  = (outletId) =>
+  queryAll(`SELECT * FROM saved_orders WHERE outlet_id = ?    ORDER BY created_at DESC`, [outletId]).map(mapOrder)
+
+const getOrdersByDefault = () =>
+  queryAll(`SELECT * FROM saved_orders WHERE outlet_id IS NULL ORDER BY created_at DESC`).map(mapOrder)
+
+const getAllOrders = () =>
+  queryAll(`SELECT * FROM saved_orders ORDER BY created_at DESC`).map(mapOrder)
+
+const deleteOrder = (id) => run(`DELETE FROM saved_orders WHERE id = ?`, [id])
+
+
 module.exports = {
   initDb, loginUser, queryAll, queryOne, run,
   getEmployees, getArchivedEmployees,
@@ -685,4 +751,5 @@ module.exports = {
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount,
+  saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
 }
