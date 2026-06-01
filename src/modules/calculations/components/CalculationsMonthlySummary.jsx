@@ -37,7 +37,7 @@ const formatMonthKey = (key) => {
 const ACCT_FMT = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
 const YELLOW   = 'FFFFC000'
 const GREEN    = 'FFA8D08D'
-const BORDER_THIN = {
+const BORDER_THIN   = {
   top:    { style: 'thin',   color: { argb: 'FF000000' } },
   bottom: { style: 'thin',   color: { argb: 'FF000000' } },
   left:   { style: 'thin',   color: { argb: 'FF000000' } },
@@ -48,6 +48,12 @@ const BORDER_DATA = {
   bottom: { style: 'thin', color: { argb: 'FFD0C8BC' } },
   left:   { style: 'thin', color: { argb: 'FFD0C8BC' } },
   right:  { style: 'thin', color: { argb: 'FFD0C8BC' } },
+}
+const BORDER_MEDIUM = {
+  top:    { style: 'medium', color: { argb: 'FF000000' } },
+  bottom: { style: 'medium', color: { argb: 'FF000000' } },
+  left:   { style: 'medium', color: { argb: 'FF000000' } },
+  right:  { style: 'medium', color: { argb: 'FF000000' } },
 }
 
 function styleHeaderCell(cell, yellow = true) {
@@ -65,23 +71,41 @@ function styleDataCell(cell, colNum) {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN } }
   }
   cell.border = BORDER_DATA
-  cell.font   = { size: 10 }
+
+  // Column A and D use size 11; everything else size 14 (matches original)
+  const fontSize = (colNum === 1 || colNum === 4) ? 11 : 14
+  cell.font = { name: 'Calibri', size: fontSize }
 
   if (colNum === 1) {
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+    cell.alignment = { vertical: 'center' }                           // no horizontal set (matches original)
   } else if (colNum === 2) {
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
+    cell.numFmt    = 'mm-dd-yy'                                       // date format matching original
   } else if (colNum === 3) {
-    cell.alignment = { horizontal: 'left', vertical: 'middle' }
+    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true }
   } else if (colNum === 4) {
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
-  } else if (colNum === 5 || colNum === 6 || colNum === 13) {
-    cell.alignment = { horizontal: 'left', vertical: 'middle' }
-  } else if (colNum >= 7 && colNum <= 10) {
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
-  } else if (colNum === 11 || colNum === 12) {
-    cell.alignment = { horizontal: 'right', vertical: 'middle' }
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
+  } else if (colNum === 5 || colNum === 13) {
+    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: true }
+  } else if (colNum === 6) {
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
+  } else if (colNum >= 7 && colNum <= 9) {
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
+  } else if (colNum === 10) {
+    // OVER/LACKING: accounting format without decimals — shows "-" for zero
+    cell.alignment = { vertical: 'center' }
+    cell.numFmt    = '_(* #,##0_);_(* \\(#,##0\\);_(* "-"??_);_(@_)'
+  } else if (colNum === 11) {
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
     cell.numFmt    = ACCT_FMT
+  } else if (colNum === 12) {
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
+    cell.numFmt    = ACCT_FMT
+    cell.font      = { name: 'Calibri', size: 14, bold: true }       // L is bold in original
+  } else if (colNum === 13) {
+    // AREA column uses Algerian 72pt in the original
+    cell.font      = { name: 'Algerian', size: 72 }
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
   }
 }
 
@@ -112,32 +136,32 @@ async function exportMonthToXLSX(monthLabel, orders) {
   // Helper: style a merged banner row
   const banner = (rowNum, value, opts = {}) => {
     ws.mergeCells(rowNum, 1, rowNum, COLS)
-    const cell           = ws.getCell(rowNum, 1)
-    cell.value           = value
-    cell.font            = { bold: !!opts.bold, size: opts.size ?? 11 }
-    cell.alignment       = { horizontal: 'left', vertical: 'middle', indent: 1 }
+    const cell     = ws.getCell(rowNum, 1)
+    cell.value     = value
+    cell.font      = { name: opts.fontName ?? 'Calibri', bold: !!opts.bold, size: opts.size ?? 11 }
+    cell.alignment = { horizontal: 'center', vertical: 'center' }
     ws.getRow(rowNum).height = opts.height ?? 19.5
   }
 
   // ── ROWS 1-4: company header ──────────────────────────────────
   ws.getRow(1).height = 19.5
-  banner(2, 'DOUBLE L BEAUTY PRODUCTS', { size: 12, height: 29.25 })
-  banner(3, '1081 Quirino Highway, Brgy., Kaligayahan, Novaliches, Quezon City')
-  banner(4, 'Tel No: 291 3248 Fax No: 288- 5812')
+  banner(2, 'DOUBLE L BEAUTY PRODUCTS', { fontName: 'Corben',          size: 36, height: 29.25 })
+  banner(3, '1081 Quirino Highway, Brgy., Kaligayahan, Novaliches, Quezon City', { fontName: 'Times New Roman', size: 12 })
+  banner(4, 'Tel No: 291 3248 Fax No: 288- 5812',                       { fontName: 'Times New Roman', size: 12 })
 
   // ── ROWS 5-6: B.O Van selling (tall merged block) ────────────
-  ws.mergeCells(5, 1, 6, 10)
-  const boCell        = ws.getCell(5, 1)
-  boCell.value        = 'B.O Van selling'
-  boCell.font         = { bold: true, size: 12 }
-  boCell.alignment    = { horizontal: 'left', vertical: 'middle', indent: 1 }
+  ws.mergeCells(5, 1, 6, COLS)
+  const boCell     = ws.getCell(5, 1)
+  boCell.value     = 'B.O Van selling'
+  boCell.font      = { name: 'Algerian', bold: true, size: 20 }
+  boCell.alignment = { horizontal: 'center', vertical: 'center' }
 
   // ── ROW 7: Month of … ─────────────────────────────────────────
-  ws.mergeCells(7, 1, 7, 10)
+  ws.mergeCells(7, 1, 7, COLS)
   const monthCell     = ws.getCell(7, 1)
   monthCell.value     = `MONTH OF ${monthLabel.toUpperCase()}`
-  monthCell.font      = { bold: true, size: 11 }
-  monthCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 }
+  monthCell.font      = { name: 'Calibri', bold: true, size: 12 }
+  monthCell.alignment = { horizontal: 'center', vertical: 'center' }
   ws.getRow(7).height = 25.5
 
   // ── ROW 8: Column headers ─────────────────────────────────────
@@ -152,7 +176,7 @@ async function exportMonthToXLSX(monthLabel, orders) {
     "DOC'S QTY",        // H  8
     'ACTUAL QTY',       // I  9
     'OVER/ LACKING',    // J  10
-    'Discounted Price', // K  11  ← no yellow fill
+    'Discounted Price ', // K  11  ← no yellow fill (trailing space matches original)
     'B.O TOTAL AMOUNT', // L  12  ← no yellow fill
     'AREA',             // M  13
   ]
@@ -224,12 +248,14 @@ async function exportMonthToXLSX(monthLabel, orders) {
       ws.getCell(currentRow, 8).value  = item.qty
       // I: ACTUAL QTY (same as DOC'S for us)
       ws.getCell(currentRow, 9).value  = item.qty
-      // J: OVER / LACKING
-      ws.getCell(currentRow, 10).value = 0
+      // J: OVER / LACKING — formula: DOC'S QTY minus ACTUAL QTY
+      ws.getCell(currentRow, 10).value = { formula: `H${currentRow}-I${currentRow}`, result: 0 }
       // K: Discounted Price (line total = qty × price)
       ws.getCell(currentRow, 11).value = item.total ?? (item.qty * item.price)
-      // L: B.O TOTAL AMOUNT — only on first row; rest blank (will be merged)
-      ws.getCell(currentRow, 12).value = isFirst ? order.grandTotal : null
+      // L: B.O TOTAL AMOUNT — SUM formula on first row spanning all items of this order
+      ws.getCell(currentRow, 12).value = isFirst
+        ? { formula: `SUM(K${orderStart}:K${orderStart + itemCount - 1})` }
+        : null
       // M: AREA — only on first row; rest blank (will be merged)
       ws.getCell(currentRow, 13).value = isFirst ? outletLabel : null
 
@@ -272,9 +298,11 @@ async function exportMonthToXLSX(monthLabel, orders) {
   const footerRow = ws.getRow(currentRow)
   footerRow.height = 22
 
-  ws.getCell(currentRow, 8).value  = totalDocsQty
-  ws.getCell(currentRow, 9).value  = totalDocsQty
-  ws.getCell(currentRow, 10).value = 0
+  ws.getCell(currentRow, 8).value  = { formula: `SUM(H9:H${currentRow - 1})` }
+  ws.getCell(currentRow, 9).value  = { formula: `SUM(I9:I${currentRow - 1})` }
+  ws.getCell(currentRow, 10).value = { formula: `H${currentRow}-I${currentRow}` }
+  ws.getCell(currentRow, 11).value = { formula: `SUM(K9:K${currentRow - 1})` }
+  ws.getCell(currentRow, 12).value = { formula: `SUM(L9:L${currentRow - 1})` }
 
   for (let c = 1; c <= COLS; c++) {
     const cell    = ws.getCell(currentRow, c)
@@ -285,9 +313,58 @@ async function exportMonthToXLSX(monthLabel, orders) {
       left:   { style: 'thin',   color: { argb: 'FF000000' } },
       right:  { style: 'thin',   color: { argb: 'FF000000' } },
     }
-    if (c === 8 || c === 9 || c === 10) {
-      cell.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (c === 8 || c === 9) {
+      cell.alignment = { horizontal: 'center', vertical: 'center' }
     }
+    if (c === 10) {
+      cell.alignment = { horizontal: 'center', vertical: 'center' }
+      cell.numFmt    = '_(* #,##0_);_(* \\(#,##0\\);_(* "-"??_);_(@_)'
+    }
+    if (c === 11 || c === 12) {
+      cell.alignment = { horizontal: 'right', vertical: 'center' }
+      cell.numFmt    = ACCT_FMT
+    }
+  }
+
+  // ── SIGNATURE FOOTER (5 rows after data) ──────────────────────
+  const sigRow1 = currentRow + 5   // "Prepared By:" labels
+  const sigRow2 = currentRow + 6   // Names
+  const sigRow3 = currentRow + 7   // Titles
+
+  // Row 1: labels — Algerian 20
+  const sigLabels = [
+    { col: 2, text: 'Prepared By:' },
+    { col: 5, text: 'Checked By:'  },
+    { col: 6, text: 'Verified By:' },
+  ]
+  for (const { col, text } of sigLabels) {
+    const cell  = ws.getCell(sigRow1, col)
+    cell.value  = text
+    cell.font   = { name: 'Algerian', size: 20 }
+  }
+
+  // Row 2: names — Calibri 14 bold
+  const sigNames = [
+    { col: 2, text: 'Marjun S. Mallanao'   },
+    { col: 5, text: 'Krizia A. Guerrero'   },
+    { col: 6, text: 'Rubilyn A. Omega'     },
+  ]
+  for (const { col, text } of sigNames) {
+    const cell  = ws.getCell(sigRow2, col)
+    cell.value  = text
+    cell.font   = { name: 'Calibri', size: 14, bold: true }
+  }
+
+  // Row 3: titles — Calibri 12 italic
+  const sigTitles = [
+    { col: 2, text: 'Inventory Staff'        },
+    { col: 5, text: 'Jr. Acctg. Supervisor'  },
+    { col: 6, text: 'Sr.. Acctg. Supervisor' },
+  ]
+  for (const { col, text } of sigTitles) {
+    const cell  = ws.getCell(sigRow3, col)
+    cell.value  = text
+    cell.font   = { name: 'Calibri', size: 12, italic: true }
   }
 
   // ── DOWNLOAD ──────────────────────────────────────────────────
