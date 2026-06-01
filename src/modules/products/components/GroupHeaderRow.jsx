@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Check, X } from 'lucid
 export default function GroupHeaderRow({
   group, collapsed,
   onToggleCollapse, onRenameGroup, onAddRow, onDeleteGroup,
-  editMode,   // ← new
+  editMode,
 }) {
   const [editing,   setEditing]   = useState(false)
   const [draftName, setDraftName] = useState(group.name)
@@ -15,7 +15,6 @@ export default function GroupHeaderRow({
     if (editing) inputRef.current?.focus()
   }, [editing])
 
-  // If edit mode is turned off while renaming, cancel the rename
   useEffect(() => {
     if (!editMode && editing) cancelRename()
   }, [editMode])
@@ -38,22 +37,38 @@ export default function GroupHeaderRow({
   }
 
   return (
-    <tr className="bg-orange-50 border-y border-orange-200">
-      <td colSpan={8} className="px-4 py-2">
-        <div className="flex items-center gap-2">
+    <tr>
+      <td
+        colSpan={8}
+        style={{
+          background: '#fff8f2',
+          borderTop: '1px solid #fed7aa',
+          borderBottom: '1px solid #fed7aa',
+          padding: '8px 16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 
-          {/* Collapse toggle — always available */}
+          {/* Collapse toggle */}
           <button
             onClick={() => onToggleCollapse(group.id)}
-            className="text-orange-400 hover:text-orange-600 transition-colors"
             title={collapsed ? 'Expand' : 'Collapse'}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: '22px', height: '22px', borderRadius: '6px',
+              border: 'none', background: 'transparent',
+              color: '#f97316', cursor: 'pointer',
+              transition: 'background 100ms',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#fed7aa'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+            {collapsed ? <ChevronRight size={15} strokeWidth={2.5} /> : <ChevronDown size={15} strokeWidth={2.5} />}
           </button>
 
-          {/* Group name — editable only in edit mode */}
+          {/* Group name */}
           {editing ? (
-            <div className="flex items-center gap-1.5 flex-1">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
               <input
                 ref={inputRef}
                 type="text"
@@ -61,49 +76,79 @@ export default function GroupHeaderRow({
                 onChange={(e) => setDraftName(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onBlur={commitRename}
-                className="text-sm font-bold text-orange-700 bg-white border border-orange-300
-                           rounded px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-orange-400 w-64"
+                style={{
+                  fontSize: '12px', fontWeight: 700, color: '#c2410c',
+                  background: '#fff', border: '1px solid #f97316',
+                  borderRadius: '6px', padding: '3px 8px',
+                  outline: 'none', width: '200px',
+                  letterSpacing: '0.05em',
+                }}
               />
-              <button onClick={commitRename} className="text-green-500 hover:text-green-700"><Check size={14} /></button>
-              <button onClick={cancelRename} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+              <button onClick={commitRename} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#16a34a' }}>
+                <Check size={13} />
+              </button>
+              <button onClick={cancelRename} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#9ca3af' }}>
+                <X size={13} />
+              </button>
             </div>
           ) : (
-            <span className="text-sm font-bold tracking-wider text-orange-700 flex-1">
+            <span style={{
+              fontSize: '12px', fontWeight: 700, color: '#c2410c',
+              letterSpacing: '0.08em', flex: 1,
+            }}>
               {group.name}
-              <span className="ml-2 text-xs font-normal text-orange-400">
+              <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 400, color: '#fb923c' }}>
                 ({group.rows.length} item{group.rows.length !== 1 ? 's' : ''})
               </span>
             </span>
           )}
 
-          {/* Action buttons — only visible in edit mode */}
+          {/* Action buttons — edit mode only */}
           {editMode && (
-            <div className="flex items-center gap-1 ml-auto">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
               {!editing && (
                 <button
                   onClick={() => setEditing(true)}
-                  title="Rename group"
-                  className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-700
-                             px-2 py-1 rounded hover:bg-orange-100 transition-colors"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                    padding: '4px 10px', borderRadius: '7px',
+                    border: 'none', background: 'transparent',
+                    color: '#f97316', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                    transition: 'background 100ms',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#fed7aa'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <Pencil size={12} /> Rename
+                  <Pencil size={11} /> Rename
                 </button>
               )}
               <button
                 onClick={() => onAddRow(group.id)}
-                title="Add row to group"
-                className="flex items-center gap-1 text-xs text-orange-500 hover:text-orange-700
-                           px-2 py-1 rounded hover:bg-orange-100 transition-colors"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  padding: '4px 10px', borderRadius: '7px',
+                  border: 'none', background: 'transparent',
+                  color: '#f97316', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                  transition: 'background 100ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fed7aa'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <Plus size={12} /> Add Row
+                <Plus size={11} /> Add Row
               </button>
               <button
                 onClick={() => onDeleteGroup(group.id)}
-                title="Delete group"
-                className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600
-                           px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  padding: '4px 10px', borderRadius: '7px',
+                  border: 'none', background: 'transparent',
+                  color: '#ef4444', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
+                  transition: 'background 100ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <Trash2 size={12} /> Delete
+                <Trash2 size={11} /> Delete
               </button>
             </div>
           )}

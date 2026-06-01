@@ -228,6 +228,6 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
           </Button>
         </DialogFooter>
       </DialogContent>
-    </Dialog>
+    </Dialog> 
   )
 }

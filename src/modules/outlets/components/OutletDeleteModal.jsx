@@ -1,44 +1,38 @@
-import { AlertTriangle, X } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '../../../components/ui/dialog'
+import { Button } from '../../../components/ui/button'
 
 export default function OutletDeleteModal({ outlet, onConfirm, onClose }) {
-  if (!outlet) return null
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <AlertTriangle size={18} className="text-red-500" />
+    <Dialog open={!!outlet} onOpenChange={val => { if (!val) onClose() }}>
+      <DialogContent className="sm:max-w-sm bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0">
+        <DialogHeader>
+          <div className="flex flex-col items-center gap-3 pt-2 pb-1">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+              <Trash2 className="w-5 h-5 text-red-500" />
+            </div>
+            <DialogTitle className="text-center text-gray-900">Archive Outlet</DialogTitle>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-800">Archive Outlet</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Are you sure you want to archive <span className="font-medium text-gray-700">"{outlet.name}"</span>?
-              It can be restored from the Archive later.
-            </p>
-          </div>
-          <button onClick={onClose} className="ml-auto text-gray-400 hover:text-gray-600">
-            <X size={16} />
-          </button>
-        </div>
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
+        </DialogHeader>
+
+        <p className="text-sm text-gray-500 text-center px-2 pb-2">
+          Are you sure you want to archive{' '}
+          <span className="font-semibold text-gray-800">{outlet?.name}</span>?
+          It can be restored from the Archive later.
+        </p>
+
+        <DialogFooter className="flex gap-2 sm:gap-2">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button
+            className="flex-1 bg-red-500 hover:bg-red-600 text-white border-0"
             onClick={() => onConfirm(outlet.id)}
-            className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
           >
             Archive
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

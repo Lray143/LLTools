@@ -10,14 +10,14 @@ import AddGroupModal          from './AddGroupModal'
 import ArchivedProductsDrawer from './ArchivedProductsDrawer'
 
 const COLUMNS = [
-  { label: '',                 width: 'w-8'                   },
-  { label: 'Case Barcode',     width: 'w-36'                  },
-  { label: 'Item Barcode',     width: 'w-36'                  },
-  { label: 'Item Description', width: 'w-auto'                },
-  { label: 'QTY / Case',       width: 'w-20', align: 'center' },
-  { label: 'Item Size',        width: 'w-20', align: 'center' },
-  { label: 'Price / Piece',    width: 'w-28', align: 'right'  },
-  { label: '',                 width: 'w-10'                  },
+  { label: '',                 width: '32px'                     },
+  { label: 'Case Barcode',     width: '140px', align: 'left'     },
+  { label: 'Item Barcode',     width: '140px', align: 'left'     },
+  { label: 'Item Description', width: 'auto',  align: 'left'     },
+  { label: 'QTY / Case',       width: '80px',  align: 'center'   },
+  { label: 'Item Size',        width: '80px',  align: 'center'   },
+  { label: 'Price / Piece',    width: '110px', align: 'right'    },
+  { label: '',                 width: '40px'                     },
 ]
 
 const makeBlankRow = () => ({
@@ -35,26 +35,21 @@ const matchesSearch = (row, term) => {
   )
 }
 
-export default function ProductsTable() {
-  // ── Core data ───────────────────────────────────────────────────
-  const [groups,        setGroups]        = useState([])
-  const [loading,       setLoading]       = useState(true)
-  const [collapsed,     setCollapsed]     = useState({})
-  const [search,        setSearch]        = useState('')
-  const [showAddGroup,  setShowAddGroup]  = useState(false)
-  const [editMode,      setEditMode]      = useState(false)
-  const [selectedRows,  setSelectedRows]  = useState(new Set())
-  const [showArchive,   setShowArchive]   = useState(false)
-  const [archivedRows,  setArchivedRows]  = useState([])
+export default function ProductsTable({ search = '', onSearchChange }) {
+  const [groups,         setGroups]         = useState([])
+  const [loading,        setLoading]        = useState(true)
+  const [collapsed,      setCollapsed]      = useState({})
+  const [showAddGroup,   setShowAddGroup]   = useState(false)
+  const [editMode,       setEditMode]       = useState(false)
+  const [selectedRows,   setSelectedRows]   = useState(new Set())
+  const [showArchive,    setShowArchive]    = useState(false)
+  const [archivedRows,   setArchivedRows]   = useState([])
   const [archiveLoading, setArchiveLoading] = useState(false)
 
-  // ── Outlet selector state ────────────────────────────────────────
-  const [outlets,           setOutlets]           = useState([])  // active outlets list
-  const [selectedOutletId,  setSelectedOutletId]  = useState(null) // null = default
-  // outletPrices: { [productId]: price } — only for the currently selected outlet
-  const [outletPrices,      setOutletPrices]      = useState({})
+  const [outlets,          setOutlets]          = useState([])
+  const [selectedOutletId, setSelectedOutletId] = useState(null)
+  const [outletPrices,     setOutletPrices]     = useState({})
 
-  // ── Load base product data ───────────────────────────────────────
   useEffect(() => {
     window.electronAPI.getProductGroups()
       .then((data) => setGroups(data?.length ? data : INITIAL_GROUPS))
@@ -62,30 +57,23 @@ export default function ProductsTable() {
       .finally(() => setLoading(false))
   }, [])
 
-  // ── Load outlets list ────────────────────────────────────────────
   useEffect(() => {
     window.electronAPI.getOutlets()
       .then((data) => setOutlets(data ?? []))
       .catch(() => setOutlets([]))
   }, [])
 
-  // ── Load outlet prices when selection changes ────────────────────
   useEffect(() => {
-    if (!selectedOutletId) {
-      setOutletPrices({})
-      return
-    }
+    if (!selectedOutletId) { setOutletPrices({}); return }
     window.electronAPI.getOutletProductPrices(selectedOutletId)
       .then((priceMap) => setOutletPrices(priceMap ?? {}))
       .catch(() => setOutletPrices({}))
   }, [selectedOutletId])
 
-  // ── Clear selection when edit mode turns off ─────────────────────
   useEffect(() => {
     if (!editMode) setSelectedRows(new Set())
   }, [editMode])
 
-  // ── Load archived when drawer opens ─────────────────────────────
   useEffect(() => {
     if (!showArchive) return
     setArchiveLoading(true)
@@ -95,7 +83,6 @@ export default function ProductsTable() {
       .finally(() => setArchiveLoading(false))
   }, [showArchive])
 
-  // ── Derived ──────────────────────────────────────────────────────
   const totalItems  = groups.reduce((s, g) => s + g.rows.length, 0)
   const totalGroups = groups.length
 
@@ -114,14 +101,12 @@ export default function ProductsTable() {
   const someSelected = selectedRows.size > 0
   const isOutletMode = !!selectedOutletId
 
-  // ── Selection ────────────────────────────────────────────────────
   const handleToggleRow = (id) =>
     setSelectedRows((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const handleToggleAll = () =>
     allSelected ? setSelectedRows(new Set()) : setSelectedRows(new Set(allVisibleIds))
 
-  // ── Soft-delete helpers ──────────────────────────────────────────
   const removeFromGroups = (ids) => {
     const idSet = new Set(ids)
     setGroups((prev) =>
@@ -130,14 +115,12 @@ export default function ProductsTable() {
     setSelectedRows((prev) => { const n = new Set(prev); ids.forEach((id) => n.delete(id)); return n })
   }
 
-  // ── Bulk archive ─────────────────────────────────────────────────
   const handleBulkArchive = () => {
     if (!window.confirm(`Archive ${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}? You can restore them from the Archive.`)) return
     selectedRows.forEach((id) => window.electronAPI.archiveProduct(id))
     removeFromGroups([...selectedRows])
   }
 
-  // ── Group operations ─────────────────────────────────────────────
   const handleAddGroup = (name) => {
     const newGroup = { id: crypto.randomUUID(), name, rows: [] }
     window.electronAPI.upsertProductGroup({ id: newGroup.id, name, sortOrder: groups.length })
@@ -159,7 +142,6 @@ export default function ProductsTable() {
   const handleToggleCollapse = (groupId) =>
     setCollapsed((prev) => ({ ...prev, [groupId]: !prev[groupId] }))
 
-  // ── Row operations ────────────────────────────────────────────────
   const handleAddRow = (groupId) => {
     const newRow = makeBlankRow()
     window.electronAPI.upsertProduct({ ...newRow, groupId, sortOrder: 9999 })
@@ -191,7 +173,6 @@ export default function ProductsTable() {
     removeFromGroups([rowId])
   }
 
-  // ── Outlet price operations ───────────────────────────────────────
   const handleUpdateOutletPrice = (productId, price) => {
     window.electronAPI.upsertOutletProductPrice(selectedOutletId, productId, price)
     setOutletPrices((prev) => ({ ...prev, [productId]: price }))
@@ -199,21 +180,14 @@ export default function ProductsTable() {
 
   const handleResetOutletPrice = (productId) => {
     window.electronAPI.deleteOutletProductPrice(selectedOutletId, productId)
-    setOutletPrices((prev) => {
-      const next = { ...prev }
-      delete next[productId]
-      return next
-    })
+    setOutletPrices((prev) => { const next = { ...prev }; delete next[productId]; return next })
   }
 
-  // ── Outlet selection ─────────────────────────────────────────────
   const handleSelectOutlet = (outletId) => {
     setSelectedOutletId(outletId || null)
-    // Exit edit mode when switching outlet to avoid accidents
     setEditMode(false)
   }
 
-  // ── Archive drawer actions ────────────────────────────────────────
   const handleRestore = (id) => {
     window.electronAPI.restoreProduct(id)
     setArchivedRows((prev) => prev.filter((r) => r.id !== id))
@@ -228,17 +202,20 @@ export default function ProductsTable() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center text-gray-400 text-sm">
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px' }}>
         Loading products…
       </div>
     )
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+
+      {/* ── Toolbar (mirrors BiometricHeader row) ── */}
       <ProductsToolbar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={onSearchChange}
+        hideSearch
         onAddGroup={() => setShowAddGroup(true)}
         totalItems={totalItems}
         totalGroups={totalGroups}
@@ -250,60 +227,88 @@ export default function ProductsTable() {
         onSelectOutlet={handleSelectOutlet}
       />
 
-      {/* Bulk-action bar — only in default mode */}
+      {/* ── Bulk-action bar ── */}
       {editMode && someSelected && !isOutletMode && (
-        <div className="mx-6 mt-4 flex items-center justify-between
-                        bg-orange-50 border border-orange-200 rounded-lg px-4 py-2.5">
-          <span className="text-sm text-orange-700 font-medium">
+        <div style={{
+          margin: '12px 32px 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#fff8f2', border: '1px solid #fed7aa',
+          borderRadius: '10px', padding: '8px 16px',
+        }}>
+          <span style={{ fontSize: '13px', color: '#c2410c', fontWeight: 500 }}>
             {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
           </span>
-          <div className="flex items-center gap-2">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button
               onClick={() => setSelectedRows(new Set())}
-              className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5
-                         rounded-md hover:bg-white transition-colors"
+              style={{
+                fontSize: '12px', color: '#6b7280', background: 'transparent',
+                border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '7px',
+                transition: 'background 100ms',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = '#fff'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               Clear selection
             </button>
             <button
               onClick={handleBulkArchive}
-              className="flex items-center gap-1.5 text-xs text-white bg-orange-500
-                         hover:bg-orange-600 px-3 py-1.5 rounded-md transition-colors font-medium"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                fontSize: '12px', fontWeight: 600, color: '#fff',
+                background: '#f97316', border: 'none', borderRadius: '7px',
+                padding: '5px 12px', cursor: 'pointer',
+              }}
             >
-              <Archive size={13} />
+              <Archive size={12} />
               Archive selected
             </button>
           </div>
         </div>
       )}
 
-      <div className="flex-1 overflow-auto px-6 py-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm border-collapse">
-            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-3 py-3 w-8">
+      {/* ── Table area (mirrors BiometricTable container) ── */}
+      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable', padding: '16px 32px 24px' }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: '14px',
+          border: '1px solid #f0ebe3',
+          overflow: 'hidden',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+        }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+
+            {/* ── Header ── */}
+            <thead>
+              <tr style={{ background: '#f5f2ec', borderBottom: '1px solid #e8e2d8' }}>
+                {/* Checkbox th */}
+                <th style={{ width: '32px', padding: '10px 12px' }}>
                   {editMode && !isOutletMode && (
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={handleToggleAll}
-                      className="rounded border-gray-300 text-orange-500 focus:ring-orange-400 cursor-pointer"
+                      style={{ cursor: 'pointer', accentColor: '#f97316' }}
                     />
                   )}
                 </th>
                 {COLUMNS.slice(1).map((col, i) => (
                   <th
                     key={i}
-                    className={`px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide
-                                ${col.align === 'right'  ? 'text-right'  : ''}
-                                ${col.align === 'center' ? 'text-center' : 'text-left'}
-                                ${col.width}`}
+                    style={{
+                      width: col.width,
+                      padding: '10px 12px',
+                      textAlign: col.align ?? 'left',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: '#f97316',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                    }}
                   >
                     {col.label}
-                    {/* Badge on Price header when in outlet mode */}
                     {col.label === 'Price / Piece' && isOutletMode && (
-                      <span className="ml-1 text-orange-400 font-normal normal-case tracking-normal">
+                      <span style={{ marginLeft: '4px', color: '#fb923c', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
                         (outlet)
                       </span>
                     )}
@@ -315,7 +320,10 @@ export default function ProductsTable() {
             <tbody>
               {filteredGroups.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-16 text-gray-400 text-sm">
+                  <td
+                    colSpan={8}
+                    style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af', fontSize: '14px' }}
+                  >
                     {search ? 'No products match your search.' : 'No products yet. Add a group to get started.'}
                   </td>
                 </tr>
@@ -357,7 +365,8 @@ export default function ProductsTable() {
           </table>
         </div>
 
-        <p className="text-xs text-gray-400 mt-3 text-center">
+        {/* ── Footer hint ── */}
+        <p style={{ fontSize: '11px', color: '#b0a090', textAlign: 'center', marginTop: '12px' }}>
           {isOutletMode && editMode
             ? 'Click the Price cell to set a custom outlet price · ↺ to reset to default'
             : isOutletMode

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Search, Bell, User } from 'lucide-react'
 
 import OutletToolbar       from './components/OutletToolbar'
 import OutletCardGrid      from './components/OutletCardGrid'
@@ -13,18 +14,15 @@ export default function Outlets() {
   const [archivedOutlets, setArchivedOutlets] = useState([])
   const [loading,         setLoading]         = useState(true)
 
-  // UI state
-  const [view,         setView]         = useState('cards')   // 'cards' | 'list'
+  const [view,         setView]         = useState('cards')
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('All Statuses')
 
-  // Modal state
-  const [editTarget,    setEditTarget]    = useState(null)   // outlet obj | {} for new
-  const [deleteTarget,  setDeleteTarget]  = useState(null)   // outlet obj
-  const [showArchive,   setShowArchive]   = useState(false)
-  const [ordersTarget,  setOrdersTarget]  = useState(null)   // outlet obj | null
+  const [editTarget,   setEditTarget]   = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [showArchive,  setShowArchive]  = useState(false)
+  const [ordersTarget, setOrdersTarget] = useState(null)
 
-  // ── Data loading ────────────────────────────────────────────────
   const load = async () => {
     setLoading(true)
     const [active, archived] = await Promise.all([
@@ -38,7 +36,6 @@ export default function Outlets() {
 
   useEffect(() => { load() }, [])
 
-  // ── CRUD handlers ───────────────────────────────────────────────
   const handleSave = async (payload) => {
     await window.electronAPI.upsertOutlet(payload)
     setEditTarget(null)
@@ -61,7 +58,6 @@ export default function Outlets() {
     await load()
   }
 
-  // ── Filtered list ───────────────────────────────────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return outlets.filter((o) => {
@@ -76,44 +72,73 @@ export default function Outlets() {
     })
   }, [outlets, search, statusFilter])
 
-  // ── Render ──────────────────────────────────────────────────────
   return (
-    <div className="p-6">
-      {/* Page title */}
-      <h1 className="text-2xl font-bold text-gray-800 mb-5">Outlets</h1>
+    <div className="flex flex-col w-full h-full bg-white overflow-hidden">
+      <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
-      {/* Toolbar */}
+      {/* ── TOP HEADER ── */}
+      <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+        <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              placeholder="Search..."
+              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-gray-300"
+              style={{ width: '14rem', height: '34px', fontSize: '13px' }}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+            <Bell className="w-4 h-4" />
+          </button>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+            <User className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* ── FILTER / TOOLBAR BAR ── */}
       <OutletToolbar
-        view={view}            setView={setView}
-        search={search}        setSearch={setSearch}
-        statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+        view={view}                   setView={setView}
+        search={search}               setSearch={setSearch}
+        statusFilter={statusFilter}   setStatusFilter={setStatusFilter}
         total={filtered.length}
         onAdd={() => setEditTarget({})}
         onArchive={() => setShowArchive(true)}
       />
 
-      {/* Content */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400">
-          <p>Loading outlets…</p>
-        </div>
-      ) : view === 'cards' ? (
-        <OutletCardGrid
-          outlets={filtered}
-          onEdit={(o) => setEditTarget(o)}
-          onDelete={(o) => setDeleteTarget(o)}
-          onViewOrders={(o) => setOrdersTarget(o)}
-        />
-      ) : (
-        <OutletListView
-          outlets={filtered}
-          onEdit={(o) => setEditTarget(o)}
-          onDelete={(o) => setDeleteTarget(o)}
-          onViewOrders={(o) => setOrdersTarget(o)}
-        />
-      )}
+      {/* ── CONTENT ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-8">
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-gray-400">
+            <p className="text-sm">Loading outlets…</p>
+          </div>
+        ) : view === 'cards' ? (
+          <OutletCardGrid
+            outlets={filtered}
+            onEdit={(o) => setEditTarget(o)}
+            onDelete={(o) => setDeleteTarget(o)}
+            onViewOrders={(o) => setOrdersTarget(o)}
+          />
+        ) : (
+          <OutletListView
+            outlets={filtered}
+            onEdit={(o) => setEditTarget(o)}
+            onDelete={(o) => setDeleteTarget(o)}
+            onViewOrders={(o) => setOrdersTarget(o)}
+          />
+        )}
+        {!loading && filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <p className="text-lg font-medium">No outlets found</p>
+            <p className="text-sm">Try adjusting your search or filters.</p>
+          </div>
+        )}
+      </div>
 
-      {/* Add / Edit modal */}
+      {/* ── MODALS / DRAWERS ── */}
       {editTarget !== null && (
         <OutletModal
           outlet={editTarget}
@@ -122,7 +147,6 @@ export default function Outlets() {
         />
       )}
 
-      {/* Archive/delete confirm */}
       {deleteTarget && (
         <OutletDeleteModal
           outlet={deleteTarget}
@@ -131,7 +155,6 @@ export default function Outlets() {
         />
       )}
 
-      {/* Archive drawer */}
       {showArchive && (
         <OutletArchiveDrawer
           outlets={archivedOutlets}
@@ -141,7 +164,6 @@ export default function Outlets() {
         />
       )}
 
-      {/* Orders drawer */}
       {ordersTarget !== null && (
         <OutletOrdersDrawer
           outlet={ordersTarget}

@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react'
-import { X, Plus, Trash2, Tag } from 'lucide-react'
+import { Plus, Trash2, Tag } from 'lucide-react'
+import { Button } from '../../../components/ui/button'
+import { Input }  from '../../../components/ui/input'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '../../../components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '../../../components/ui/select'
+import { DISCOUNT_PRESETS } from '../outletConstants'
 
 const emptyDiscount = () => ({ id: crypto.randomUUID(), name: '', value: '' })
 
@@ -18,20 +27,15 @@ export default function OutletModal({ outlet, onSave, onClose }) {
       setName(outlet.name       ?? '')
       setAddress(outlet.address ?? '')
       setStatus(outlet.status   ?? 'Active')
-      setDiscounts(outlet.discounts?.map((d) => ({ ...d })) ?? [])
+      setDiscounts(outlet.discounts?.map(d => ({ ...d })) ?? [])
+      setErrors({})
     }
   }, [outlet])
 
-  const addDiscount = () =>
-    setDiscounts((prev) => [...prev, emptyDiscount()])
-
-  const removeDiscount = (id) =>
-    setDiscounts((prev) => prev.filter((d) => d.id !== id))
-
+  const addDiscount    = () => setDiscounts(prev => [...prev, emptyDiscount()])
+  const removeDiscount = (id) => setDiscounts(prev => prev.filter(d => d.id !== id))
   const updateDiscount = (id, field, value) =>
-    setDiscounts((prev) =>
-      prev.map((d) => d.id === id ? { ...d, [field]: value } : d)
-    )
+    setDiscounts(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d))
 
   const validate = () => {
     const e = {}
@@ -53,7 +57,7 @@ export default function OutletModal({ outlet, onSave, onClose }) {
       name:      name.trim(),
       address:   address.trim(),
       status,
-      discounts: discounts.map((d) => ({
+      discounts: discounts.map(d => ({
         id:    d.id,
         name:  d.name.trim(),
         value: Number(d.value),
@@ -64,78 +68,86 @@ export default function OutletModal({ outlet, onSave, onClose }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-800">
+    <Dialog open={true} onOpenChange={val => { if (!val) onClose() }}>
+      <DialogContent className="sm:max-w-lg bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[92vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-gray-900 text-base font-semibold">
             {isEditing ? 'Edit Outlet' : 'Add Outlet'}
-          </h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
-            <X size={18} />
-          </button>
-        </div>
+          </DialogTitle>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {isEditing ? "Update the outlet's information below." : 'Fill in the details to add a new outlet.'}
+          </p>
+        </DialogHeader>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div className="flex flex-col gap-5 py-2">
 
-          {/* Outlet Name */}
+          {/* ── SECTION: Basic Info ── */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Outlet Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              value={name}
-              onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: '' })) }}
-              placeholder="e.g. Main Branch – Makati"
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 ${
-                errors.name ? 'border-red-400' : 'border-gray-200'
-              }`}
-            />
-            {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Basic Info</p>
+            <div className="grid grid-cols-2 gap-3">
+
+              {/* Outlet Name — full width */}
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">
+                  Outlet Name <span className="text-red-400">*</span>
+                </label>
+                <Input
+                  placeholder="e.g. Main Branch – Makati"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setErrors(p => ({ ...p, name: '' })) }}
+                  className={`bg-white text-sm h-9 ${errors.name ? 'border-red-400' : 'border-gray-200'}`}
+                />
+                {errors.name && <p className="text-xs text-red-500 -mt-0.5">{errors.name}</p>}
+              </div>
+
+              {/* Status */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">Status</label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="w-full bg-white border-gray-200 h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: 'var(--radix-select-trigger-width)' }}>
+                    {['Active', 'Inactive'].map(s => (
+                      <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer text-sm">
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Address — full width */}
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">Address</label>
+                <Input
+                  placeholder="e.g. 123 Ayala Ave, Makati City"
+                  value={address}
+                  onChange={e => setAddress(e.target.value)}
+                  className="bg-white border-gray-200 text-sm h-9"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
-            >
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </div>
+          {/* ── DIVIDER ── */}
+          <div className="border-t border-gray-100" />
 
-          {/* Address */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-            <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. 123 Ayala Ave, Makati City"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
-            />
-          </div>
-
-          {/* Discounts */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                <Tag size={14} className="text-orange-500" />
+          {/* ── SECTION: Discounts ── */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Tag size={11} className="text-gray-400" />
                 Discounts
-              </label>
-              <button
+              </p>
+              <Button
+                type="button"
+                size="sm"
                 onClick={addDiscount}
-                className="flex items-center gap-1 text-xs px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                className="h-7 text-xs px-3 bg-orange-500 hover:bg-orange-600 text-white border-0 gap-1"
               >
-                <Plus size={12} /> Add
-              </button>
+                <Plus size={11} /> Add
+              </Button>
             </div>
 
             {discounts.length === 0 ? (
@@ -143,47 +155,42 @@ export default function OutletModal({ outlet, onSave, onClose }) {
                 No discounts added yet. Click "Add" to create one.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 {discounts.map((d, i) => (
                   <div key={d.id} className="flex gap-2 items-start">
-                    <div className="flex-1">
-                      <input
+                    <div className="flex-1 flex flex-col gap-0.5">
+                      <Input
                         value={d.name}
-                        onChange={(e) => updateDiscount(d.id, 'name', e.target.value)}
-                        placeholder="Discount name"
-                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 ${
-                          errors[`d_name_${i}`] ? 'border-red-400' : 'border-gray-200'
-                        }`}
+                        onChange={e => updateDiscount(d.id, 'name', e.target.value)}
+                        placeholder="Discount name (e.g. Senior Citizen)"
+                        className={`bg-white text-sm h-9 ${errors[`d_name_${i}`] ? 'border-red-400' : 'border-gray-200'}`}
                       />
-                      {errors[`d_name_${i}`] && (
-                        <p className="text-xs text-red-500 mt-0.5">{errors[`d_name_${i}`]}</p>
-                      )}
+                      {errors[`d_name_${i}`] && <p className="text-xs text-red-500">{errors[`d_name_${i}`]}</p>}
                     </div>
-                    <div className="w-24">
+                    <div className="w-24 flex flex-col gap-0.5">
                       <div className="relative">
-                        <input
+                        <Input
                           type="number"
                           min="0"
                           max="100"
                           value={d.value}
-                          onChange={(e) => updateDiscount(d.id, 'value', e.target.value)}
+                          onChange={e => updateDiscount(d.id, 'value', e.target.value)}
                           placeholder="0"
-                          className={`w-full border rounded-lg pl-3 pr-7 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 ${
-                            errors[`d_value_${i}`] ? 'border-red-400' : 'border-gray-200'
-                          }`}
+                          className={`bg-white text-sm h-9 pr-6 ${errors[`d_value_${i}`] ? 'border-red-400' : 'border-gray-200'}`}
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">%</span>
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">%</span>
                       </div>
-                      {errors[`d_value_${i}`] && (
-                        <p className="text-xs text-red-500 mt-0.5">{errors[`d_value_${i}`]}</p>
-                      )}
+                      {errors[`d_value_${i}`] && <p className="text-xs text-red-500">{errors[`d_value_${i}`]}</p>}
                     </div>
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-gray-400 hover:text-red-500 hover:bg-red-50 shrink-0"
                       onClick={() => removeDiscount(d.id)}
-                      className="mt-1 p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors shrink-0"
                     >
                       <Trash2 size={14} />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -191,23 +198,19 @@ export default function OutletModal({ outlet, onSave, onClose }) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
-          >
+        <DialogFooter className="gap-2 pt-2">
+          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50 text-sm" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm"
             onClick={handleSave}
             disabled={saving}
-            className="px-5 py-2 text-sm rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors disabled:opacity-60 shadow-sm"
           >
             {saving ? 'Saving…' : isEditing ? 'Save Changes' : 'Add Outlet'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
