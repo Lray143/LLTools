@@ -15,19 +15,82 @@ const DISP_MAP = {
   "monitoring": "Monitoring",
 }
 
-function dbToVisit(r) {
+function shortName(full = "") {
+  const parts = full.trim().split(" ")
+  return parts.length > 1
+    ? `${parts[0]} ${parts[parts.length - 1][0]}.`
+    : full.trim()
+}
+
+// ── Build all lookup maps from employees array ─────────────────
+function buildEmpMaps(emps) {
+  const byName  = {}   // exact name  -> { no, emp }
+  const byShort = {}   // short name  -> { no, emp }
+  const byId    = {}   // employee id -> { no, emp }
+  const byNo    = {}   // employee_no -> { no, emp }
+  emps.forEach(e => {
+    const no = e.employee_no ?? e.employeeNo ?? ""
+    if (e.name)        byName[e.name]             = { no, emp: e }
+    if (e.name)        byShort[shortName(e.name)] = { no, emp: e }
+    if (e.id)          byId[e.id]                 = { no, emp: e }
+    if (no)            byNo[no]                   = { no, emp: e }
+  })
+  return { byName, byShort, byId, byNo }
+}
+
+function dbToVisit(r, maps = {}) {
+  const { byName = {}, byShort = {}, byId = {}, byNo = {} } = maps
   const [y, mo, day] = (r.date ?? "").split("-").map(Number)
   const month   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][mo - 1] ?? ""
   const year    = y
   const dateStr = `${month} ${day}`
+  const fullName = r.fullName ?? r.full_name ?? ""
+
+  // Priority order for resolving the employee number:
+  // 1. employeeCode (what db.cjs mapClinicLog() returns — this is the canonical field)
+  //    BUT only accept it if it's actually a known employee_no (byNo lookup).
+  //    Old records had shortName like "Lester G." saved as employeeCode — discard those.
+  // 2. Lookup by employee UUID (employeeId foreign key)
+  // 3. Lookup by exact/short name match
+  const rawCode =
+    r.employeeCode  ||
+    r.employee_code ||
+    r.employeeNo    ||
+    r.employee_no   ||
+    ""
+
+  // Only trust rawCode if it resolves to a real employee number
+  let empNo = (rawCode && byNo[rawCode]) ? rawCode : ""
+
+  if (!empNo) {
+    const byIdHit    = (r.employeeId || r.employee_id)
+                         ? byId[r.employeeId ?? r.employee_id]
+                         : null
+    const byNameHit  = byName[fullName]
+    // byShort keys are shortName(emp.name) — so try both the raw fullName
+    // and the shortName version of fullName to catch "Lester Gulferic" -> "Lester G." matches
+    const byShortHit = byShort[fullName] || byShort[shortName(fullName)]
+    const hit = byIdHit || byNameHit || byShortHit
+    empNo = hit?.no ?? ""
+  }
+
+  // Resolve display name: prefer real name from employee lookup,
+  // fall back to shortName of fullName
+  let displayName = shortName(fullName)
+  if (empNo) {
+    const hit = byNo[empNo]
+    if (hit?.emp?.name) displayName = shortName(hit.emp.name)
+  }
+
   return {
     id:          r.id,
     date:        dateStr,
     month,
     year,
     time:        r.time        ?? "",
-    employee:    r.employeeCode ?? shortName(r.fullName),
-    fullName:    r.fullName    ?? "",
+    employeeCode: empNo,
+    employee:    displayName,
+    fullName,
     complaint:   r.complaint   ?? "",
     disposition: r.disposition ?? "",
     bp:          r.bp          ?? "",
@@ -35,13 +98,6 @@ function dbToVisit(r) {
     treatment:   r.treatment   ?? "",
     _rawDate:    r.date,
   }
-}
-
-function shortName(full = "") {
-  const parts = full.trim().split(" ")
-  return parts.length > 1
-    ? `${parts[0]} ${parts[parts.length - 1][0]}.`
-    : full.trim()
 }
 
 function to12(timeStr = "") {
@@ -57,32 +113,65 @@ export default function ClinicLog() {
   const todayISO = new Date().toISOString().split("T")[0]
   const nowTime  = new Date().toTimeString().slice(0, 5)
 
-  const [visits,   setVisits]   = useState([])
-  const [archived, setArchived] = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const [visits,    setVisits]    = useState([])
+  const [archived,  setArchived]  = useState([])
+  const [loading,   setLoading]   = useState(true)
+  const [employees, setEmployees] = useState([])
+
+  function empFromDb(row) {
+    return {
+      id:          row.id,
+      employee_no: row.employee_no,
+      name:        row.name,
+      dept:        row.department ?? "",
+      contact:     row.contact    ?? "",
+    }
+  }
 
   const [form, setForm] = useState({
-    date:        todayISO,
-    time:        nowTime,
-    employee:    "",
-    complaint:   "",
-    bp:          "",
-    temp:        "",
-    treatment:   "",
-    disposition: "sent-back",
+    date:         todayISO,
+    time:         nowTime,
+    employee:     "",
+    employeeCode: "",   // ← stores employee_no when picked from autocomplete
+    complaint:    "",
+    bp:           "",
+    temp:         "",
+    treatment:    "",
+    disposition:  "sent-back",
   })
   const [saved, setSaved] = useState(false)
 
-  const [modal, setModal]                 = useState(null)
+  const [modal,         setModal]         = useState(null)
   const [tableExpanded, setTableExpanded] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
-  // ── Load from DB ───────────────────────────────────────────────
+  const loadEmployees = useCallback(async () => {
+    try {
+      const rows = await window.electronAPI.getEmployees()
+      setEmployees(rows.map(empFromDb))
+    } catch (err) {
+      console.error("[ClinicLog] getEmployees failed:", err)
+    }
+  }, [])
+
+  // ── Shared helper: fetch employees + build all maps ────────────
+  async function fetchMaps() {
+    try {
+      const emps = await window.electronAPI.getEmployees()
+      return buildEmpMaps(emps)
+    } catch (_) {
+      return { byName: {}, byShort: {}, byId: {}, byNo: {} }
+    }
+  }
+
   const loadVisits = useCallback(async () => {
     try {
-      const rows = await window.electronAPI.getClinicLogs()
-      setVisits(rows.map(dbToVisit))
+      const [rows, maps] = await Promise.all([
+        window.electronAPI.getClinicLogs(),
+        fetchMaps(),
+      ])
+      setVisits(rows.map(r => dbToVisit(r, maps)))
     } catch (err) {
       console.error("[ClinicLog] getClinicLogs failed:", err)
     } finally {
@@ -92,8 +181,11 @@ export default function ClinicLog() {
 
   const loadArchived = useCallback(async () => {
     try {
-      const rows = await window.electronAPI.getArchivedClinicLogs()
-      setArchived(rows.map(dbToVisit))
+      const [rows, maps] = await Promise.all([
+        window.electronAPI.getArchivedClinicLogs(),
+        fetchMaps(),
+      ])
+      setArchived(rows.map(r => dbToVisit(r, maps)))
     } catch (err) {
       console.error("[ClinicLog] getArchivedClinicLogs failed:", err)
     }
@@ -102,7 +194,8 @@ export default function ClinicLog() {
   useEffect(() => {
     loadVisits()
     loadArchived()
-  }, [loadVisits, loadArchived])
+    loadEmployees()
+  }, [loadVisits, loadArchived, loadEmployees])
 
   // ── Save new entry ─────────────────────────────────────────────
   async function handleSave() {
@@ -112,11 +205,16 @@ export default function ClinicLog() {
     const fullName = form.employee.trim()
     const timeStr  = to12(form.time)
 
+    // Use employeeCode set by NewEntryForm's onSelect first,
+    // then fall back to name-matching for safety
+    const matchedEmp = employees.find(e => e.name === fullName)
+    const employeeNo = form.employeeCode || matchedEmp?.employee_no || ""
+
     const log = {
       id,
-      employeeId:   null,
+      employeeId:   matchedEmp?.id ?? null,
       fullName,
-      employeeCode: shortName(fullName),
+      employeeCode: employeeNo,   // ← stored in DB as employee_code
       date:         form.date,
       time:         timeStr,
       complaint:    form.complaint,
@@ -137,25 +235,29 @@ export default function ClinicLog() {
     setTimeout(() => {
       setSaved(false)
       setForm({
-        date:        todayISO,
-        time:        new Date().toTimeString().slice(0, 5),
-        employee:    "",
-        complaint:   "",
-        bp:          "",
-        temp:        "",
-        treatment:   "",
-        disposition: "sent-back",
+        date:         todayISO,
+        time:         new Date().toTimeString().slice(0, 5),
+        employee:     "",
+        employeeCode: "",
+        complaint:    "",
+        bp:           "",
+        temp:         "",
+        treatment:    "",
+        disposition:  "sent-back",
       })
     }, 2000)
   }
 
   // ── Edit ───────────────────────────────────────────────────────
   async function handleEditSave(updatedVisit) {
+    const matchedEmp = employees.find(e => e.name === updatedVisit.fullName)
+    const employeeNo = matchedEmp?.employee_no || modal.visit.employeeCode || ""
+
     const log = {
       id:           modal.visit.id,
-      employeeId:   null,
+      employeeId:   matchedEmp?.id ?? null,
       fullName:     updatedVisit.fullName,
-      employeeCode: shortName(updatedVisit.fullName),
+      employeeCode: employeeNo,
       date:         modal.visit._rawDate,
       time:         modal.visit.time,
       complaint:    updatedVisit.complaint,
@@ -255,6 +357,7 @@ export default function ClinicLog() {
               set={set}
               saved={saved}
               onSave={handleSave}
+              employees={employees}
             />
           </div>
         )}

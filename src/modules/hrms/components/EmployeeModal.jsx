@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../../components/ui/select"
 import {
-  DEPTS, STATUSES, LEAVE_TYPES, DAYS_OF_WEEK,
+  DEPTS, STATUSES, DAYS_OF_WEEK,
   DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS,
 } from "../employeeConstants"
 
@@ -19,11 +19,8 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
     employee_no: "",
     name:        "",
     dept:        "Sales",
-    status:      "Active",
     contact:     "",
-    leaveType:   "Paid Leave",
-    leaveStart:  "",
-    leaveEnd:    "",
+    status:      "Active",
     shiftStart:  DEFAULT_SHIFT_START,
     shiftEnd:    DEFAULT_SHIFT_END,
     dayOffs:     DEFAULT_DAY_OFFS,
@@ -37,11 +34,8 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               employee_no: employee.employee_no  || "",
               name:        employee.name,
               dept:        employee.dept,
-              status:      employee.status        || "Active",
               contact:     employee.contact       || "",
-              leaveType:   employee.leaveType     || "Paid Leave",
-              leaveStart:  employee.leaveStart    || "",
-              leaveEnd:    employee.leaveEnd       || "",
+              status:      employee.status        || "Active",
               shiftStart:  employee.shiftStart    || DEFAULT_SHIFT_START,
               shiftEnd:    employee.shiftEnd       || DEFAULT_SHIFT_END,
               dayOffs:     employee.dayOffs       || DEFAULT_DAY_OFFS,
@@ -50,11 +44,8 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               employee_no: "",
               name:        "",
               dept:        "Sales",
-              status:      "Active",
               contact:     "",
-              leaveType:   "Paid Leave",
-              leaveStart:  "",
-              leaveEnd:    "",
+              status:      "Active",
               shiftStart:  DEFAULT_SHIFT_START,
               shiftEnd:    DEFAULT_SHIFT_END,
               dayOffs:     DEFAULT_DAY_OFFS,
@@ -67,7 +58,6 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
     setForm(f => {
       const current = f.dayOffs || []
       if (current.includes(day)) {
-        // prevent removing all days — must keep at least 0, but allow empty
         return { ...f, dayOffs: current.filter(d => d !== day) }
       } else {
         return { ...f, dayOffs: [...current, day] }
@@ -77,166 +67,135 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
   function handleSave() {
     if (!form.name.trim()) return
-    const submittedData = { ...form }
-    if (submittedData.status !== "On Leave") {
-      submittedData.leaveType  = ""
-      submittedData.leaveStart = ""
-      submittedData.leaveEnd   = ""
-    }
-    onSave(submittedData)
+    onSave({ ...form })
   }
 
   return (
     <Dialog open={open} onOpenChange={val => { if (!val) onClose() }}>
-      <DialogContent className="sm:max-w-md bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-gray-900">
+      <DialogContent className="sm:max-w-lg bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[92vh] overflow-y-auto">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="text-gray-900 text-base font-semibold">
             {isEdit ? "Edit Employee" : "Add Employee"}
           </DialogTitle>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {isEdit ? "Update the employee's information below." : "Fill in the details to add a new employee."}
+          </p>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4 py-2">
+        <div className="flex flex-col gap-5 py-2">
 
-          {/* EMPLOYEE NO */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">
-              Employee No.
-              {!isEdit && <span className="text-gray-400 font-normal ml-1">(auto-generated if left blank)</span>}
-            </label>
-            <Input
-              placeholder="e.g. 1024"
-              value={form.employee_no}
-              onChange={e => setForm({ ...form, employee_no: e.target.value })}
-              className="bg-white border-gray-200"
-            />
-          </div>
+          {/* ── SECTION: Basic Info ── */}
+          <div>
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Basic Info</p>
+            <div className="grid grid-cols-2 gap-3">
 
-          {/* FULL NAME */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Full Name</label>
-            <Input
-              placeholder="e.g. Juan dela Cruz"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              className="bg-white border-gray-200"
-            />
-          </div>
-
-          {/* CONTACT */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Contact Info</label>
-            <Input
-              placeholder="e.g. 0917-123-4567"
-              value={form.contact}
-              onChange={e => setForm({ ...form, contact: e.target.value })}
-              className="bg-white border-gray-200"
-            />
-          </div>
-
-          {/* DEPARTMENT */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Department</label>
-            <Select value={form.dept} onValueChange={val => setForm({ ...form, dept: val })}>
-              <SelectTrigger className="w-full bg-white border-gray-200">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
-                {DEPTS.map(d => (
-                  <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* STATUS */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Status</label>
-            <Select value={form.status} onValueChange={val => setForm({ ...form, status: val })}>
-              <SelectTrigger className="w-full bg-white border-gray-200">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
-                {STATUSES.map(s => (
-                  <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* LEAVE FIELDS */}
-          {form.status === "On Leave" && (
-            <div className="flex flex-col gap-4 pt-1 animate-in fade-in duration-150">
+              {/* EMPLOYEE NO */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Type of Leave</label>
-                <Select value={form.leaveType} onValueChange={val => setForm({ ...form, leaveType: val })}>
-                  <SelectTrigger className="w-full bg-white border-gray-200">
+                <label className="text-xs font-medium text-gray-600">
+                  Employee No.
+                </label>
+                <Input
+                  placeholder={isEdit ? "" : "Auto-generated if blank"}
+                  value={form.employee_no}
+                  onChange={e => setForm({ ...form, employee_no: e.target.value })}
+                  className="bg-white border-gray-200 text-sm h-9"
+                />
+              </div>
+
+              {/* STATUS */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">Status</label>
+                <Select value={form.status} onValueChange={val => setForm({ ...form, status: val })}>
+                  <SelectTrigger className="w-full bg-white border-gray-200 h-9 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
-                    {LEAVE_TYPES.map(t => (
-                      <SelectItem key={t} value={t} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
-                        {t}
+                    {STATUSES.map(s => (
+                      <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer text-sm">
+                        {s}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-gray-700">Leave Start</label>
-                  <Input type="date" value={form.leaveStart}
-                    onChange={e => setForm({ ...form, leaveStart: e.target.value })}
-                    className="bg-white border-gray-200" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-gray-700">Leave End</label>
-                  <Input type="date" value={form.leaveEnd}
-                    onChange={e => setForm({ ...form, leaveEnd: e.target.value })}
-                    className="bg-white border-gray-200" />
-                </div>
+
+              {/* FULL NAME — spans full width */}
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">Full Name <span className="text-red-400">*</span></label>
+                <Input
+                  placeholder="e.g. Juan dela Cruz"
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  className="bg-white border-gray-200 text-sm h-9"
+                />
+              </div>
+
+              {/* CONTACT — spans full width */}
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">Contact Info</label>
+                <Input
+                  placeholder="e.g. 0917-123-4567"
+                  value={form.contact}
+                  onChange={e => setForm({ ...form, contact: e.target.value })}
+                  className="bg-white border-gray-200 text-sm h-9"
+                />
+              </div>
+
+              {/* DEPARTMENT — spans full width */}
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">Department</label>
+                <Select value={form.dept} onValueChange={val => setForm({ ...form, dept: val })}>
+                  <SelectTrigger className="w-full bg-white border-gray-200 h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
+                    {DEPTS.map(d => (
+                      <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer text-sm">
+                        {d}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* DIVIDER */}
-          <div className="border-t border-gray-100 pt-2">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-              Shift Schedule
-            </p>
+          {/* ── DIVIDER ── */}
+          <div className="border-t border-gray-100" />
+
+          {/* ── SECTION: Shift Schedule ── */}
+          <div className="flex flex-col gap-4">
+            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Shift Schedule</p>
 
             {/* SHIFT TIMES */}
-            <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Shift Start</label>
+                <label className="text-xs font-medium text-gray-600">Shift Start</label>
                 <Input
                   type="time"
                   value={form.shiftStart}
                   onChange={e => setForm({ ...form, shiftStart: e.target.value })}
-                  className="bg-white border-gray-200"
+                  className="bg-white border-gray-200 text-sm h-10"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-gray-700">Shift End</label>
+                <label className="text-xs font-medium text-gray-600">Shift End</label>
                 <Input
                   type="time"
                   value={form.shiftEnd}
                   onChange={e => setForm({ ...form, shiftEnd: e.target.value })}
-                  className="bg-white border-gray-200"
+                  className="bg-white border-gray-200 text-sm h-10"
                 />
               </div>
             </div>
 
             {/* DAY OFFS */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-gray-600">
                 Day Offs
-                <span className="text-gray-400 font-normal ml-1">(click to toggle)</span>
+                <span className="text-gray-400 font-normal ml-1.5">click to toggle</span>
               </label>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-7 gap-1.5">
                 {DAYS_OF_WEEK.map(day => {
                   const active = (form.dayOffs || []).includes(day)
                   return (
@@ -244,9 +203,9 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                       key={day}
                       type="button"
                       onClick={() => toggleDayOff(day)}
-                      className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      className={`py-2 rounded-lg text-xs font-medium border transition-colors text-center w-full ${
                         active
-                          ? "bg-orange-500 text-white border-orange-500"
+                          ? "bg-orange-50 text-orange-500 border-orange-400"
                           : "bg-white text-gray-500 border-gray-200 hover:border-orange-300 hover:text-orange-500"
                       }`}
                     >
@@ -260,11 +219,11 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50" onClick={onClose}>
+        <DialogFooter className="gap-2 pt-2">
+          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50 text-sm" onClick={onClose}>
             Cancel
           </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={handleSave}>
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave}>
             {isEdit ? "Save Changes" : "Add Employee"}
           </Button>
         </DialogFooter>

@@ -22,7 +22,7 @@ export const MOCK_STATS = {
 }
 
 export const DEPARTMENTS = [
-  'All Departments','Sales','HR','Accounting','Admin','Intern','Warehouse'
+  'All Departments','Sales','HR','Accounting','Admin','Warehouse'
 ]
 
 export const MONTHS = [

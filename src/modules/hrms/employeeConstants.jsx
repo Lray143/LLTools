@@ -1,5 +1,5 @@
-export const DEPTS    = ["Sales", "HR", "Accounting", "Admin", "Intern", "Warehouse"]
-export const STATUSES = ["Active", "On Leave"]
+export const DEPTS    = ["Sales", "HR", "Accounting", "Admin", "Warehouse"]
+export const STATUSES = ["Active", "On Leave", "Intern"]
 
 export const LEAVE_TYPES = [
   "Paid Leave",
