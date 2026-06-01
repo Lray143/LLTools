@@ -1,8 +1,10 @@
+// src/modules/outlets/Outlets.jsx
 import { useState, useEffect, useMemo } from 'react'
 
 import OutletToolbar       from './components/OutletToolbar'
 import OutletCardGrid      from './components/OutletCardGrid'
 import OutletListView      from './components/OutletListView'
+import OutletOrdersView    from './components/OutletOrdersView'
 import OutletModal         from './components/OutletModal'
 import OutletDeleteModal   from './components/OutletDeleteModal'
 import OutletArchiveDrawer from './components/OutletArchiveDrawer'
@@ -13,16 +15,16 @@ export default function Outlets() {
   const [archivedOutlets, setArchivedOutlets] = useState([])
   const [loading,         setLoading]         = useState(true)
 
-  // UI state
-  const [view,         setView]         = useState('cards')   // 'cards' | 'list'
+  // UI state — 'cards' | 'list' | 'orders'
+  const [view,         setView]         = useState('cards')
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('All Statuses')
 
   // Modal state
-  const [editTarget,    setEditTarget]    = useState(null)   // outlet obj | {} for new
-  const [deleteTarget,  setDeleteTarget]  = useState(null)   // outlet obj
-  const [showArchive,   setShowArchive]   = useState(false)
-  const [ordersTarget,  setOrdersTarget]  = useState(null)   // outlet obj | null
+  const [editTarget,   setEditTarget]   = useState(null)   // outlet obj | {} for new
+  const [deleteTarget, setDeleteTarget] = useState(null)   // outlet obj
+  const [showArchive,  setShowArchive]  = useState(false)
+  const [ordersTarget, setOrdersTarget] = useState(null)   // outlet obj | null
 
   // ── Data loading ────────────────────────────────────────────────
   const load = async () => {
@@ -31,7 +33,7 @@ export default function Outlets() {
       window.electronAPI.getOutlets(),
       window.electronAPI.getArchivedOutlets(),
     ])
-    setOutlets(active   ?? [])
+    setOutlets(active    ?? [])
     setArchivedOutlets(archived ?? [])
     setLoading(false)
   }
@@ -61,7 +63,7 @@ export default function Outlets() {
     await load()
   }
 
-  // ── Filtered list ───────────────────────────────────────────────
+  // ── Filtered list (for cards + list views only) ─────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return outlets.filter((o) => {
@@ -84,8 +86,8 @@ export default function Outlets() {
 
       {/* Toolbar */}
       <OutletToolbar
-        view={view}            setView={setView}
-        search={search}        setSearch={setSearch}
+        view={view}              setView={setView}
+        search={search}          setSearch={setSearch}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
         total={filtered.length}
         onAdd={() => setEditTarget({})}
@@ -97,6 +99,8 @@ export default function Outlets() {
         <div className="flex items-center justify-center py-20 text-gray-400">
           <p>Loading outlets…</p>
         </div>
+      ) : view === 'orders' ? (
+        <OutletOrdersView outlets={outlets} />
       ) : view === 'cards' ? (
         <OutletCardGrid
           outlets={filtered}
@@ -141,7 +145,7 @@ export default function Outlets() {
         />
       )}
 
-      {/* Orders drawer */}
+      {/* Per-outlet orders drawer (from card/list view) */}
       {ordersTarget !== null && (
         <OutletOrdersDrawer
           outlet={ordersTarget}
