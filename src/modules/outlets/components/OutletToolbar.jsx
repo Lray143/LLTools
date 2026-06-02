@@ -5,6 +5,8 @@ export default function OutletToolbar({
   view, setView,
   search, setSearch,
   statusFilter, setStatusFilter,
+  regionFilter, setRegionFilter,
+  regions,
   total,
   onAdd,
   onArchive,
@@ -36,7 +38,7 @@ export default function OutletToolbar({
         ))}
       </div>
 
-      {/* Status filter + count — hidden in orders view */}
+      {/* Status filter + Region filter + count — hidden in orders view */}
       {!isOrdersView && (
         <>
           <select
@@ -47,6 +49,17 @@ export default function OutletToolbar({
             <option value="All Statuses">All Statuses</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
+          </select>
+
+          <select
+            value={regionFilter}
+            onChange={(e) => setRegionFilter(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 max-w-[220px]"
+          >
+            <option value="All Regions">All Regions</option>
+            {regions.map(r => (
+              <option key={r} value={r}>{r}</option>
+            ))}
           </select>
 
           <span className="text-sm text-gray-500 ml-1">

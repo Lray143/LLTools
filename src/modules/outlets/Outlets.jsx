@@ -20,6 +20,7 @@ export default function Outlets() {
   const [view,         setView]         = useState('cards')
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('All Statuses')
+  const [regionFilter, setRegionFilter] = useState('All Regions')
 
   // Modal state
   const [editTarget,   setEditTarget]   = useState(null)   // outlet obj | {} for new
@@ -62,6 +63,12 @@ export default function Outlets() {
     await load()
   }
 
+  // ── Unique region values for filter dropdown ────────────────────
+  const regions = useMemo(() => {
+    const set = new Set(outlets.map(o => o.region).filter(Boolean))
+    return Array.from(set).sort()
+  }, [outlets])
+
   // ── Filtered list (for cards + list views only) ─────────────────
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -70,12 +77,15 @@ export default function Outlets() {
         !q ||
         o.name.toLowerCase().includes(q) ||
         (o.code    ?? '').toLowerCase().includes(q) ||
-        (o.address ?? '').toLowerCase().includes(q)
+        (o.address ?? '').toLowerCase().includes(q) ||
+        (o.region  ?? '').toLowerCase().includes(q)
       const matchStatus =
         statusFilter === 'All Statuses' || o.status === statusFilter
-      return matchSearch && matchStatus
+      const matchRegion =
+        regionFilter === 'All Regions' || o.region === regionFilter
+      return matchSearch && matchStatus && matchRegion
     })
-  }, [outlets, search, statusFilter])
+  }, [outlets, search, statusFilter, regionFilter])
 
   return (
     <div className="flex flex-col w-full h-full bg-white overflow-hidden">
@@ -109,6 +119,8 @@ export default function Outlets() {
         view={view}              setView={setView}
         search={search}          setSearch={setSearch}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+        regionFilter={regionFilter} setRegionFilter={setRegionFilter}
+        regions={regions}
         total={filtered.length}
         onAdd={() => setEditTarget({})}
         onArchive={() => setShowArchive(true)}
@@ -143,6 +155,7 @@ export default function Outlets() {
           outlet={editTarget}
           onSave={handleSave}
           onClose={() => setEditTarget(null)}
+          regions={regions}
         />
       )}
 

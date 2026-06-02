@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Trash2, Tag } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Trash2, Tag, ChevronDown } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Input }  from '../../../components/ui/input'
 import {
@@ -12,25 +12,40 @@ import { DISCOUNT_PRESETS } from '../outletConstants'
 
 const emptyDiscount = () => ({ id: crypto.randomUUID(), name: '', value: '' })
 
-export default function OutletModal({ outlet, onSave, onClose }) {
+export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
   const isEditing = !!outlet?.id
 
   const [name,      setName]      = useState('')
   const [address,   setAddress]   = useState('')
+  const [region,    setRegion]    = useState('')
   const [status,    setStatus]    = useState('Active')
   const [discounts, setDiscounts] = useState([])
   const [errors,    setErrors]    = useState({})
   const [saving,    setSaving]    = useState(false)
+  const [regionOpen, setRegionOpen] = useState(false)
+  const regionRef = useRef(null)
 
   useEffect(() => {
     if (outlet) {
       setName(outlet.name       ?? '')
       setAddress(outlet.address ?? '')
+      setRegion(outlet.region   ?? '')
       setStatus(outlet.status   ?? 'Active')
       setDiscounts(outlet.discounts?.map(d => ({ ...d })) ?? [])
       setErrors({})
     }
   }, [outlet])
+
+  // Close region dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (regionRef.current && !regionRef.current.contains(e.target)) {
+        setRegionOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const addDiscount    = () => setDiscounts(prev => [...prev, emptyDiscount()])
   const removeDiscount = (id) => setDiscounts(prev => prev.filter(d => d.id !== id))
@@ -56,6 +71,7 @@ export default function OutletModal({ outlet, onSave, onClose }) {
       id:        outlet?.id ?? crypto.randomUUID(),
       name:      name.trim(),
       address:   address.trim(),
+      region:    region || null,
       status,
       discounts: discounts.map(d => ({
         id:    d.id,
@@ -115,6 +131,53 @@ export default function OutletModal({ outlet, onSave, onClose }) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Region — custom combobox */}
+              <div className="flex flex-col gap-1.5" ref={regionRef}>
+                <label className="text-xs font-medium text-gray-600">Region</label>
+                <div className="relative">
+                  <Input
+                    placeholder="e.g. Region I, NCR…"
+                    value={region}
+                    onChange={e => { setRegion(e.target.value); setRegionOpen(true) }}
+                    onFocus={() => setRegionOpen(true)}
+                    className="bg-white border-gray-200 text-sm h-9 pr-8"
+                  />
+                  {regions.length > 0 && (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => setRegionOpen(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <ChevronDown size={14} className={`transition-transform ${regionOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                  {regionOpen && regions.length > 0 && (
+                    <div className="absolute z-[210] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden">
+                      {regions
+                        .filter(r => r.toLowerCase().includes(region.toLowerCase()))
+                        .map(r => (
+                          <button
+                            key={r}
+                            type="button"
+                            onMouseDown={e => e.preventDefault()}
+                            onClick={() => { setRegion(r); setRegionOpen(false) }}
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-orange-50 hover:text-orange-700 ${
+                              region === r ? 'bg-orange-50 text-orange-700 font-medium' : 'text-gray-700'
+                            }`}
+                          >
+                            {r}
+                          </button>
+                        ))
+                      }
+                      {regions.filter(r => r.toLowerCase().includes(region.toLowerCase())).length === 0 && (
+                        <p className="px-3 py-2 text-xs text-gray-400 italic">No matches — type to add new</p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Address — full width */}

@@ -14,6 +14,16 @@ export const getOutletColor = (name = '') => {
   return OUTLET_COLORS[Math.abs(hash) % OUTLET_COLORS.length]
 }
 
+// Standard PH region short-names — used as datalist suggestions in the modal
+export const PH_REGION_SUGGESTIONS = [
+  'NCR', 'CAR',
+  'Region I', 'Region II', 'Region III',
+  'Region IV-A', 'Region IV-B',
+  'Region V', 'Region VI', 'Region VII', 'Region VIII',
+  'Region IX', 'Region X', 'Region XI', 'Region XII', 'Region XIII',
+  'BARMM',
+]
+
 export const DISCOUNT_PRESETS = [
   { name: 'Senior Citizen', value: 20 },
   { name: 'PWD',            value: 20 },

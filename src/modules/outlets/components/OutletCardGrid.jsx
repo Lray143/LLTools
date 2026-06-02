@@ -1,4 +1,4 @@
-import { Pencil, Trash2, Tag, ScrollText, Clock } from 'lucide-react'
+import { Pencil, Trash2, Tag, ScrollText, MapPin } from 'lucide-react'
 import { getOutletColor } from '../outletConstants'
 
 function OutletCard({ outlet, onEdit, onDelete, onViewOrders }) {
@@ -53,6 +53,13 @@ function OutletCard({ outlet, onEdit, onDelete, onViewOrders }) {
 
       {outlet.address && (
         <p className="text-xs text-gray-400 text-center truncate w-full max-w-[160px]">{outlet.address}</p>
+      )}
+
+      {outlet.region && (
+        <span className="inline-flex items-center gap-1 text-xs text-indigo-500 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full max-w-[180px] truncate">
+          <MapPin size={9} className="shrink-0" />
+          <span className="truncate">{outlet.region}</span>
+        </span>
       )}
     </div>
   )

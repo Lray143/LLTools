@@ -185,6 +185,7 @@ const initDb = async () => {
       name        TEXT NOT NULL,
       code        TEXT,
       address     TEXT,
+      region      TEXT,
       status      TEXT DEFAULT 'Active',
       discounts   TEXT DEFAULT '[]',
       archived    INTEGER DEFAULT 0,
@@ -239,6 +240,7 @@ const initDb = async () => {
   // ── OUTLETS MIGRATIONS (for existing DBs missing the outlets table) ─
   try { db.run(`ALTER TABLE outlets ADD COLUMN code      TEXT`) }                             catch (_) {}
   try { db.run(`ALTER TABLE outlets ADD COLUMN address   TEXT`) }                             catch (_) {}
+  try { db.run(`ALTER TABLE outlets ADD COLUMN region    TEXT`) }                             catch (_) {}
   try { db.run(`ALTER TABLE outlets ADD COLUMN status    TEXT DEFAULT 'Active'`) }            catch (_) {}
   try { db.run(`ALTER TABLE outlets ADD COLUMN discounts TEXT DEFAULT '[]'`) }                catch (_) {}
   try { db.run(`ALTER TABLE outlets ADD COLUMN archived  INTEGER DEFAULT 0`) }                catch (_) {}
@@ -568,6 +570,7 @@ const mapOutlet = (o) => ({
   name:      o.name      ?? '',
   code:      o.code      ?? '',
   address:   o.address   ?? '',
+  region:    o.region    ?? '',
   status:    o.status    ?? 'Active',
   discounts: (() => { try { return JSON.parse(o.discounts ?? '[]') } catch { return [] } })(),
 })
@@ -581,12 +584,13 @@ const getArchivedOutlets = () =>
     .map(mapOutlet)
 
 const upsertOutlet = (o) => run(`
-  INSERT INTO outlets (id, name, code, address, status, discounts, archived)
-  VALUES (?, ?, ?, ?, ?, ?, 0)
+  INSERT INTO outlets (id, name, code, address, region, status, discounts, archived)
+  VALUES (?, ?, ?, ?, ?, ?, ?, 0)
   ON CONFLICT(id) DO UPDATE SET
     name        = excluded.name,
     code        = excluded.code,
     address     = excluded.address,
+    region      = excluded.region,
     status      = excluded.status,
     discounts   = excluded.discounts,
     sync_status = 'pending'
@@ -595,6 +599,7 @@ const upsertOutlet = (o) => run(`
   o.name,
   o.code    ?? null,
   o.address ?? null,
+  o.region  ?? null,
   o.status  ?? 'Active',
   JSON.stringify(o.discounts ?? []),
 ])
