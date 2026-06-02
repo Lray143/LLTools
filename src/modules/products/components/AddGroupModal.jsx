@@ -23,26 +23,50 @@ export default function AddGroupModal({ onAdd, onClose }) {
   }
 
   return (
-    /* Backdrop */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.35)',
+      }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 relative">
+      <div style={{
+        background: '#fff',
+        borderRadius: '16px',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+        width: '100%', maxWidth: '360px',
+        padding: '28px',
+        position: 'relative',
+      }}>
         {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          style={{
+            position: 'absolute', top: '16px', right: '16px',
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            color: '#9ca3af', padding: '4px', borderRadius: '6px',
+            transition: 'color 100ms',
+          }}
+          onMouseEnter={e => e.currentTarget.style.color = '#4b5563'}
+          onMouseLeave={e => e.currentTarget.style.color = '#9ca3af'}
         >
-          <X size={18} />
+          <X size={17} />
         </button>
 
-        <h2 className="text-lg font-semibold text-gray-800 mb-1">Add Group Header</h2>
-        <p className="text-sm text-gray-500 mb-5">
+        <h2 style={{ fontSize: '16px', fontWeight: 600, color: '#111827', margin: '0 0 4px' }}>
+          Add Group Header
+        </h2>
+        <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 20px' }}>
           Group headers separate product categories (e.g. ASTRINGENTS, SOAPS).
         </p>
 
-        <label className="block text-xs font-medium text-gray-600 mb-1.5 uppercase tracking-wide">
+        <label style={{
+          display: 'block',
+          fontSize: '11px', fontWeight: 700, color: '#f97316',
+          textTransform: 'uppercase', letterSpacing: '0.07em',
+          marginBottom: '6px',
+        }}>
           Group Name
         </label>
         <input
@@ -52,24 +76,44 @@ export default function AddGroupModal({ onAdd, onClose }) {
           onChange={(e) => setName(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="e.g. TONERS"
-          className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-800
-                     focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent
-                     placeholder:text-gray-300"
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            padding: '9px 12px', fontSize: '13px',
+            border: '1px solid #e5e7eb', borderRadius: '10px',
+            outline: 'none', color: '#2c2010',
+            transition: 'border-color 150ms',
+          }}
+          onFocus={e => e.target.style.borderColor = '#f97316'}
+          onBlur={e => e.target.style.borderColor = '#e5e7eb'}
         />
 
-        <div className="flex gap-2 mt-5">
+        <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600
-                       hover:bg-gray-50 transition-colors font-medium"
+            style={{
+              flex: 1, padding: '9px',
+              borderRadius: '10px', border: '1px solid #e5e7eb',
+              background: '#fff', color: '#4b5563',
+              fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+              transition: 'background 100ms',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#f9f8f6'}
+            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
             disabled={!name.trim()}
-            className="flex-1 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-medium
-                       hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            style={{
+              flex: 1, padding: '9px',
+              borderRadius: '10px', border: 'none',
+              background: name.trim() ? '#f97316' : '#fed7aa',
+              color: '#fff',
+              fontSize: '13px', fontWeight: 600,
+              cursor: name.trim() ? 'pointer' : 'not-allowed',
+              transition: 'background 150ms',
+            }}
           >
             Add Group
           </button>

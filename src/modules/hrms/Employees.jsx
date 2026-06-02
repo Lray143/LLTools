@@ -236,38 +236,34 @@ function Employees() {
   ]
 
   return (
-    <div className="flex flex-col w-full h-full bg-white">
+    <div className="flex flex-col w-full h-full bg-white overflow-hidden">
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       {/* ── TOP HEADER ── */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Employees</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               placeholder="Search..."
-              style={{
-                paddingLeft: '2.25rem', width: '14rem',
-                height: '34px', borderRadius: '8px',
-                border: '1px solid rgba(0,0,0,0.1)', background: '#fff',
-                fontSize: '13px', color: '#2c2010', outline: 'none',
-              }}
+              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-gray-300"
+              style={{ width: '14rem', height: '34px', fontSize: '13px' }}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <button style={{ ...displayPill, padding: '5px 8px', minWidth: 0 }}>
-            <Bell size={16} color="#a09278" />
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+            <Bell className="w-4 h-4" />
           </button>
-          <button style={{ ...displayPill, padding: '5px 8px', minWidth: 0 }}>
-            <User size={16} color="#a09278" />
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+            <User className="w-4 h-4" />
           </button>
         </div>
       </div>
 
       {/* ── FILTER BAR ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 32px', gap: '16px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', paddingBottom: '12px', paddingLeft: '32px', paddingRight: 'calc(32px + 15px)', gap: '16px', flexWrap: 'wrap' }}>
 
         {/* LEFT: view toggle + filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -364,7 +360,8 @@ function Employees() {
       </div>
 
       {/* ── CONTENT ── */}
-      <div className="px-8 pb-8">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="px-8 pb-8">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">
             <p className="text-sm">Loading employees...</p>
@@ -388,6 +385,7 @@ function Employees() {
             <p className="text-sm">Try adjusting your search or filters</p>
           </div>
         )}
+        </div>
       </div>
 
       {/* ── MODALS ── */}

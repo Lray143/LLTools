@@ -10,11 +10,18 @@ const BASE_FIELDS = [
   { key: 'size',        label: 'Item Size',        type: 'text',   align: 'center' },
 ]
 
-// ── Regular editable cell (non-price fields) ─────────────────────
+const cellBase = {
+  fontSize: '12px', color: '#4b3a2a', padding: '9px 12px',
+  verticalAlign: 'middle', userSelect: 'none',
+}
+
+// ── Regular editable cell ─────────────────────────────────────────
 function EditableCell({ value, type, align, onCommit, editMode }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(value)
   const inputRef = useRef(null)
+
+  const textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left'
 
   const startEdit = () => {
     if (!editMode) return
@@ -34,8 +41,6 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
     if (e.key === 'Escape') { setEditing(false); setDraft(value) }
   }
 
-  const alignClass = { left: 'text-left', center: 'text-center', right: 'text-right' }[align]
-
   const display =
     type === 'number' && (value === '' || value === null || value === undefined)
       ? '—'
@@ -45,7 +50,7 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
 
   if (editing) {
     return (
-      <td className="px-3 py-1.5">
+      <td style={{ ...cellBase, padding: '6px 8px' }}>
         <input
           ref={inputRef}
           type={type === 'number' ? 'number' : 'text'}
@@ -54,9 +59,12 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          className={`w-full border border-orange-400 rounded px-2 py-1 text-xs
-                      focus:outline-none focus:ring-2 focus:ring-orange-300
-                      bg-orange-50 ${alignClass}`}
+          style={{
+            width: '100%', textAlign,
+            padding: '4px 8px', fontSize: '12px', borderRadius: '6px',
+            border: '1px solid #f97316', outline: 'none',
+            background: '#fff8f2', color: '#2c2010',
+          }}
         />
       </td>
     )
@@ -66,26 +74,27 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
     <td
       onClick={startEdit}
       title={editMode ? 'Click to edit' : undefined}
-      className={`px-3 py-2 text-xs text-gray-700 select-none transition-colors group
-                  ${editMode ? 'cursor-pointer hover:bg-orange-50' : 'cursor-default'}
-                  ${alignClass}`}
+      style={{
+        ...cellBase,
+        textAlign,
+        cursor: editMode ? 'pointer' : 'default',
+        transition: 'background 100ms',
+      }}
+      onMouseEnter={e => { if (editMode) e.currentTarget.style.background = '#fff8f2' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
     >
-      <span className={editMode ? 'group-hover:text-orange-600 transition-colors' : ''}>
+      <span style={{ transition: 'color 100ms' }}>
         {display}
       </span>
     </td>
   )
 }
 
-// ── Price cell — outlet-aware ─────────────────────────────────────
-// outletPrice = number (outlet override) | undefined (no override → fall back to base)
-// basePrice   = number (always the canonical price stored in products table)
+// ── Price cell ────────────────────────────────────────────────────
 function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onResetOutlet, editMode, isOutletMode }) {
   const [editing, setEditing] = useState(false)
   const hasOverride = outletPrice !== undefined && outletPrice !== null
-  const displayPrice = isOutletMode
-    ? (hasOverride ? outletPrice : basePrice)
-    : basePrice
+  const displayPrice = isOutletMode ? (hasOverride ? outletPrice : basePrice) : basePrice
   const [draft, setDraft] = useState('')
   const inputRef = useRef(null)
 
@@ -99,11 +108,8 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
   const commit = () => {
     setEditing(false)
     const val = parseFloat(draft) || 0
-    if (isOutletMode) {
-      onCommitOutlet(val)
-    } else {
-      onCommitBase(val)
-    }
+    if (isOutletMode) onCommitOutlet(val)
+    else onCommitBase(val)
   }
 
   const handleKeyDown = (e) => {
@@ -118,7 +124,7 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
 
   if (editing) {
     return (
-      <td className="px-3 py-1.5 text-right">
+      <td style={{ ...cellBase, padding: '6px 8px', textAlign: 'right' }}>
         <input
           ref={inputRef}
           type="number"
@@ -127,8 +133,12 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          className="w-full border border-orange-400 rounded px-2 py-1 text-xs text-right
-                     focus:outline-none focus:ring-2 focus:ring-orange-300 bg-orange-50"
+          style={{
+            width: '100%', textAlign: 'right',
+            padding: '4px 8px', fontSize: '12px', borderRadius: '6px',
+            border: '1px solid #f97316', outline: 'none',
+            background: '#fff8f2', color: '#2c2010',
+          }}
         />
       </td>
     )
@@ -137,31 +147,36 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
   return (
     <td
       onClick={startEdit}
-      title={
-        !editMode ? undefined
-        : isOutletMode && hasOverride ? 'Click to edit outlet price · (i) has custom price'
-        : editMode ? 'Click to edit'
-        : undefined
-      }
-      className={`px-3 py-2 text-xs select-none transition-colors text-right relative group
-                  ${editMode ? 'cursor-pointer hover:bg-orange-50' : 'cursor-default'}`}
+      style={{
+        ...cellBase,
+        textAlign: 'right',
+        cursor: editMode ? 'pointer' : 'default',
+        position: 'relative',
+        transition: 'background 100ms',
+      }}
+      onMouseEnter={e => { if (editMode) e.currentTarget.style.background = '#fff8f2' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
     >
-      {/* Price value */}
-      <span className={
-        isOutletMode && hasOverride
-          ? 'text-orange-600 font-semibold'
-          : 'text-gray-700'
-      }>
+      <span style={{
+        color: isOutletMode && hasOverride ? '#f97316' : '#4b3a2a',
+        fontWeight: isOutletMode && hasOverride ? 600 : 400,
+      }}>
         {formatted}
       </span>
-
-      {/* Reset-to-default button — shown on hover in outlet+edit mode when there's an override */}
+      {/* Reset button — outlet override hover */}
       {isOutletMode && hasOverride && editMode && (
         <button
           onClick={(e) => { e.stopPropagation(); onResetOutlet() }}
           title="Reset to default price"
-          className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100
-                     transition-opacity text-gray-400 hover:text-red-400 p-0.5 rounded"
+          style={{
+            position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            color: '#9ca3af', padding: '2px', borderRadius: '4px',
+            opacity: 0, transition: 'opacity 150ms',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.opacity = 1 }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af' }}
+          className="price-reset-btn"
         >
           <RotateCcw size={10} />
         </button>
@@ -175,31 +190,39 @@ export default function ProductRow({
   row, rowIndex, groupId,
   onUpdateCell, onDeleteRow,
   editMode, selected, onToggleSelect,
-  // Outlet price props
-  isOutletMode,
-  outletPrice,         // number | undefined
-  onUpdateOutletPrice, // (productId, price) => void
-  onResetOutletPrice,  // (productId) => void
+  isOutletMode, outletPrice, onUpdateOutletPrice, onResetOutletPrice,
 }) {
   const isEven = rowIndex % 2 === 0
+  const rowBg = selected
+    ? '#fff8f2'
+    : isEven ? '#fff' : '#faf9f6'
 
   return (
-    <tr className={`border-b border-gray-100 transition-colors group
-                    ${selected
-                      ? 'bg-orange-50'
-                      : isEven ? 'bg-white' : 'bg-gray-50/60'
-                    }
-                    ${editMode && !selected ? 'hover:bg-orange-50/40' : ''}`}>
-
+    <tr
+      style={{
+        background: rowBg,
+        borderBottom: '1px solid #f0ebe3',
+        transition: 'background 100ms',
+      }}
+      onMouseEnter={e => {
+        if (!selected && !editMode) return
+        // reveal the reset button on hover
+        const resetBtn = e.currentTarget.querySelector('.price-reset-btn')
+        if (resetBtn) resetBtn.style.opacity = '1'
+      }}
+      onMouseLeave={e => {
+        const resetBtn = e.currentTarget.querySelector('.price-reset-btn')
+        if (resetBtn) resetBtn.style.opacity = '0'
+      }}
+    >
       {/* Checkbox */}
-      <td className="px-3 py-2 w-8">
+      <td style={{ padding: '9px 12px', width: '32px', verticalAlign: 'middle' }}>
         {editMode && !isOutletMode && (
           <input
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(row.id)}
-            className="rounded border-gray-300 text-orange-500
-                       focus:ring-orange-400 cursor-pointer"
+            style={{ cursor: 'pointer', accentColor: '#f97316' }}
           />
         )}
       </td>
@@ -211,11 +234,10 @@ export default function ProductRow({
           type={field.type}
           align={field.align}
           onCommit={(val) => onUpdateCell(groupId, row.id, field.key, val)}
-          editMode={editMode && !isOutletMode}  // base fields locked in outlet mode
+          editMode={editMode && !isOutletMode}
         />
       ))}
 
-      {/* Price cell — outlet-aware */}
       <PriceCell
         basePrice={row.price}
         outletPrice={outletPrice}
@@ -226,16 +248,22 @@ export default function ProductRow({
         isOutletMode={isOutletMode}
       />
 
-      {/* Per-row delete — only in default mode */}
-      <td className="px-3 py-2 text-center">
+      {/* Delete */}
+      <td style={{ padding: '9px 12px', textAlign: 'center', verticalAlign: 'middle', width: '40px' }}>
         {editMode && !isOutletMode && (
           <button
             onClick={() => onDeleteRow(groupId, row.id)}
-            title="Delete row"
-            className="opacity-0 group-hover:opacity-100 transition-opacity
-                       text-gray-300 hover:text-red-500 hover:scale-110 transition-all"
+            title="Archive row"
+            style={{
+              border: 'none', background: 'transparent', cursor: 'pointer',
+              color: '#d1cbbf', padding: '2px', borderRadius: '4px',
+              opacity: 0, transition: 'opacity 150ms, color 150ms',
+            }}
+            className="row-delete-btn"
+            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.opacity = '1' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#d1cbbf' }}
           >
-            <Trash2 size={14} />
+            <Trash2 size={13} />
           </button>
         )}
       </td>

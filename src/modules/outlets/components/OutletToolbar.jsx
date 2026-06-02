@@ -12,7 +12,7 @@ export default function OutletToolbar({
   const isOrdersView = view === 'orders'
 
   return (
-    <div className="flex items-center gap-3 mb-6 flex-wrap">
+    <div className="flex items-center gap-3 px-8 py-3 border-b border-gray-100 flex-wrap">
 
       {/* Cards / List / Orders toggle */}
       <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
@@ -55,8 +55,8 @@ export default function OutletToolbar({
         </>
       )}
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Divider */}
+      <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
 
       {/* Search — hidden in orders view */}
       {!isOrdersView && (
@@ -71,16 +71,18 @@ export default function OutletToolbar({
         </div>
       )}
 
-      {/* Archive */}
+      {/* Spacer to push action buttons right */}
+      <div className="flex-1" />
+
+      {/* Action buttons */}
       <button
         onClick={onArchive}
-        className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+        className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
       >
         <Archive size={15} />
         Archive
       </button>
 
-      {/* Add */}
       <button
         onClick={onAdd}
         className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm"
