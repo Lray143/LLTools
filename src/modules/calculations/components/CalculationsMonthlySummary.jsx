@@ -65,75 +65,84 @@ function styleHeaderCell(cell, yellow = true) {
   }
 }
 
-function styleDataCell(cell, colNum) {
-  // Column A (NO.) has no fill in the original
+// Column layout (11 cols — AREA NO. and BOX# removed):
+//  1=NO. 2=DATE 3=PRODUCT NAME 4=Outlet 5=SERIES#
+//  6=DOC'S QTY 7=ACTUAL QTY 8=OVER/LACKING 9=Discounted Price
+//  10=B.O TOTAL AMOUNT 11=AREA
+function styleDataCell(cell, colNum, fillArgb) {
   if (colNum > 1) {
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN } }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb ?? GREEN } }
   }
-  cell.border = BORDER_DATA
-
-  // Column A and D use size 11; everything else size 14 (matches original)
-  const fontSize = (colNum === 1 || colNum === 4) ? 11 : 14
-  cell.font = { name: 'Calibri', size: fontSize }
+  cell.border = BORDER_THIN
+  cell.font   = { name: 'Calibri', size: colNum === 1 ? 11 : 14 }
 
   if (colNum === 1) {
-    cell.alignment = { vertical: 'center' }                           // no horizontal set (matches original)
-  } else if (colNum === 2) {
-    cell.alignment = { horizontal: 'center', vertical: 'center' }
-    cell.numFmt    = 'mm-dd-yy'                                       // date format matching original
-  } else if (colNum === 3) {
-    cell.alignment = { horizontal: 'center', vertical: 'center', wrapText: true }
-  } else if (colNum === 4) {
-    cell.alignment = { horizontal: 'center', vertical: 'center' }
-  } else if (colNum === 5 || colNum === 13) {
-    cell.alignment = { horizontal: 'left', vertical: 'center', wrapText: true }
-  } else if (colNum === 6) {
-    cell.alignment = { horizontal: 'center', vertical: 'center' }
-  } else if (colNum >= 7 && colNum <= 9) {
-    cell.alignment = { horizontal: 'center', vertical: 'center' }
-  } else if (colNum === 10) {
-    // OVER/LACKING: accounting format without decimals — shows "-" for zero
-    cell.alignment = { vertical: 'center' }
+    cell.alignment = { vertical: 'middle' }
+  } else if (colNum === 2) {                        // DATE
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+    cell.numFmt    = 'mm-dd-yy'
+  } else if (colNum === 3) {                        // PRODUCT NAME
+    cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+  } else if (colNum === 4) {                        // Outlet
+    cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+  } else if (colNum === 5) {                        // SERIES #
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  } else if (colNum === 6) {                        // DOC'S QTY
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  } else if (colNum === 7) {                        // ACTUAL QTY
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+  } else if (colNum === 8) {                        // OVER/LACKING
+    cell.alignment = { vertical: 'middle' }
     cell.numFmt    = '_(* #,##0_);_(* \\(#,##0\\);_(* "-"??_);_(@_)'
-  } else if (colNum === 11) {
-    cell.alignment = { horizontal: 'center', vertical: 'center' }
+  } else if (colNum === 9) {                        // Discounted Price
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb ?? GREEN } }
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     cell.numFmt    = ACCT_FMT
-  } else if (colNum === 12) {
-    cell.alignment = { horizontal: 'center', vertical: 'center' }
+  } else if (colNum === 10) {                       // B.O TOTAL AMOUNT
+    cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb ?? GREEN } }
+    cell.border    = {
+      top:    { style: 'thin',   color: { argb: 'FF000000' } },
+      bottom: { style: 'thin',   color: { argb: 'FF000000' } },
+      left:   { style: 'medium', color: { argb: 'FF000000' } },
+      right:  { style: 'medium', color: { argb: 'FF000000' } },
+    }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' }
     cell.numFmt    = ACCT_FMT
-    cell.font      = { name: 'Calibri', size: 14, bold: true }       // L is bold in original
-  } else if (colNum === 13) {
-    // AREA column uses Algerian 72pt in the original
+    cell.font      = { name: 'Calibri', size: 14, bold: true }
+  } else if (colNum === 11) {                       // AREA (region label)
+    cell.border    = {
+      left:  { style: 'medium', color: { argb: 'FF000000' } },
+      right: { style: 'medium', color: { argb: 'FF000000' } },
+    }
+    cell.alignment = { horizontal: 'center', vertical: 'middle', textRotation: 90, wrapText: true }
     cell.font      = { name: 'Algerian', size: 72 }
-    cell.alignment = { horizontal: 'center', vertical: 'center' }
   }
 }
 
-async function exportMonthToXLSX(monthLabel, orders) {
+async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'LLTools Calculations'
   wb.created = new Date()
 
   const ws = wb.addWorksheet(monthLabel)
 
-  // ── Column widths (matching Vanselling exactly) ───────────────
+  // 11 columns: AREA NO. and BOX# removed to match original file
+  const COLS = 11
+
+  // ── Column widths ────────────────────────────────────────────
   ws.getColumn(1).width  = 7.43   // A: NO.
   ws.getColumn(2).width  = 18.43  // B: DATE
   ws.getColumn(3).width  = 39.86  // C: PRODUCT NAME
-  ws.getColumn(4).width  = 6.43   // D: AREA NO.
-  ws.getColumn(5).width  = 47.71  // E: Outlet
-  ws.getColumn(6).width  = 8.0    // F: SERIES #
-  ws.getColumn(7).width  = 14.86  // G: BOX#
-  ws.getColumn(8).width  = 10.43  // H: DOC'S QTY
-  ws.getColumn(9).width  = 8.43   // I: ACTUAL QTY
-  ws.getColumn(10).width = 8.0    // J: OVER/LACKING
-  ws.getColumn(11).width = 16.86  // K: Discounted Price
-  ws.getColumn(12).width = 23.14  // L: B.O TOTAL AMOUNT
-  ws.getColumn(13).width = 14.29  // M: AREA
+  ws.getColumn(4).width  = 47.71  // D: Outlet       (was E)
+  ws.getColumn(5).width  = 8.0    // E: SERIES #     (was F)
+  ws.getColumn(6).width  = 10.43  // F: DOC'S QTY    (was H)
+  ws.getColumn(7).width  = 8.43   // G: ACTUAL QTY   (was I)
+  ws.getColumn(8).width  = 8.0    // H: OVER/LACKING (was J)
+  ws.getColumn(9).width  = 16.86  // I: Disc. Price  (was K)
+  ws.getColumn(10).width = 23.14  // J: B.O TOTAL    (was L)
+  ws.getColumn(11).width = 14.29  // K: AREA         (was M)
 
-  const COLS = 13
-
-  // Helper: style a merged banner row
+  // ── Helper: merged banner row ──────────────────────────────
   const banner = (rowNum, value, opts = {}) => {
     ws.mergeCells(rowNum, 1, rowNum, COLS)
     const cell     = ws.getCell(rowNum, 1)
@@ -143,20 +152,20 @@ async function exportMonthToXLSX(monthLabel, orders) {
     ws.getRow(rowNum).height = opts.height ?? 19.5
   }
 
-  // ── ROWS 1-4: company header ──────────────────────────────────
+  // ── ROWS 1-4: company header ──────────────────────────────
   ws.getRow(1).height = 19.5
-  banner(2, 'DOUBLE L BEAUTY PRODUCTS', { fontName: 'Corben',          size: 36, height: 29.25 })
+  banner(2, 'DOUBLE L BEAUTY PRODUCTS', { fontName: 'Corben', size: 36, height: 29.25 })
   banner(3, '1081 Quirino Highway, Brgy., Kaligayahan, Novaliches, Quezon City', { fontName: 'Times New Roman', size: 12 })
-  banner(4, 'Tel No: 291 3248 Fax No: 288- 5812',                       { fontName: 'Times New Roman', size: 12 })
+  banner(4, 'Tel No: 291 3248 Fax No: 288- 5812', { fontName: 'Times New Roman', size: 12 })
 
-  // ── ROWS 5-6: B.O Van selling (tall merged block) ────────────
+  // ── ROWS 5-6: B.O Van Selling ──────────────────────────────
   ws.mergeCells(5, 1, 6, COLS)
   const boCell     = ws.getCell(5, 1)
-  boCell.value     = 'B.O Van selling'
+  boCell.value     = 'B.O VAN SELLING'
   boCell.font      = { name: 'Algerian', bold: true, size: 20 }
   boCell.alignment = { horizontal: 'center', vertical: 'center' }
 
-  // ── ROW 7: Month of … ─────────────────────────────────────────
+  // ── ROW 7: Month ──────────────────────────────────────────
   ws.mergeCells(7, 1, 7, COLS)
   const monthCell     = ws.getCell(7, 1)
   monthCell.value     = `MONTH OF ${monthLabel.toUpperCase()}`
@@ -164,45 +173,132 @@ async function exportMonthToXLSX(monthLabel, orders) {
   monthCell.alignment = { horizontal: 'center', vertical: 'center' }
   ws.getRow(7).height = 25.5
 
-  // ── ROW 8: Column headers ─────────────────────────────────────
+  // ── ROW 8: Column headers ─────────────────────────────────
   const HEADER_LABELS = [
     'NO.',              // A  1
     'DATE',             // B  2
     'PRODUCT NAME',     // C  3
-    'AREA NO.',         // D  4
-    'Outlet',           // E  5
-    'SERIES #',         // F  6
-    'BOX#',             // G  7
-    "DOC'S QTY",        // H  8
-    'ACTUAL QTY',       // I  9
-    'OVER/ LACKING',    // J  10
-    'Discounted Price ', // K  11  ← no yellow fill (trailing space matches original)
-    'B.O TOTAL AMOUNT', // L  12  ← no yellow fill
-    'AREA',             // M  13
+    'Outlet',           // D  4
+    'SERIES #',         // E  5
+    "DOC'S QTY",        // F  6
+    'ACTUAL QTY',       // G  7
+    'OVER/ LACKING',    // H  8
+    'Discounted Price', // I  9  (no yellow fill)
+    'B.O TOTAL AMOUNT', // J  10 (no yellow fill)
+    'AREA',             // K  11
   ]
-  const NO_YELLOW = new Set([11, 12])  // K, L
+  const NO_YELLOW = new Set([9, 10])  // Disc Price & B.O Total have no yellow header
 
   ws.getRow(8).height = 44.25
   for (let c = 1; c <= COLS; c++) {
-    const cell  = ws.getCell(8, c)
-    cell.value  = HEADER_LABELS[c - 1]
+    const cell = ws.getCell(8, c)
+    cell.value = HEADER_LABELS[c - 1]
     styleHeaderCell(cell, !NO_YELLOW.has(c))
   }
 
   // Freeze first 8 rows
   ws.views = [{ state: 'frozen', xSplit: 0, ySplit: 8, activeCell: 'A9' }]
 
-  // ── DATA ROWS ─────────────────────────────────────────────────
-  const sortedOrders = [...orders].sort(
-    (a, b) => new Date(a.createdAt) - new Date(b.createdAt)
-  )
+  // ── Region colour palette (cycles if > 8 regions) ──────────────
+  const REGION_FILL_PALETTE = [
+    'FFA8D08D',  // soft green
+    'FFF4B083',  // peach
+    'FFBDD6EE',  // light blue
+    'FFFFD965',  // yellow
+    'FFD4A0C7',  // lavender
+    'FFFF9999',  // soft red
+    'FF99CCFF',  // sky blue
+    'FFFFE599',  // light yellow
+  ]
+
+  // ── DATA ROWS ─────────────────────────────────────────────
+  // Sort: primary by region name, secondary by date
+  const getRegion = (order) => {
+    if (order.outletId && outletMap[order.outletId]?.region)
+      return outletMap[order.outletId].region
+    return order.outletRegion || 'Unknown Region'
+  }
+
+  const sortedOrders = [...orders].sort((a, b) => {
+    const rA = getRegion(a).toLowerCase()
+    const rB = getRegion(b).toLowerCase()
+    if (rA < rB) return -1
+    if (rA > rB) return 1
+    return new Date(a.createdAt) - new Date(b.createdAt)
+  })
 
   let currentRow = 9
-  let areaSeq    = 1       // sequential area/order number per month
-  let totalDocsQty = 0     // for footer totals
 
+  // Region colour tracking
+  let regionColorIdx = 0
+  const regionFillMap = {}
+  const getRegionFill = (region) => {
+    if (!regionFillMap[region]) {
+      regionFillMap[region] = REGION_FILL_PALETTE[regionColorIdx % REGION_FILL_PALETTE.length]
+      regionColorIdx++
+    }
+    return regionFillMap[region]
+  }
+
+  const regionSpans = []        // { region, startRow, endRow }
+  let currentRegion   = null
+  let regionSpanStart = 9
+
+  // ── Region subtotal row ───────────────────────────────────
+  // One summary row per region, same fill colour as the region.
+  // F(6)=SUM DOC'S QTY, G(7)=SUM ACTUAL QTY, H(8)=F-G — all bold red.
+  const insertRegionSubtotal = (region, regionStart, regionEnd) => {
+    const sRow  = currentRow
+    const rFill = regionFillMap[region] ?? GREEN
+    ws.getRow(sRow).height = 22
+
+    // Fill cols 1-10 with region colour
+    for (let c = 1; c <= 10; c++) {
+      ws.getCell(sRow, c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rFill } }
+    }
+
+    // F (col 6): SUM DOC'S QTY
+    const cellF = ws.getCell(sRow, 6)
+    cellF.value     = { formula: `SUM(F${regionStart}:F${regionEnd})` }
+    cellF.font      = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFF0000' } }
+    cellF.alignment = { horizontal: 'center', vertical: 'middle' }
+    cellF.border    = {
+      left: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } },
+      top:  { style: 'medium', color: { argb: 'FF000000' } }, bottom: { style: 'medium', color: { argb: 'FF000000' } },
+    }
+
+    // G (col 7): SUM ACTUAL QTY
+    const cellG = ws.getCell(sRow, 7)
+    cellG.value     = { formula: `SUM(G${regionStart}:G${regionEnd})` }
+    cellG.font      = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFF0000' } }
+    cellG.alignment = { horizontal: 'center', vertical: 'middle' }
+    cellG.border    = {
+      left: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } },
+      top:  { style: 'medium', color: { argb: 'FF000000' } }, bottom: { style: 'medium', color: { argb: 'FF000000' } },
+    }
+
+    // H (col 8): OVER/LACKING diff
+    const cellH = ws.getCell(sRow, 8)
+    cellH.value     = { formula: `F${sRow}-G${sRow}`, result: 0 }
+    cellH.font      = { name: 'Calibri', size: 14, color: { argb: 'FFFF0000' } }
+    cellH.alignment = { vertical: 'middle' }
+    cellH.numFmt    = '_(* #,##0_);_(* \\(#,##0\\);_(* "-"??_);_(@_)'
+    cellH.border    = {
+      left: { style: 'thin', color: { argb: 'FF000000' } },
+      top:  { style: 'medium', color: { argb: 'FF000000' } }, bottom: { style: 'medium', color: { argb: 'FF000000' } },
+    }
+
+    // K (col 11): keep AREA column frame visible
+    ws.getCell(sRow, 11).border = {
+      left:  { style: 'medium', color: { argb: 'FF000000' } },
+      right: { style: 'medium', color: { argb: 'FF000000' } },
+    }
+
+    currentRow++
+  }
+
+  // ── Main data loop ────────────────────────────────────────────
   for (const order of sortedOrders) {
-    // Flatten all items across all groups in this order
     const allItems = []
     for (const group of order.groups) {
       for (const item of group.items) {
@@ -211,8 +307,8 @@ async function exportMonthToXLSX(monthLabel, orders) {
     }
     if (allItems.length === 0) continue
 
-    const orderStart = currentRow
-    const itemCount  = allItems.length
+    const region      = getRegion(order) || 'Unknown Region'
+    const itemCount   = allItems.length
     const dateFormatted = order.createdAt
       ? new Date(order.createdAt).toLocaleDateString('en-PH', {
           year: 'numeric', month: '2-digit', day: '2-digit',
@@ -220,154 +316,157 @@ async function exportMonthToXLSX(monthLabel, orders) {
       : '—'
     const outletLabel = order.outletName || 'Default'
 
+    // Insert subtotal row and reset span when region changes
+    if (region !== currentRegion) {
+      if (currentRegion !== null) {
+        const regionEndRow = currentRow - 1
+        regionSpans.push({ region: currentRegion, startRow: regionSpanStart, endRow: regionEndRow })
+        insertRegionSubtotal(currentRegion, regionSpanStart, regionEndRow)
+      }
+      currentRegion   = region
+      regionSpanStart = currentRow
+    }
+
+    // orderStart MUST be declared AFTER the region check (insertRegionSubtotal increments currentRow)
+    const orderStart = currentRow
+    const fillArgb   = getRegionFill(region)
+
     for (let i = 0; i < allItems.length; i++) {
       const item    = allItems[i]
       const isFirst = i === 0
-      const row     = ws.getRow(currentRow)
-      row.height    = 26.25
 
       const productName = item.size
         ? `${item.description} (${item.size})`
         : item.description
 
-      // A: item sequence within this order (1, 2, 3…)
+      // Auto-height: let Excel expand rows to fit wrapped product names
+      // Col 1 (A): item sequence
       ws.getCell(currentRow, 1).value  = i + 1
-      // B: DATE — only on first row; rest blank (will be merged)
+      // Col 2 (B): DATE — first row only
       ws.getCell(currentRow, 2).value  = isFirst ? dateFormatted : null
-      // C: PRODUCT NAME
+      // Col 3 (C): PRODUCT NAME
       ws.getCell(currentRow, 3).value  = productName
-      // D: AREA NO. — only on first row; rest blank (will be merged)
-      ws.getCell(currentRow, 4).value  = isFirst ? areaSeq : null
-      // E: Outlet — only on first row; rest blank (will be merged)
-      ws.getCell(currentRow, 5).value  = isFirst ? outletLabel : null
-      // F: SERIES # — only on first row; rest blank (will be merged)
-      ws.getCell(currentRow, 6).value  = isFirst ? order.seriesNumber : null
-      // G: BOX# — blank
-      ws.getCell(currentRow, 7).value  = null
-      // H: DOC'S QTY
-      ws.getCell(currentRow, 8).value  = item.qty
-      // I: ACTUAL QTY (same as DOC'S for us)
-      ws.getCell(currentRow, 9).value  = item.qty
-      // J: OVER / LACKING — formula: DOC'S QTY minus ACTUAL QTY
-      ws.getCell(currentRow, 10).value = { formula: `H${currentRow}-I${currentRow}`, result: 0 }
-      // K: Discounted Price (line total = qty × price)
-      ws.getCell(currentRow, 11).value = item.total ?? (item.qty * item.price)
-      // L: B.O TOTAL AMOUNT — SUM formula on first row spanning all items of this order
-      ws.getCell(currentRow, 12).value = isFirst
-        ? { formula: `SUM(K${orderStart}:K${orderStart + itemCount - 1})` }
+      // Col 4 (D): Outlet — first row only
+      ws.getCell(currentRow, 4).value  = isFirst ? outletLabel : null
+      // Col 5 (E): SERIES # — first row only
+      ws.getCell(currentRow, 5).value  = isFirst ? order.seriesNumber : null
+      // Col 6 (F): DOC'S QTY
+      ws.getCell(currentRow, 6).value  = item.qty
+      // Col 7 (G): ACTUAL QTY
+      ws.getCell(currentRow, 7).value  = item.qty
+      // Col 8 (H): OVER/LACKING = F - G
+      ws.getCell(currentRow, 8).value  = { formula: `F${currentRow}-G${currentRow}`, result: 0 }
+      // Col 9 (I): Discounted Price
+      ws.getCell(currentRow, 9).value  = item.total ?? (item.qty * item.price)
+      // Col 10 (J): B.O TOTAL — SUM of col I for this order (first row only)
+      ws.getCell(currentRow, 10).value = isFirst
+        ? { formula: `SUM(I${orderStart}:I${orderStart + itemCount - 1})` }
         : null
-      // M: AREA — only on first row; rest blank (will be merged)
-      ws.getCell(currentRow, 13).value = isFirst ? outletLabel : null
+      // Col 11 (K): AREA — first row only; merged per region below
+      ws.getCell(currentRow, 11).value = isFirst ? region : null
 
-      // Make L on first row bold (matching original)
-      if (isFirst) {
-        ws.getCell(currentRow, 12).font = { bold: true, size: 10 }
-      }
-
-      // Apply per-cell styling
+      // Apply per-cell styling with region fill
       for (let c = 1; c <= COLS; c++) {
-        styleDataCell(ws.getCell(currentRow, c), c)
+        styleDataCell(ws.getCell(currentRow, c), c, fillArgb)
       }
 
-      totalDocsQty += Number(item.qty)
       currentRow++
     }
 
     // Merge repeated columns for multi-item orders
     if (itemCount > 1) {
       const endRow = orderStart + itemCount - 1
-      const MERGE_COLS = [2, 4, 5, 6, 12, 13] // B, D, E, F, L, M
-      for (const c of MERGE_COLS) {
+      // DATE(2), Outlet(4), SERIES#(5), B.O TOTAL(10)
+      for (const c of [2, 4, 5, 10]) {
         ws.mergeCells(orderStart, c, endRow, c)
-        // Re-apply alignment on the merged cell
         const mc = ws.getCell(orderStart, c)
-        mc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN } }
-        if (c === 2)  mc.alignment = { horizontal: 'center', vertical: 'middle' }
-        if (c === 4)  mc.alignment = { horizontal: 'center', vertical: 'middle' }
-        if (c === 5)  mc.alignment = { horizontal: 'left',   vertical: 'middle' }
-        if (c === 6)  mc.alignment = { horizontal: 'center', vertical: 'middle' }
-        if (c === 12) mc.alignment = { horizontal: 'right',  vertical: 'middle' }
-        if (c === 13) mc.alignment = { horizontal: 'left',   vertical: 'middle' }
+        mc.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillArgb } }
+        if (c === 2) {
+          mc.border = BORDER_THIN
+          mc.alignment = { horizontal: 'center', vertical: 'middle' }
+        } else if (c === 4) {
+          mc.border = BORDER_THIN
+          mc.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+        } else if (c === 5) {
+          mc.border = BORDER_THIN
+          mc.alignment = { horizontal: 'center', vertical: 'middle' }
+        } else if (c === 10) {
+          mc.border = {
+            top: { style: 'thin', color: { argb: 'FF000000' } }, bottom: { style: 'thin', color: { argb: 'FF000000' } },
+            left: { style: 'medium', color: { argb: 'FF000000' } }, right: { style: 'medium', color: { argb: 'FF000000' } },
+          }
+          mc.alignment = { horizontal: 'center', vertical: 'middle' }
+          mc.numFmt    = ACCT_FMT
+          mc.font      = { name: 'Calibri', size: 14, bold: true }
+        }
       }
     }
-
-    areaSeq++
   }
 
-  // ── TOTALS FOOTER ─────────────────────────────────────────────
-  const footerRow = ws.getRow(currentRow)
-  footerRow.height = 22
+  // Close the last region
+  if (currentRegion !== null) {
+    const regionEndRow = currentRow - 1
+    regionSpans.push({ region: currentRegion, startRow: regionSpanStart, endRow: regionEndRow })
+    insertRegionSubtotal(currentRegion, regionSpanStart, regionEndRow)
+  }
 
-  ws.getCell(currentRow, 8).value  = { formula: `SUM(H9:H${currentRow - 1})` }
-  ws.getCell(currentRow, 9).value  = { formula: `SUM(I9:I${currentRow - 1})` }
-  ws.getCell(currentRow, 10).value = { formula: `H${currentRow}-I${currentRow}` }
-  ws.getCell(currentRow, 11).value = { formula: `SUM(K9:K${currentRow - 1})` }
-  ws.getCell(currentRow, 12).value = { formula: `SUM(L9:L${currentRow - 1})` }
+  // ── Merge col 11 (K/AREA) per region span ─────────────────────
+  // Each region: one tall merged cell, rotated Algerian text.
+  for (const span of regionSpans) {
+    if (span.endRow >= span.startRow) {
+      if (span.endRow > span.startRow) {
+        ws.mergeCells(span.startRow, 11, span.endRow, 11)
+      }
+      const mc        = ws.getCell(span.startRow, 11)
+      const rFill     = regionFillMap[span.region] ?? GREEN
+      const rowCount  = span.endRow - span.startRow + 1
+      const charCount = span.region.length || 1
+      const dynFontSize = Math.max(8, Math.min(72, Math.floor((rowCount * 20) / (charCount * 0.62))))
+
+      mc.value     = span.region
+      mc.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: rFill } }
+      mc.font      = { name: 'Algerian', size: dynFontSize, bold: true, color: { argb: 'FF000000' } }
+      mc.alignment = { horizontal: 'center', vertical: 'middle', textRotation: 90, wrapText: true }
+      mc.border    = {
+        left:   { style: 'medium', color: { argb: 'FF000000' } },
+        right:  { style: 'medium', color: { argb: 'FF000000' } },
+        top:    { style: 'medium', color: { argb: 'FF000000' } },
+        bottom: { style: 'medium', color: { argb: 'FF000000' } },
+      }
+    }
+  }
+
+  // ── TOTALS FOOTER ────────────────────────────────────────────
+  const lastData  = currentRow - 1
+  ws.getRow(currentRow).height = 22
+
+  ws.getCell(currentRow, 6).value  = { formula: `SUM(F9:F${lastData})` }   // DOC'S QTY
+  ws.getCell(currentRow, 7).value  = { formula: `SUM(G9:G${lastData})` }   // ACTUAL QTY
+  ws.getCell(currentRow, 8).value  = { formula: `F${currentRow}-G${currentRow}` } // OVER/LACKING
+  ws.getCell(currentRow, 9).value  = { formula: `SUM(I9:I${lastData})` }   // Disc. Price
+  ws.getCell(currentRow, 10).value = { formula: `SUM(J9:J${lastData})` }   // B.O TOTAL
 
   for (let c = 1; c <= COLS; c++) {
-    const cell    = ws.getCell(currentRow, c)
-    cell.font     = { bold: true, size: 10 }
-    cell.border   = {
+    const cell = ws.getCell(currentRow, c)
+    cell.font  = { bold: true, size: 10 }
+    cell.border = {
       top:    { style: 'medium', color: { argb: 'FF000000' } },
       bottom: { style: 'thin',   color: { argb: 'FF000000' } },
       left:   { style: 'thin',   color: { argb: 'FF000000' } },
       right:  { style: 'thin',   color: { argb: 'FF000000' } },
     }
-    if (c === 8 || c === 9) {
-      cell.alignment = { horizontal: 'center', vertical: 'center' }
-    }
-    if (c === 10) {
-      cell.alignment = { horizontal: 'center', vertical: 'center' }
+    if (c === 6 || c === 7) cell.alignment = { horizontal: 'center', vertical: 'middle' }
+    if (c === 8) {
+      cell.alignment = { horizontal: 'center', vertical: 'middle' }
       cell.numFmt    = '_(* #,##0_);_(* \\(#,##0\\);_(* "-"??_);_(@_)'
     }
-    if (c === 11 || c === 12) {
-      cell.alignment = { horizontal: 'right', vertical: 'center' }
+    if (c === 9 || c === 10) {
+      cell.alignment = { horizontal: 'right', vertical: 'middle' }
       cell.numFmt    = ACCT_FMT
     }
   }
 
-  // ── SIGNATURE FOOTER (5 rows after data) ──────────────────────
-  const sigRow1 = currentRow + 5   // "Prepared By:" labels
-  const sigRow2 = currentRow + 6   // Names
-  const sigRow3 = currentRow + 7   // Titles
-
-  // Row 1: labels — Algerian 20
-  const sigLabels = [
-    { col: 2, text: 'Prepared By:' },
-    { col: 5, text: 'Checked By:'  },
-    { col: 6, text: 'Verified By:' },
-  ]
-  for (const { col, text } of sigLabels) {
-    const cell  = ws.getCell(sigRow1, col)
-    cell.value  = text
-    cell.font   = { name: 'Algerian', size: 20 }
-  }
-
-  // Row 2: names — Calibri 14 bold
-  const sigNames = [
-    { col: 2, text: 'Marjun S. Mallanao'   },
-    { col: 5, text: 'Krizia A. Guerrero'   },
-    { col: 6, text: 'Rubilyn A. Omega'     },
-  ]
-  for (const { col, text } of sigNames) {
-    const cell  = ws.getCell(sigRow2, col)
-    cell.value  = text
-    cell.font   = { name: 'Calibri', size: 14, bold: true }
-  }
-
-  // Row 3: titles — Calibri 12 italic
-  const sigTitles = [
-    { col: 2, text: 'Inventory Staff'        },
-    { col: 5, text: 'Jr. Acctg. Supervisor'  },
-    { col: 6, text: 'Sr.. Acctg. Supervisor' },
-  ]
-  for (const { col, text } of sigTitles) {
-    const cell  = ws.getCell(sigRow3, col)
-    cell.value  = text
-    cell.font   = { name: 'Calibri', size: 12, italic: true }
-  }
-
-  // ── DOWNLOAD ──────────────────────────────────────────────────
+  // ── DOWNLOAD ───────────────────────────────────────────────
   const buffer = await wb.xlsx.writeBuffer()
   const blob   = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -506,7 +605,17 @@ export default function CalculationsMonthlySummary() {
     if (exportingMonth) return
     setExportingMonth(month.key)
     try {
-      await exportMonthToXLSX(formatMonthKey(month.key), month.orders)
+      // Fetch all outlets so we can resolve outlet → region for each order
+      let outletMap = {}
+      try {
+        const outlets = await window.electronAPI.getOutlets()
+        if (Array.isArray(outlets)) {
+          outletMap = Object.fromEntries(outlets.map(o => [String(o.id), o]))
+        }
+      } catch (outletErr) {
+        console.warn('Could not load outlets for export:', outletErr)
+      }
+      await exportMonthToXLSX(formatMonthKey(month.key), month.orders, outletMap)
     } catch (err) {
       console.error('Export failed:', err)
     } finally {
