@@ -92,44 +92,42 @@ export function parseRawBiometrics(text, employeeMap = {}) {
     const totalTaps  = entry.ins.length + entry.outs.length
 
     // ── Resolve tap slots ─────────────────────────────────────
+    // Rule: shiftIn = first IN, shiftOut = last OUT (both anchored).
+    // lunchOut/lunchIn are only assigned when a middle OUT is
+    // *temporally followed* by a middle IN — not just by count.
+    // This prevents double-taps or extra morning taps from being
+    // misread as lunch returns (the old bug).
     const insUsed  = new Set()
     const outsUsed = new Set()
 
+    // Shift-in: always the chronologically first IN
     const shiftIn = entry.ins[0] ?? null
-    if (shiftIn) insUsed.add(0)
+    if (shiftIn !== null) insUsed.add(0)
 
+    // Shift-out: always the chronologically last OUT
+    let shiftOut = null
+    if (entry.outs.length >= 1) {
+      const lastIdx = entry.outs.length - 1
+      shiftOut = entry.outs[lastIdx]
+      outsUsed.add(lastIdx)
+    }
+
+    // Lunch pair: scan OUTs before shiftOut for one that is followed
+    // by any unused IN (index >= 1) that occurs *after* that OUT.
+    // Takes the first valid pair found.
     let lunchOut = null
     let lunchIn  = null
-    if (entry.ins.length >= 2 && entry.outs.length >= 1) {
-      lunchOut = entry.outs[0]
-      outsUsed.add(0)
-      lunchIn = entry.ins[1]
-      insUsed.add(1)
-    }
-
-    let shiftOut = null
-    if (lunchOut !== null) {
-      if (entry.outs.length >= 2) {
-        const idx = entry.outs.length - 1
-        shiftOut = entry.outs[idx]
-        outsUsed.add(idx)
-      }
-    } else {
-      if (entry.outs.length >= 1) {
-        const idx = entry.outs.length - 1
-        shiftOut = entry.outs[idx]
-        outsUsed.add(idx)
-      }
-    }
-
-    if (!shiftOut && totalTaps >= 5 && shiftIn) {
-      for (let i = entry.outs.length - 1; i >= 0; i--) {
-        if (!outsUsed.has(i)) {
-          shiftOut = entry.outs[i]
-          outsUsed.add(i)
+    for (let oi = 0; oi < entry.outs.length - 1; oi++) {
+      for (let ii = 1; ii < entry.ins.length; ii++) {
+        if (!insUsed.has(ii) && entry.ins[ii] > entry.outs[oi]) {
+          lunchOut = entry.outs[oi]
+          lunchIn  = entry.ins[ii]
+          outsUsed.add(oi)
+          insUsed.add(ii)
           break
         }
       }
+      if (lunchOut !== null) break
     }
 
     // ── Extra taps ────────────────────────────────────────────
