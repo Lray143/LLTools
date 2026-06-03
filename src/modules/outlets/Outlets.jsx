@@ -78,11 +78,11 @@ export default function Outlets() {
   }, [outlets, search, statusFilter])
 
   return (
-    <div className="flex flex-col w-full h-full bg-white overflow-hidden">
+    <div className="flex flex-col w-full h-full bg-[#fcfcfc] overflow-hidden">
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       {/* ── TOP HEADER ── */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -103,7 +103,6 @@ export default function Outlets() {
           </button>
         </div>
       </div>
-
       {/* ── FILTER / TOOLBAR BAR ── */}
       <OutletToolbar
         view={view}              setView={setView}

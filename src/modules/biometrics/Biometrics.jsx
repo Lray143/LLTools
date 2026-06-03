@@ -291,7 +291,7 @@ function Biometrics() {
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-white">
+    <div className="flex flex-col w-full h-full bg-[#fcfcfc]">
       <style>{`
         [role="option"]:focus,[data-highlighted],[role="option"][data-disabled]{
           outline:none!important;border-color:transparent!important;box-shadow:none!important;
@@ -299,7 +299,7 @@ function Biometrics() {
         [role="option"][data-state="checked"]{background:#f9fafb!important;color:#111827!important;}
       `}</style>
 
-      <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
         <BiometricHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       </div>
 

@@ -60,4 +60,8 @@ window.electronAPI = {
   getOrdersByDefault:      ()         => ipcRenderer.invoke('orders:getByDefault'),
   getAllOrders:             ()         => ipcRenderer.invoke('orders:getAll'),
   deleteOrder:             (id)       => ipcRenderer.invoke('orders:delete', id),
+
+  // ── Attachments ─────────────────────────────────────────────────
+  saveAttachment:          (data)     => ipcRenderer.invoke('attachments:save', data),
+  openAttachment:          (path)     => ipcRenderer.invoke('attachments:open', path),
 }

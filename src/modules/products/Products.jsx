@@ -7,9 +7,9 @@ export default function Products() {
   const [search, setSearch] = useState('')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#fff', overflow: 'hidden' }}>
+    <div className="bg-[#fcfcfc]" style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden' }}>
       {/* ── TOP HEADER ── */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -29,8 +29,7 @@ export default function Products() {
             <User className="w-4 h-4" />
           </button>
         </div>
-      </div>
-      <ProductsTable search={search} onSearchChange={setSearch} />
+      </div>      <ProductsTable search={search} onSearchChange={setSearch} />
     </div>
   )
 }

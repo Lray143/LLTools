@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react"
 import { Bell, Search, User } from "lucide-react"
 import NewEntryForm from "./components/NewEntryForm"
@@ -5,6 +6,7 @@ import VisitsTable from "./components/VisitsTable"
 import VisitModal from "./components/VisitModal"
 import VisitDeleteModal from "./components/VisitDeleteModal"
 import VisitArchiveModal from "./components/VisitArchiveModal"
+import DetailModal from "./components/DetailModal" // Imported DetailModal component
 
 const DISP_MAP = {
   "sent-back":  "Back to work",
@@ -20,18 +22,17 @@ function shortName(full = "") {
     : full.trim()
 }
 
-// ── Build all lookup maps from employees array ─────────────────
 function buildEmpMaps(emps) {
-  const byName  = {}   // exact name  -> { no, emp }
-  const byShort = {}   // short name  -> { no, emp }
-  const byId    = {}   // employee id -> { no, emp }
-  const byNo    = {}   // employee_no -> { no, emp }
+  const byName  = {}
+  const byShort = {}
+  const byId    = {}
+  const byNo    = {}
   emps.forEach(e => {
     const no = e.employee_no ?? e.employeeNo ?? ""
-    if (e.name)        byName[e.name]             = { no, emp: e }
-    if (e.name)        byShort[shortName(e.name)] = { no, emp: e }
-    if (e.id)          byId[e.id]                 = { no, emp: e }
-    if (no)            byNo[no]                   = { no, emp: e }
+    if (e.name) byName[e.name]             = { no, emp: e }
+    if (e.name) byShort[shortName(e.name)] = { no, emp: e }
+    if (e.id)   byId[e.id]                 = { no, emp: e }
+    if (no)     byNo[no]                   = { no, emp: e }
   })
   return { byName, byShort, byId, byNo }
 }
@@ -44,57 +45,53 @@ function dbToVisit(r, maps = {}) {
   const dateStr = `${month} ${day}`
   const fullName = r.fullName ?? r.full_name ?? ""
 
-  // Priority order for resolving the employee number:
-  // 1. employeeCode (what db.cjs mapClinicLog() returns — this is the canonical field)
-  //    BUT only accept it if it's actually a known employee_no (byNo lookup).
-  //    Old records had shortName like "Lester G." saved as employeeCode — discard those.
-  // 2. Lookup by employee UUID (employeeId foreign key)
-  // 3. Lookup by exact/short name match
-  const rawCode =
-    r.employeeCode  ||
-    r.employee_code ||
-    r.employeeNo    ||
-    r.employee_no   ||
-    ""
-
-  // Only trust rawCode if it resolves to a real employee number
+  const rawCode = r.employeeCode || r.employee_code || r.employeeNo || r.employee_no || ""
   let empNo = (rawCode && byNo[rawCode]) ? rawCode : ""
 
   if (!empNo) {
-    const byIdHit    = (r.employeeId || r.employee_id)
-                         ? byId[r.employeeId ?? r.employee_id]
-                         : null
+    const byIdHit    = (r.employeeId || r.employee_id) ? byId[r.employeeId ?? r.employee_id] : null
     const byNameHit  = byName[fullName]
-    // byShort keys are shortName(emp.name) — so try both the raw fullName
-    // and the shortName version of fullName to catch "Lester Gulferic" -> "Lester G." matches
     const byShortHit = byShort[fullName] || byShort[shortName(fullName)]
     const hit = byIdHit || byNameHit || byShortHit
     empNo = hit?.no ?? ""
   }
 
-  // Resolve display name: prefer real name from employee lookup,
-  // fall back to shortName of fullName
   let displayName = shortName(fullName)
   if (empNo) {
     const hit = byNo[empNo]
     if (hit?.emp?.name) displayName = shortName(hit.emp.name)
   }
 
+  // Parse attachments — stored in DB as JSON string
+  let attachments = []
+  try {
+    if (r.attachments) {
+      attachments = typeof r.attachments === "string"
+        ? JSON.parse(r.attachments)
+        : r.attachments
+    }
+  } catch (_) {}
+
   return {
-    id:          r.id,
-    date:        dateStr,
+    id:           r.id,
+    date:         dateStr,
     month,
     year,
-    time:        r.time        ?? "",
+    time:         r.time        ?? "",
     employeeCode: empNo,
-    employee:    displayName,
+    employee:     displayName,
     fullName,
-    complaint:   r.complaint   ?? "",
-    disposition: r.disposition ?? "",
-    bp:          r.bp          ?? "",
-    temp:        r.temp        ?? "",
-    treatment:   r.treatment   ?? "",
-    _rawDate:    r.date,
+    complaint:    r.complaint   ?? "",
+    disposition:  r.disposition ?? "",
+    bp:           r.bp          ?? "",
+    temp:         r.temp        ?? "",
+    treatment:    r.treatment   ?? "",
+    gender:       r.gender      ?? "",
+    age:          r.age         ?? "",
+    pulse:        r.pulse       ?? "",
+    spo2:         r.spo2        ?? "",
+    attachments,
+    _rawDate:     r.date,
   }
 }
 
@@ -116,6 +113,9 @@ export default function ClinicLog() {
   const [loading,   setLoading]   = useState(true)
   const [employees, setEmployees] = useState([])
 
+  // State hook to store the visit data currently previewed in the details panel
+  const [selectedVisit, setSelectedVisit] = useState(null)
+
   function empFromDb(row) {
     return {
       id:          row.id,
@@ -130,17 +130,23 @@ export default function ClinicLog() {
     date:         todayISO,
     time:         nowTime,
     employee:     "",
-    employeeCode: "",   // ← stores employee_no when picked from autocomplete
+    employeeCode: "",
+    gender:       "",
+    age:          "",
     complaint:    "",
     bp:           "",
     temp:         "",
+    pulse:        "",
+    spo2:         "",
     treatment:    "",
     disposition:  "sent-back",
+    attachments:  [],
   })
   const [saved, setSaved] = useState(false)
 
   const [modal,         setModal]         = useState(null)
   const [tableExpanded, setTableExpanded] = useState(false)
+  const [searchQuery,   setSearchQuery]   = useState("")
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -153,7 +159,6 @@ export default function ClinicLog() {
     }
   }, [])
 
-  // ── Shared helper: fetch employees + build all maps ────────────
   async function fetchMaps() {
     try {
       const emps = await window.electronAPI.getEmployees()
@@ -195,7 +200,6 @@ export default function ClinicLog() {
     loadEmployees()
   }, [loadVisits, loadArchived, loadEmployees])
 
-  // ── Save new entry ─────────────────────────────────────────────
   async function handleSave() {
     if (!form.employee.trim()) return
 
@@ -203,8 +207,6 @@ export default function ClinicLog() {
     const fullName = form.employee.trim()
     const timeStr  = to12(form.time)
 
-    // Use employeeCode set by NewEntryForm's onSelect first,
-    // then fall back to name-matching for safety
     const matchedEmp = employees.find(e => e.name === fullName)
     const employeeNo = form.employeeCode || matchedEmp?.employee_no || ""
 
@@ -212,7 +214,7 @@ export default function ClinicLog() {
       id,
       employeeId:   matchedEmp?.id ?? null,
       fullName,
-      employeeCode: employeeNo,   // ← stored in DB as employee_code
+      employeeCode: employeeNo,
       date:         form.date,
       time:         timeStr,
       complaint:    form.complaint,
@@ -220,6 +222,11 @@ export default function ClinicLog() {
       bp:           form.bp,
       temp:         form.temp,
       treatment:    form.treatment,
+      gender:       form.gender,
+      age:          form.age,
+      pulse:        form.pulse,
+      spo2:         form.spo2,
+      attachments:  JSON.stringify(form.attachments ?? []),
     }
 
     try {
@@ -237,16 +244,20 @@ export default function ClinicLog() {
         time:         new Date().toTimeString().slice(0, 5),
         employee:     "",
         employeeCode: "",
+        gender:       "",
+        age:          "",
         complaint:    "",
         bp:           "",
         temp:         "",
+        pulse:        "",
+        spo2:         "",
         treatment:    "",
         disposition:  "sent-back",
+        attachments:  [],
       })
     }, 2000)
   }
 
-  // ── Edit ───────────────────────────────────────────────────────
   async function handleEditSave(updatedVisit) {
     const matchedEmp = employees.find(e => e.name === updatedVisit.fullName)
     const employeeNo = matchedEmp?.employee_no || modal.visit.employeeCode || ""
@@ -263,6 +274,11 @@ export default function ClinicLog() {
       bp:           updatedVisit.bp,
       temp:         updatedVisit.temp,
       treatment:    updatedVisit.treatment,
+      gender:       updatedVisit.gender,
+      age:          updatedVisit.age,
+      pulse:        updatedVisit.pulse,
+      spo2:         updatedVisit.spo2,
+      attachments:  JSON.stringify(updatedVisit.attachments ?? []),
     }
     try {
       await window.electronAPI.upsertClinicLog(log)
@@ -273,7 +289,6 @@ export default function ClinicLog() {
     setModal(null)
   }
 
-  // ── Archive ────────────────────────────────────────────────────
   async function handleDelete() {
     try {
       await window.electronAPI.archiveClinicLog(modal.visit.id)
@@ -285,7 +300,6 @@ export default function ClinicLog() {
     setModal(null)
   }
 
-  // ── Restore ────────────────────────────────────────────────────
   async function handleUnarchive(visit) {
     try {
       await window.electronAPI.unarchiveClinicLog(visit.id)
@@ -296,7 +310,6 @@ export default function ClinicLog() {
     }
   }
 
-  // ── Permanent delete ───────────────────────────────────────────
   async function handlePermanentDelete(visit) {
     try {
       await window.electronAPI.permanentDeleteClinicLog(visit.id)
@@ -307,7 +320,7 @@ export default function ClinicLog() {
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-white">
+    <div className="flex flex-col w-full h-full bg-[#fcfcfc]">
 
       <VisitModal
         open={modal?.mode === "edit"}
@@ -329,15 +342,25 @@ export default function ClinicLog() {
         onClose={() => setModal(null)}
       />
 
+      {/* DetailModal opens up when a visit is selected via table cell click */}
+      {selectedVisit && (
+        <DetailModal
+          visit={selectedVisit}
+          onClose={() => setSelectedVisit(null)}
+        />
+      )}
+
       {/* TOP BAR */}
-      <div className="flex items-center justify-between px-8 py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Clinic Log</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
-              placeholder="Search..."
-              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-gray-300"
+              placeholder="Search name, ID, complaint…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-orange-300 focus:border-2 transition-colors"
               style={{ width: '14rem', height: '34px', fontSize: '13px' }}
             />
           </div>
@@ -366,11 +389,13 @@ export default function ClinicLog() {
         <VisitsTable
           visits={visits}
           loading={loading}
+          searchQuery={searchQuery}
           onEditVisit={v   => setModal({ mode: "edit",    visit: v })}
           onDeleteVisit={v => setModal({ mode: "delete",  visit: v })}
           onOpenArchive={() => setModal({ mode: "archive" })}
           tableExpanded={tableExpanded}
           onToggleExpand={() => setTableExpanded(e => !e)}
+          onRowClick={(v) => setSelectedVisit(v)}
         />
       </div>
 

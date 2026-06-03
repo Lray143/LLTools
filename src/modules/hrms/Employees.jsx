@@ -236,11 +236,11 @@ function Employees() {
   ]
 
   return (
-    <div className="flex flex-col w-full h-full bg-white overflow-hidden">
+    <div className="flex flex-col w-full h-full bg-[#fcfcfc] overflow-hidden">
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       {/* ── TOP HEADER ── */}
-      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 border-b border-gray-200">
+      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 bg-white border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Employees</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -261,7 +261,6 @@ function Employees() {
           </button>
         </div>
       </div>
-
       {/* ── FILTER BAR ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', paddingBottom: '12px', paddingLeft: '32px', paddingRight: 'calc(32px + 15px)', gap: '16px', flexWrap: 'wrap' }}>
 
