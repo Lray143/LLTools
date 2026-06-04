@@ -22,7 +22,7 @@ export default function CalculationsSummary({
   if (subtotal === 0) return null
 
   return (
-    <div className="border-t border-gray-200 bg-white px-6 py-4 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.06)]">
+    <div className="border-t border-gray-200 bg-white px-8 py-4 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.06)]">
       <div className="flex items-end justify-between gap-6 flex-wrap">
 
         {/* Left: line count + discount info */}
@@ -69,8 +69,12 @@ export default function CalculationsSummary({
           {/* View Receipt */}
           <button
             onClick={onViewReceipt}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-medium
-                       hover:bg-gray-900 transition-colors shadow-sm shrink-0"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '7px 16px', borderRadius: '10px',
+              border: 'none', background: '#f97316',
+              color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+            }}
           >
             <Receipt size={14} />
             View Receipt

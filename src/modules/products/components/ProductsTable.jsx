@@ -202,14 +202,14 @@ export default function ProductsTable({ search = '', onSearchChange }) {
 
   if (loading) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '14px' }}>
+      <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
         Loading products…
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+    <div className="flex flex-col h-full min-h-0">
 
       {/* ── Toolbar (mirrors BiometricHeader row) ── */}
       <ProductsToolbar
@@ -229,36 +229,20 @@ export default function ProductsTable({ search = '', onSearchChange }) {
 
       {/* ── Bulk-action bar ── */}
       {editMode && someSelected && !isOutletMode && (
-        <div style={{
-          margin: '12px 32px 0',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: '#fff8f2', border: '1px solid #fed7aa',
-          borderRadius: '10px', padding: '8px 16px',
-        }}>
-          <span style={{ fontSize: '13px', color: '#c2410c', fontWeight: 500 }}>
+        <div className="mx-8 mt-3 flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-4 py-2">
+          <span className="text-sm text-orange-700 font-medium">
             {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedRows(new Set())}
-              style={{
-                fontSize: '12px', color: '#6b7280', background: 'transparent',
-                border: 'none', cursor: 'pointer', padding: '5px 10px', borderRadius: '7px',
-                transition: 'background 100ms',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#fff'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              className="text-xs text-gray-500 bg-transparent border-none cursor-pointer px-2.5 py-1.5 rounded-md transition-colors hover:bg-white"
             >
               Clear selection
             </button>
             <button
               onClick={handleBulkArchive}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                fontSize: '12px', fontWeight: 600, color: '#fff',
-                background: '#f97316', border: 'none', borderRadius: '7px',
-                padding: '5px 12px', cursor: 'pointer',
-              }}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-orange-500 border-none rounded-md px-3 py-1.5 cursor-pointer hover:bg-orange-600 transition-colors"
             >
               <Archive size={12} />
               Archive selected
@@ -268,47 +252,35 @@ export default function ProductsTable({ search = '', onSearchChange }) {
       )}
 
       {/* ── Table area (mirrors BiometricTable container) ── */}
-      <div style={{ flex: 1, overflowY: 'auto', scrollbarGutter: 'stable', padding: '16px 32px 24px' }}>
-        <div style={{
-          background: '#fff',
-          borderRadius: '14px',
-          border: '1px solid #f0ebe3',
-          overflow: 'hidden',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-8 pt-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <table className="w-full text-sm border-collapse">
 
             {/* ── Header ── */}
-            <thead>
-              <tr style={{ background: '#f5f2ec', borderBottom: '1px solid #e8e2d8' }}>
+            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+              <tr>
                 {/* Checkbox th */}
-                <th style={{ width: '32px', padding: '10px 12px' }}>
+                <th className="px-3 py-3 w-8">
                   {editMode && !isOutletMode && (
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={handleToggleAll}
-                      style={{ cursor: 'pointer', accentColor: '#f97316' }}
+                      className="cursor-pointer accent-orange-500"
                     />
                   )}
                 </th>
                 {COLUMNS.slice(1).map((col, i) => (
                   <th
                     key={i}
-                    style={{
-                      width: col.width,
-                      padding: '10px 12px',
-                      textAlign: col.align ?? 'left',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: '#f97316',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                    }}
+                    className={`px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide
+                                ${col.align === 'right'  ? 'text-right'  : ''}
+                                ${col.align === 'center' ? 'text-center' : 'text-left'}`}
+                    style={{ width: col.width }}
                   >
                     {col.label}
                     {col.label === 'Price / Piece' && isOutletMode && (
-                      <span style={{ marginLeft: '4px', color: '#fb923c', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+                      <span className="ml-1 text-orange-400 font-normal normal-case tracking-normal">
                         (outlet)
                       </span>
                     )}
@@ -320,10 +292,7 @@ export default function ProductsTable({ search = '', onSearchChange }) {
             <tbody>
               {filteredGroups.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={8}
-                    style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af', fontSize: '14px' }}
-                  >
+                  <td colSpan={8} className="text-center py-16 text-gray-400 text-sm">
                     {search ? 'No products match your search.' : 'No products yet. Add a group to get started.'}
                   </td>
                 </tr>
@@ -366,7 +335,7 @@ export default function ProductsTable({ search = '', onSearchChange }) {
         </div>
 
         {/* ── Footer hint ── */}
-        <p style={{ fontSize: '11px', color: '#b0a090', textAlign: 'center', marginTop: '12px' }}>
+        <p className="text-xs text-gray-400 mt-3 text-center">
           {isOutletMode && editMode
             ? 'Click the Price cell to set a custom outlet price · ↺ to reset to default'
             : isOutletMode

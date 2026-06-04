@@ -3,8 +3,8 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 
 export default function CalculationsGroupHeader({ group, collapsed, onToggleCollapse }) {
   return (
-    <tr className="bg-orange-50 border-y border-orange-200">
-      <td colSpan={7} className="px-4 py-2">
+    <tr className="bg-orange-50/80 border-y border-orange-100">
+      <td colSpan={7} className="px-4 py-2.5">
         <div className="flex items-center gap-2">
           <button
             onClick={() => onToggleCollapse(group.id)}

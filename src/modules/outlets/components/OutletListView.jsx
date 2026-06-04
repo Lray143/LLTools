@@ -1,109 +1,103 @@
-// src/modules/outlets/components/OutletToolbar.jsx
-import { Search, Archive, Plus, ScrollText } from 'lucide-react'
+import { Pencil, Trash2, Tag, ScrollText } from 'lucide-react'
+import { getOutletColor } from '../outletConstants'
 
-export default function OutletToolbar({
-  view, setView,
-  search, setSearch,
-  statusFilter, setStatusFilter,
-  regionFilter, setRegionFilter,
-  regions,
-  total,
-  onAdd,
-  onArchive,
-}) {
-  const isOrdersView = view === 'orders'
+export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders }) {
+  if (outlets.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <p className="text-lg font-medium">No outlets found</p>
+        <p className="text-sm mt-1">Add your first outlet to get started.</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex items-center gap-3 px-8 py-3 border-b border-gray-100 flex-wrap">
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 border-b border-gray-100">
+          <tr>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Outlet</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Discounts</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+            <th className="px-4 py-3" />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-50">
+          {outlets.map((o) => {
+            const colorClass = getOutletColor(o.name)
+            const initial    = (o.name || '?').charAt(0).toUpperCase()
+            const discounts  = o.discounts ?? []
 
-      {/* Cards / List / Orders toggle */}
-      <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
-        {[
-          { id: 'cards',  label: 'Cards' },
-          { id: 'list',   label: 'List'  },
-          { id: 'orders', label: 'Orders', icon: <ScrollText size={13} /> },
-        ].map(({ id, label, icon }) => (
-          <button
-            key={id}
-            onClick={() => setView(id)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              view === id
-                ? 'bg-orange-500 text-white shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
-      </div>
+            return (
+              <tr key={o.id} className="hover:bg-gray-50/60 transition-colors group">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full ${colorClass} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                      {initial}
+                    </div>
+                    <span className="font-medium text-gray-800">{o.name}</span>
+                  </div>
+                </td>
 
-      {/* Status filter + Region filter + count — hidden in orders view */}
-      {!isOrdersView && (
-        <>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
-          >
-            <option value="All Statuses">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
+                <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">{o.address || '—'}</td>
 
-          <select
-            value={regionFilter}
-            onChange={(e) => setRegionFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 max-w-[220px]"
-          >
-            <option value="All Regions">All Regions</option>
-            {regions.map(r => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
+                <td className="px-4 py-3">
+                  {discounts.length === 0 ? (
+                    <span className="text-gray-400 text-xs">None</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {discounts.map((d) => (
+                        <span
+                          key={d.id}
+                          className="inline-flex items-center gap-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full"
+                        >
+                          <Tag size={9} />
+                          {d.name} {d.value}%
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </td>
 
-          <span className="text-sm text-gray-500 ml-1">
-            {total} outlet{total !== 1 ? 's' : ''}
-          </span>
-        </>
-      )}
+                <td className="px-4 py-3">
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${
+                    o.status === 'Active'
+                      ? 'border-green-300 text-green-700 bg-green-50'
+                      : 'border-gray-300 text-gray-500 bg-gray-50'
+                  }`}>
+                    {o.status}
+                  </span>
+                </td>
 
-      {/* Divider */}
-      <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
-
-      {/* Search — hidden in orders view */}
-      {!isOrdersView && (
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search outlets…"
-            className="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 w-52"
-          />
-        </div>
-      )}
-
-      {/* Spacer to push action buttons right */}
-      <div className="flex-1" />
-
-      {/* Action buttons */}
-      <button
-        onClick={onArchive}
-        className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-      >
-        <Archive size={15} />
-        Archive
-      </button>
-
-      <button
-        onClick={onAdd}
-        className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm"
-      >
-        <Plus size={15} />
-        Add Outlet
-      </button>
-
+                <td className="px-4 py-3">
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                    <button
+                      onClick={() => onViewOrders(o)}
+                      title="View saved orders"
+                      className="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-orange-500 transition-colors"
+                    >
+                      <ScrollText size={14} />
+                    </button>
+                    <button
+                      onClick={() => onEdit(o)}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => onDelete(o)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }

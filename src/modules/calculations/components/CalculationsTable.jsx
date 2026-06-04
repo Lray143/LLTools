@@ -144,7 +144,8 @@ export default function CalculationsTable() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <>
+      <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       <CalculationsToolbar
         mode={mode}
@@ -162,90 +163,95 @@ export default function CalculationsTable() {
 
       {/* ── MONTHLY SUMMARY MODE ──────────────────────────────────── */}
       {mode === 'summary' && (
-        <div className="flex-1 overflow-auto px-6 py-4">
-          <CalculationsMonthlySummary />
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="px-8 pb-8">
+            <CalculationsMonthlySummary />
+          </div>
         </div>
       )}
 
       {/* ── TABLE MODE ───────────────────────────────────────────── */}
       {mode === 'table' && (
         <>
-          <div className="flex-1 overflow-auto px-6 py-4">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <table className="w-full text-sm border-collapse">
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="px-8 pb-8">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full text-sm border-collapse">
 
-                <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    {COLUMNS.map((col, i) => (
-                      <th
-                        key={i}
-                        className={`px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide
-                                    ${col.align === 'right'  ? 'text-right'  : ''}
-                                    ${col.align === 'center' ? 'text-center' : 'text-left'}
-                                    ${col.width}
-                                    ${col.hidden ? 'hidden lg:table-cell' : ''}`}
-                      >
-                        {col.label}
-                        {col.label === 'Unit Price' && selectedOutletId && (
-                          <span className="ml-1 text-orange-400 font-normal normal-case tracking-normal">
-                            (outlet)
-                          </span>
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredGroups.length === 0 && (
+                  <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <td colSpan={7} className="text-center py-16 text-gray-400 text-sm">
-                        {search ? 'No products match your search.' : 'No products found.'}
-                      </td>
+                      {COLUMNS.map((col, i) => (
+                        <th
+                          key={i}
+                          className={`px-3 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide
+                                      ${col.align === 'right'  ? 'text-right'  : ''}
+                                      ${col.align === 'center' ? 'text-center' : 'text-left'}
+                                      ${col.width}
+                                      ${col.hidden ? 'hidden lg:table-cell' : ''}`}
+                        >
+                          {col.label}
+                          {col.label === 'Unit Price' && selectedOutletId && (
+                            <span className="ml-1 text-orange-400 font-normal normal-case tracking-normal">
+                              (outlet)
+                            </span>
+                          )}
+                        </th>
+                      ))}
                     </tr>
-                  )}
+                  </thead>
 
-                  {filteredGroups.map((group) => {
-                    const groupWithTotal = {
-                      ...group,
-                      groupTotal: groupTotals[group.id] ?? 0,
-                    }
-                    return (
-                      <Fragment key={group.id}>
-                        <CalculationsGroupHeader
-                          group={groupWithTotal}
-                          collapsed={!!collapsed[group.id]}
-                          onToggleCollapse={handleToggleCollapse}
-                        />
-                        {!collapsed[group.id] &&
-                          group.rows.map((row, rowIndex) => {
-                            const { price, isOutletPrice } = resolvePrice(row.id, row.price)
-                            return (
-                              <CalculationsRow
-                                key={row.id}
-                                row={row}
-                                rowIndex={rowIndex}
-                                qty={qtys[row.id] ?? ''}
-                                onQtyChange={handleQtyChange}
-                                unitPrice={price}
-                                isOutletPrice={isOutletPrice}
-                              />
-                            )
-                          })
-                        }
-                      </Fragment>
-                    )
-                  })}
-                </tbody>
+                  <tbody>
+                    {filteredGroups.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="text-center py-16 text-gray-400 text-sm">
+                          {search ? 'No products match your search.' : 'No products found.'}
+                        </td>
+                      </tr>
+                    )}
 
-              </table>
+                    {filteredGroups.map((group) => {
+                      const groupWithTotal = {
+                        ...group,
+                        groupTotal: groupTotals[group.id] ?? 0,
+                      }
+                      return (
+                        <Fragment key={group.id}>
+                          <CalculationsGroupHeader
+                            group={groupWithTotal}
+                            collapsed={!!collapsed[group.id]}
+                            onToggleCollapse={handleToggleCollapse}
+                          />
+                          {!collapsed[group.id] &&
+                            group.rows.map((row, rowIndex) => {
+                              const { price, isOutletPrice } = resolvePrice(row.id, row.price)
+                              return (
+                                <CalculationsRow
+                                  key={row.id}
+                                  row={row}
+                                  rowIndex={rowIndex}
+                                  qty={qtys[row.id] ?? ''}
+                                  onQtyChange={handleQtyChange}
+                                  unitPrice={price}
+                                  isOutletPrice={isOutletPrice}
+                                />
+                              )
+                            })
+                          }
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+
+                </table>
+              </div>
+
+              {/* Helper hint */}
+              <p className="text-xs text-gray-400 mt-3 text-center">
+                {selectedOutletId
+                  ? 'Prices reflect the selected outlet · Orange = outlet-specific price'
+                  : 'Enter quantities to calculate totals · Select an outlet to use outlet-specific prices'}
+              </p>
             </div>
-
-            <p className="text-xs text-gray-400 mt-3 text-center">
-              {selectedOutletId
-                ? 'Prices reflect the selected outlet · Orange = outlet-specific price'
-                : 'Enter quantities to calculate totals · Select an outlet to use outlet-specific prices'}
-            </p>
           </div>
 
           {/* Summary bar */}
@@ -270,7 +276,6 @@ export default function CalculationsTable() {
           )}
         </>
       )}
-
-    </div>
+    </>
   )
 }
