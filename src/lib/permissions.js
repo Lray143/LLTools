@@ -2,6 +2,8 @@
 
 // 'reports' is included for every role —
 // staff use it to submit reports, HR gets notified
+// 'settings' is included for every role —
+// all employees can access their personal settings
 export const MODULE_ACCESS = {
   admin: [
     'dashboard', 'employees', 'biometrics',
@@ -9,16 +11,16 @@ export const MODULE_ACCESS = {
     'calculations', 'reports', 'settings', 'leaves'
   ],
   hr: [
-    'dashboard', 'employees', 'biometrics', 'reports', 'leaves'
+    'dashboard', 'employees', 'biometrics', 'reports', 'leaves', 'settings'
   ],
   clinic: [
-    'dashboard', 'clinic', 'reports', 'leaves'
+    'dashboard', 'clinic', 'reports', 'leaves', 'settings'
   ],
   inventory: [
-    'dashboard', 'products', 'calculations', 'reports', 'leaves'
+    'dashboard', 'products', 'calculations', 'reports', 'leaves', 'settings'
   ],
   outlets: [
-    'dashboard', 'outlets', 'reports', 'leaves'
+    'dashboard', 'outlets', 'reports', 'leaves', 'settings'
   ],
 }
 

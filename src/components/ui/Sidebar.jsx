@@ -25,9 +25,7 @@ const ALL_NAV_ITEMS = [
   { id: 'leaves',       label: 'Leave Requests',  icon: CalendarClock        },
 ]
 
-const SYSTEM_ITEMS = [
-  { id: 'settings', label: 'Settings', icon: Settings },
-]
+const SETTINGS_ITEM = { id: 'settings', label: 'Settings', icon: Settings }
 
 function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange }) {
   const [isPinned, setIsPinned]   = useState(true)
@@ -101,7 +99,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
     >
       <aside
         className={`
-          flex flex-col justify-between py-6 h-full
+          flex flex-col py-6 h-full
           bg-[#1e1b18] text-white overflow-hidden
           transition-[width,box-shadow] duration-300 ease-in-out
           ${isPinned
@@ -115,44 +113,42 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         `}
       >
 
-        {/* ── TOP ─────────────────────────────────────── */}
-        <div>
+        {/* ── LOGO ─────────────────────────────────────── */}
+        <div className="relative flex items-center justify-center mb-8 h-16 shrink-0">
+          <img
+            src="/Logo.png"
+            alt="Company Logo"
+            className={`
+              absolute inset-0 w-full h-full object-contain px-2
+              transition-all duration-300
+              ${isExpanded ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}
+            `}
+          />
+          <img
+            src="/Logo.png"
+            alt=""
+            aria-hidden="true"
+            className={`
+              w-7 h-7 object-contain transition-all duration-300
+              ${isExpanded ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}
+            `}
+          />
+          <button
+            onClick={handlePinToggle}
+            title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
+            className={`
+              absolute right-1 top-1/2 -translate-y-1/2
+              p-1 rounded transition-all duration-200
+              ${isPinned ? 'text-orange-400 hover:text-orange-300' : 'text-gray-500 hover:text-white'}
+              ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+            `}
+          >
+            {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+          </button>
+        </div>
 
-          {/* Logo row */}
-          <div className="relative flex items-center justify-center mb-8 h-16">
-            <img
-              src="/Logo.png"
-              alt="Company Logo"
-              className={`
-                absolute inset-0 w-full h-full object-contain px-2
-                transition-all duration-300
-                ${isExpanded ? 'opacity-100 scale-100' : 'opacity-0 scale-75 pointer-events-none'}
-              `}
-            />
-            <img
-              src="/Logo.png"
-              alt=""
-              aria-hidden="true"
-              className={`
-                w-7 h-7 object-contain transition-all duration-300
-                ${isExpanded ? 'opacity-0 scale-75 pointer-events-none' : 'opacity-100 scale-100'}
-              `}
-            />
-            <button
-              onClick={handlePinToggle}
-              title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
-              className={`
-                absolute right-1 top-1/2 -translate-y-1/2
-                p-1 rounded transition-all duration-200
-                ${isPinned ? 'text-orange-400 hover:text-orange-300' : 'text-gray-500 hover:text-white'}
-                ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-              `}
-            >
-              {isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-            </button>
-          </div>
-
-          {/* Section label */}
+        {/* ── OVERVIEW NAV (scrollable, grows to fill space) ── */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <p className={`
             text-xs text-gray-500 uppercase px-2 mb-2
             transition-all duration-200 whitespace-nowrap overflow-hidden
@@ -160,26 +156,29 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
           `}>
             Overview
           </p>
-
           {navItems.map((item) => <NavButton key={item.id} item={item} />)}
-
-          {allowedModules.includes('settings') && (
-            <>
-              <p className={`
-                text-xs text-gray-500 uppercase px-2 mt-6 mb-2
-                transition-all duration-200 whitespace-nowrap overflow-hidden
-                ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
-              `}>
-                System
-              </p>
-              {SYSTEM_ITEMS.map((item) => <NavButton key={item.id} item={item} />)}
-            </>
-          )}
         </div>
 
-        {/* ── BOTTOM — User info + logout ────────────── */}
+        {/* ── SYSTEM / SETTINGS — always pinned above user info ── */}
+        <div className="shrink-0 mt-4">
+          <div className={`
+            h-px mx-1 mb-4 bg-white/10
+            transition-all duration-200
+            ${isExpanded ? 'opacity-100' : 'opacity-30'}
+          `} />
+          <p className={`
+            text-xs text-gray-500 uppercase px-2 mb-2
+            transition-all duration-200 whitespace-nowrap overflow-hidden
+            ${isExpanded ? 'opacity-100 max-h-6' : 'opacity-0 max-h-0'}
+          `}>
+            System
+          </p>
+          <NavButton item={SETTINGS_ITEM} />
+        </div>
+
+        {/* ── BOTTOM — User info + logout ──────────────── */}
         <div className={`
-          flex items-center py-2 rounded-md transition-all duration-200
+          shrink-0 flex items-center py-2 rounded-md transition-all duration-200 mt-3
           ${isExpanded ? 'gap-3 px-2' : 'justify-center px-0'}
         `}>
 
