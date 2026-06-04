@@ -1,4 +1,6 @@
-// employeeMap shape: { [employee_no]: { shiftStart: "07:00", shiftEnd: "17:30", dayOffs: ["Saturday","Sunday"] } }
+// employeeMap shape:
+// { [employee_no]: { shiftStart, shiftEnd, dayOffs, daySchedule } }
+// daySchedule: { Monday: { start, end } | null, ... }
 export function parseRawBiometrics(text, employeeMap = {}) {
 
   const MIN_VALID_EMP_ID  = 100
@@ -15,13 +17,12 @@ export function parseRawBiometrics(text, employeeMap = {}) {
     return { hours: h, minutes: m }
   }
 
-  // Total shift duration in hours from shiftStart/shiftEnd strings
+  // Total shift duration in hours from shiftStart/shiftEnd strings (minus 1hr lunch)
   function expectedHours(startStr, endStr) {
     const s = parseHHMM(startStr)
     const e = parseHHMM(endStr)
     if (!s || !e) return 8.5
     const diff = (e.hours * 60 + e.minutes) - (s.hours * 60 + s.minutes)
-    // subtract standard 1hr lunch
     return Math.max(0, (diff / 60) - 1)
   }
 
@@ -76,35 +77,47 @@ export function parseRawBiometrics(text, employeeMap = {}) {
 
     // ── Per-employee schedule ─────────────────────────────────
     const empSchedule  = employeeMap[entry.employee_no] ?? {}
-    const shiftStartStr = empSchedule.shiftStart ?? DEFAULT_START
-    const shiftEndStr   = empSchedule.shiftEnd   ?? DEFAULT_END
-    const dayOffs       = empSchedule.dayOffs     ?? DEFAULT_DAY_OFFS
-    const minHours      = expectedHours(shiftStartStr, shiftEndStr)
+    const daySchedule  = empSchedule.daySchedule ?? null   // per-day map
 
-    // Parse shift start into hours + minutes for late check
-    const shiftStartParsed = parseHHMM(shiftStartStr) ?? { hours: 7, minutes: 0 }
-
-    // ── Check if this date is a day off ───────────────────────
+    // ── Day of week for this record ───────────────────────────
     const dateObj    = new Date(entry.date + 'T00:00:00')
     const dayName    = DAY_NAMES[dateObj.getDay()]
-    const isDayOff   = dayOffs.includes(dayName)
+
+    // ── Resolve shift times from per-day schedule or flat fallback ──
+    let shiftStartStr, shiftEndStr, isDayOff
+
+    if (daySchedule) {
+      const dayEntry = daySchedule[dayName] ?? null
+      if (dayEntry === null) {
+        // Explicitly a day off in the per-day schedule
+        isDayOff      = true
+        shiftStartStr = DEFAULT_START
+        shiftEndStr   = DEFAULT_END
+      } else {
+        isDayOff      = false
+        shiftStartStr = dayEntry.start ?? DEFAULT_START
+        shiftEndStr   = dayEntry.end   ?? DEFAULT_END
+      }
+    } else {
+      // Fallback to flat schedule
+      shiftStartStr = empSchedule.shiftStart ?? DEFAULT_START
+      shiftEndStr   = empSchedule.shiftEnd   ?? DEFAULT_END
+      const dayOffs = empSchedule.dayOffs    ?? DEFAULT_DAY_OFFS
+      isDayOff      = dayOffs.includes(dayName)
+    }
+
+    const minHours         = expectedHours(shiftStartStr, shiftEndStr)
+    const shiftStartParsed = parseHHMM(shiftStartStr) ?? { hours: 7, minutes: 0 }
 
     const totalTaps  = entry.ins.length + entry.outs.length
 
     // ── Resolve tap slots ─────────────────────────────────────
-    // Rule: shiftIn = first IN, shiftOut = last OUT (both anchored).
-    // lunchOut/lunchIn are only assigned when a middle OUT is
-    // *temporally followed* by a middle IN — not just by count.
-    // This prevents double-taps or extra morning taps from being
-    // misread as lunch returns (the old bug).
     const insUsed  = new Set()
     const outsUsed = new Set()
 
-    // Shift-in: always the chronologically first IN
     const shiftIn = entry.ins[0] ?? null
     if (shiftIn !== null) insUsed.add(0)
 
-    // Shift-out: always the chronologically last OUT
     let shiftOut = null
     if (entry.outs.length >= 1) {
       const lastIdx = entry.outs.length - 1
@@ -112,9 +125,6 @@ export function parseRawBiometrics(text, employeeMap = {}) {
       outsUsed.add(lastIdx)
     }
 
-    // Lunch pair: scan OUTs before shiftOut for one that is followed
-    // by any unused IN (index >= 1) that occurs *after* that OUT.
-    // Takes the first valid pair found.
     let lunchOut = null
     let lunchIn  = null
     for (let oi = 0; oi < entry.outs.length - 1; oi++) {
@@ -143,30 +153,29 @@ export function parseRawBiometrics(text, employeeMap = {}) {
       ? rawExtras.map(({ time, type }) => ({ time, type }))
       : null
 
-    // ── Total Hours ───────────────────────────────────────────
+    // ── Lunch deduction helper ────────────────────────────────
+    const lunchDeductionMs = lunchOut && lunchIn
+      ? (lunchIn - lunchOut)
+      : 60 * 60 * 1000   // default 1 hour
+
+    // ── Total Hours (RAW — tap-in to tap-out) ─────────────────
     let totalHours = null
     if (shiftIn && shiftOut) {
-      const shiftHrs = (shiftOut - shiftIn) / (1000 * 60 * 60)
-      let deduction = 1
-      if (lunchOut && lunchIn) {
-        deduction = (lunchIn - lunchOut) / (1000 * 60 * 60)
-      }
-      const net = shiftHrs - deduction
-      totalHours = net > 0 ? Math.round(net * 100) / 100 : 0
+      const rawMs  = (shiftOut - shiftIn) - lunchDeductionMs
+      const rawHrs = rawMs / (1000 * 60 * 60)
+      totalHours = rawHrs > 0 ? Math.round(rawHrs * 100) / 100 : 0
     }
 
     // ── Status ────────────────────────────────────────────────
     let status
 
     if (isDayOff && totalTaps === 0) {
-      // No taps on a scheduled day off → just skip / mark as day off
       status = 'Day Off'
     } else if (totalTaps === 0) {
       status = 'Absent'
     } else if (!shiftIn || !shiftOut) {
       status = 'Incomplete'
     } else {
-      // Late = arrived more than LATE_CUTOFF_MIN after their shift start
       const minsAfterStart =
         (shiftIn.getHours() - shiftStartParsed.hours) * 60 +
         (shiftIn.getMinutes() - shiftStartParsed.minutes)
@@ -201,6 +210,9 @@ export function parseRawBiometrics(text, employeeMap = {}) {
       lunchOut   : fmt(lunchOut),
       lunchIn    : fmt(lunchIn),
       shiftOut   : fmt(shiftOut),
+      // Expose schedule times so BiometricTable can compute scheduled hours
+      schedStart : shiftStartStr,
+      schedEnd   : shiftEndStr,
     })
   }
 

@@ -25,18 +25,35 @@ function shiftPeriodFromString(timeStr) {
   return 'Evening'
 }
 
+const DAY_NAMES_MAP = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+
 // Transforms a raw DB row into the shape the UI components expect.
-// extra_taps is stored as a JSON string in the DB, so we parse it back
-// into an array here. If it's null or invalid, we fall back to null.
+// Derives schedStart/schedEnd from day_schedule JSON (or falls back to shift_start/shift_end)
+// so BiometricTable can compute schedule-clamped hours without a separate lookup.
 const mapRow = (r) => {
   let extraTaps = null
   if (r.extra_taps) {
     try {
       extraTaps = JSON.parse(r.extra_taps)
     } catch {
-      // Corrupted JSON in the DB — treat as no extra taps.
       extraTaps = null
     }
+  }
+
+  // Resolve per-day schedule for this record's date
+  let schedStart = r.shift_start ?? '07:00'
+  let schedEnd   = r.shift_end   ?? '17:30'
+  if (r.day_schedule) {
+    try {
+      const sched   = JSON.parse(r.day_schedule)
+      const dateObj = new Date((r.date ?? '') + 'T00:00:00')
+      const dayName = DAY_NAMES_MAP[dateObj.getDay()]
+      const entry   = sched[dayName] ?? null
+      if (entry !== null && entry) {
+        schedStart = entry.start ?? schedStart
+        schedEnd   = entry.end   ?? schedEnd
+      }
+    } catch (_) {}
   }
 
   return {
@@ -48,7 +65,7 @@ const mapRow = (r) => {
     shift_out   : r.shift_out,
     total_hours : r.total_hours,
     status      : r.status,
-    extraTaps,                   // parsed array (or null) — used by ExtraTapsTooltip
+    extraTaps,
     id          : String(r.employee_no),
     name        : r.name       || '—',
     department  : r.department || '—',
@@ -60,6 +77,8 @@ const mapRow = (r) => {
     lunchIn    : r.lunch_in,
     shiftOut   : r.shift_out,
     totalHours : r.total_hours,
+    schedStart,
+    schedEnd,
   }
 }
 
@@ -113,12 +132,17 @@ function pad2(n) { return String(n).padStart(2, '0') }
 function buildEmployeeMap(employees) {
   const map = {}
   for (const e of employees) {
+    let daySchedule = null
+    if (e.day_schedule) {
+      try { daySchedule = JSON.parse(e.day_schedule) } catch (_) {}
+    }
     map[String(e.employee_no)] = {
-      shiftStart : e.shift_start ?? '07:00',
-      shiftEnd   : e.shift_end   ?? '17:30',
-      dayOffs    : e.day_offs
+      shiftStart  : e.shift_start ?? '07:00',
+      shiftEnd    : e.shift_end   ?? '17:30',
+      dayOffs     : e.day_offs
                      ? e.day_offs.split(',').map(d => d.trim()).filter(Boolean)
                      : ['Saturday', 'Sunday'],
+      daySchedule,
     }
   }
   return map

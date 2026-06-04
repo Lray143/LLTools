@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { Bell, Plus, Search, User, Archive, CalendarPlus, ChevronDown, Check } from "lucide-react"
 import { v4 as uuidv4 } from 'uuid'
 
-import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS } from "./employeeConstants"
+import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS, DEFAULT_DAY_SCHEDULE, DAYS_OF_WEEK } from "./employeeConstants"
 import { EmployeeCardGrid }     from "./components/EmployeeCardGrid"
 import { EmployeeListView }     from "./components/EmployeeListView"
 import { EmployeeModal }        from "./components/EmployeeModal"
@@ -99,6 +99,10 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
 
 // ── DB mappers ───────────────────────────────────────────────────────────────
 function fromDb(row) {
+  let daySchedule = null
+  if (row.day_schedule) {
+    try { daySchedule = JSON.parse(row.day_schedule) } catch (_) {}
+  }
   return {
     id:          row.id,
     employee_no: row.employee_no,
@@ -115,26 +119,32 @@ function fromDb(row) {
     dayOffs:     row.day_offs
                    ? row.day_offs.split(',').map(d => d.trim()).filter(Boolean)
                    : DEFAULT_DAY_OFFS,
+    daySchedule: daySchedule ?? DEFAULT_DAY_SCHEDULE,
   }
 }
 
 function toDb(emp) {
+  // Derive day_offs and shift_start/shift_end from daySchedule for backward compat
+  const sched    = emp.daySchedule ?? DEFAULT_DAY_SCHEDULE
+  const dayOffs  = DAYS_OF_WEEK.filter(d => sched[d] === null)
+  const firstWork = DAYS_OF_WEEK.find(d => sched[d] !== null)
+  const shiftStart = firstWork ? sched[firstWork].start : DEFAULT_SHIFT_START
+  const shiftEnd   = firstWork ? sched[firstWork].end   : DEFAULT_SHIFT_END
   return {
-    id:          emp.id,
-    employee_no: emp.employee_no,
-    name:        emp.name,
-    department:  emp.dept       ?? null,
-    position:    emp.role       ?? null,
-    contact:     emp.contact    ?? null,
-    status:      emp.status     ?? 'Active',
-    leave_type:  emp.leaveType  ?? null,
-    leave_start: emp.leaveStart ?? null,
-    leave_end:   emp.leaveEnd   ?? null,
-    shift_start: emp.shiftStart ?? DEFAULT_SHIFT_START,
-    shift_end:   emp.shiftEnd   ?? DEFAULT_SHIFT_END,
-    day_offs:    Array.isArray(emp.dayOffs)
-                   ? emp.dayOffs.join(',')
-                   : (emp.dayOffs ?? DEFAULT_DAY_OFFS.join(',')),
+    id:           emp.id,
+    employee_no:  emp.employee_no,
+    name:         emp.name,
+    department:   emp.dept       ?? null,
+    position:     emp.role       ?? null,
+    contact:      emp.contact    ?? null,
+    status:       emp.status     ?? 'Active',
+    leave_type:   emp.leaveType  ?? null,
+    leave_start:  emp.leaveStart ?? null,
+    leave_end:    emp.leaveEnd   ?? null,
+    shift_start:  shiftStart,
+    shift_end:    shiftEnd,
+    day_offs:     dayOffs.join(','),
+    day_schedule: JSON.stringify(sched),
   }
 }
 

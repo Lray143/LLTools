@@ -19,6 +19,17 @@ export const DEFAULT_SHIFT_START = "07:00"
 export const DEFAULT_SHIFT_END   = "17:30"
 export const DEFAULT_DAY_OFFS    = ["Saturday", "Sunday"]
 
+// Per-day schedule: each key is a day name, value is { start, end } or null (= day off)
+export const DEFAULT_DAY_SCHEDULE = {
+  Monday:    { start: '07:00', end: '18:00' },
+  Tuesday:   { start: '07:00', end: '17:30' },
+  Wednesday: { start: '07:00', end: '17:30' },
+  Thursday:  { start: '07:00', end: '17:30' },
+  Friday:    { start: '07:00', end: '17:30' },
+  Saturday:  null,
+  Sunday:    null,
+}
+
 export const avatarColors = [
   "bg-orange-500", "bg-blue-600",  "bg-purple-500",
   "bg-teal-600",   "bg-yellow-500","bg-red-700",

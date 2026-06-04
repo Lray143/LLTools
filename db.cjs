@@ -229,6 +229,8 @@ const initDb = async () => {
   try { db.run(`UPDATE product_groups SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
   // ── USERS MIGRATIONS ────────────────────────────────────────────
   try { db.run(`ALTER TABLE users ADD COLUMN employee_id TEXT DEFAULT NULL`) } catch (_) {}
+  // ── EMPLOYEE SCHEDULE MIGRATION ─────────────────────────────────
+  try { db.run(`ALTER TABLE employees ADD COLUMN day_schedule TEXT DEFAULT NULL`) } catch (_) {}
 
   // ── CLINIC LOGS MIGRATIONS (for existing DBs with old schema) ─
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN full_name     TEXT NOT NULL DEFAULT ''`)  } catch (_) {}
@@ -415,21 +417,22 @@ const upsertEmployee = (emp) => {
   run(`
     INSERT INTO employees
       (id, employee_no, name, position, department, contact, status,
-       leave_type, leave_start, leave_end, shift_start, shift_end, day_offs)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       leave_type, leave_start, leave_end, shift_start, shift_end, day_offs, day_schedule)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
-      employee_no = excluded.employee_no, name        = excluded.name,
-      position    = excluded.position,    department  = excluded.department,
-      contact     = excluded.contact,     status      = excluded.status,
-      leave_type  = excluded.leave_type,  leave_start = excluded.leave_start,
-      leave_end   = excluded.leave_end,   shift_start = excluded.shift_start,
-      shift_end   = excluded.shift_end,   day_offs    = excluded.day_offs,
-      sync_status = 'pending'
+      employee_no  = excluded.employee_no, name         = excluded.name,
+      position     = excluded.position,    department   = excluded.department,
+      contact      = excluded.contact,     status       = excluded.status,
+      leave_type   = excluded.leave_type,  leave_start  = excluded.leave_start,
+      leave_end    = excluded.leave_end,   shift_start  = excluded.shift_start,
+      shift_end    = excluded.shift_end,   day_offs     = excluded.day_offs,
+      day_schedule = excluded.day_schedule, sync_status = 'pending'
   `, [emp.id, emp.employee_no, emp.name,
       emp.position ?? null, emp.department ?? null, emp.contact ?? null,
       emp.status ?? 'Active',
       emp.leave_type ?? null, emp.leave_start ?? null, emp.leave_end ?? null,
-      emp.shift_start ?? '07:00', emp.shift_end ?? '17:30', emp.day_offs ?? 'Saturday,Sunday'])
+      emp.shift_start ?? '07:00', emp.shift_end ?? '17:30', emp.day_offs ?? 'Saturday,Sunday',
+      emp.day_schedule ?? null])
 
   // Auto-create or sync the employee's login account
   createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
@@ -443,14 +446,14 @@ const permanentDeleteEmployee = (id) => run("DELETE FROM employees WHERE id=?", 
 const getAttendance = () => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
-         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs
+         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
   FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
   ORDER BY a.date DESC, e.name
 `)
 const getAttendanceByDate = (date) => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
-         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs
+         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
   FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
   WHERE a.date = ? ORDER BY e.name
 `, [date])
