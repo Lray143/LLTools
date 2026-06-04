@@ -1,5 +1,92 @@
-// src/modules/outlets/components/OutletToolbar.jsx
-import { Search, Archive, Plus, ScrollText } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Search, Archive, Plus, ScrollText, ChevronDown, Check } from 'lucide-react'
+
+// ── Shared inline styles ────────────────────────
+const displayPill = {
+  display: 'inline-flex', alignItems: 'center', gap: '6px',
+  padding: '5px 12px', borderRadius: '8px',
+  border: '1px solid rgba(0,0,0,0.1)', background: '#fff',
+  fontSize: '13px', fontWeight: 500, color: '#2c2010',
+  whiteSpace: 'nowrap', cursor: 'pointer',
+}
+
+// ── CustomSelect ────────────────────────
+function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const activeLabel = options.find(o => (o.value ?? o) === value)?.label ?? value
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          ...displayPill,
+          paddingRight: '10px',
+          gap: '8px',
+          minWidth,
+          justifyContent: 'space-between',
+          border: open ? '1px solid #f97316' : '1px solid rgba(0,0,0,0.1)',
+          color: open ? '#f97316' : '#2c2010',
+          transition: 'border-color 150ms, color 150ms',
+        }}
+      >
+        <span style={{ flex: 1, textAlign: 'left', fontWeight: open ? 600 : 500 }}>
+          {activeLabel}
+        </span>
+        <ChevronDown
+          size={13}
+          color={open ? '#f97316' : '#a09278'}
+          style={{ transition: 'transform 150ms, color 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+        />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          minWidth: '200px', background: '#fff', borderRadius: '14px',
+          border: '1px solid rgba(0,0,0,0.07)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+          zIndex: 999, padding: '8px', overflow: 'hidden',
+        }}>
+          {options.map(opt => {
+            const isActive = opt.value === value || opt === value
+            const label    = opt.label ?? opt
+            const val      = opt.value ?? opt
+            return (
+              <button
+                key={val}
+                onClick={() => { onChange(val); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none',
+                  background: 'transparent',
+                  color: isActive ? '#f97316' : '#374151',
+                  fontSize: '13.5px', fontWeight: isActive ? 600 : 400,
+                  cursor: 'pointer', textAlign: 'left', transition: 'background 100ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f9f8f6' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                {label}
+                {isActive && <Check size={14} color="#f97316" strokeWidth={2.5} />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function OutletToolbar({
   view, setView,
@@ -13,96 +100,111 @@ export default function OutletToolbar({
 }) {
   const isOrdersView = view === 'orders'
 
-  return (
-    <div className="flex items-center gap-3 px-8 py-3 border-b border-gray-100 flex-wrap">
+  const statusOptions = [
+    { label: 'All Statuses', value: 'All Statuses' },
+    { label: 'Active', value: 'Active' },
+    { label: 'Inactive', value: 'Inactive' },
+  ]
 
-      {/* Cards / List / Orders toggle */}
-      <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
-        {[
-          { id: 'cards',  label: 'Cards' },
-          { id: 'list',   label: 'List'  },
-          { id: 'orders', label: 'Orders', icon: <ScrollText size={13} /> },
-        ].map(({ id, label, icon }) => (
-          <button
-            key={id}
-            onClick={() => setView(id)}
-            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              view === id
-                ? 'bg-orange-500 text-white shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+  const regionOptions = [
+    { label: 'All Regions', value: 'All Regions' },
+    ...regions.map(r => ({ label: r, value: r }))
+  ]
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', paddingBottom: '12px', paddingLeft: '32px', paddingRight: 'calc(32px + 15px)', gap: '16px', flexWrap: 'wrap' }}>
+      
+      {/* LEFT: view toggle + filters */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+        
+        {/* Cards / List / Orders segmented toggle */}
+        <div style={{
+          display: 'flex', alignItems: 'center',
+          background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
+          borderRadius: '10px', padding: '3px', gap: '2px',
+        }}>
+          {[
+            { id: 'cards',  label: 'Cards' },
+            { id: 'list',   label: 'List'  },
+            { id: 'orders', label: 'Orders', icon: <ScrollText size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
+          ].map(({ id, label, icon }) => (
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              style={{
+                display: 'flex', alignItems: 'center',
+                padding: '5px 16px', borderRadius: '8px',
+                fontSize: '13px', fontWeight: view === id ? 600 : 400,
+                background: view === id ? '#f97316' : 'transparent',
+                color: view === id ? '#fff' : '#6b5c4c',
+                border: 'none', cursor: 'pointer',
+                transition: 'background 150ms, color 150ms',
+              }}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Status filter + Region filter + count — hidden in orders view */}
+        {!isOrdersView && (
+          <>
+            <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
+            
+            <CustomSelect
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={statusOptions}
+              minWidth="136px"
+            />
+
+            <CustomSelect
+              value={regionFilter}
+              onChange={setRegionFilter}
+              options={regionOptions}
+              minWidth="152px"
+            />
+
+            <span style={{ fontSize: '13px', color: '#a09278', fontWeight: 400, userSelect: 'none' }}>
+              {total} outlet{total !== 1 ? 's' : ''}
+            </span>
+          </>
+        )}
       </div>
 
-      {/* Status filter + Region filter + count — hidden in orders view */}
-      {!isOrdersView && (
-        <>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
-          >
-            <option value="All Statuses">All Statuses</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
+      {/* RIGHT: search + action buttons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        
 
-          <select
-            value={regionFilter}
-            onChange={(e) => setRegionFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300 max-w-[220px]"
-          >
-            <option value="All Regions">All Regions</option>
-            {regions.map(r => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
 
-          <span className="text-sm text-gray-500 ml-1">
-            {total} outlet{total !== 1 ? 's' : ''}
-          </span>
-        </>
-      )}
-
-      {/* Divider */}
-      <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
-
-      {/* Search — hidden in orders view */}
-      {!isOrdersView && (
-        <div className="relative">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search outlets…"
-            className="pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 w-52"
-          />
-        </div>
-      )}
-
-      {/* Spacer to push action buttons right */}
-      <div className="flex-1" />
-
-      {/* Action buttons */}
-      <button
-        onClick={onArchive}
-        className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-      >
-        <Archive size={15} />
-        Archive
-      </button>
-
-      <button
-        onClick={onAdd}
-        className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm"
-      >
-        <Plus size={15} />
-        Add Outlet
-      </button>
+        <button
+          type="button"
+          onClick={onArchive}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '7px 16px', borderRadius: '10px',
+            border: '1px solid rgba(0,0,0,0.12)', background: '#fff',
+            color: '#4b3a2a', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+          }}
+        >
+          <Archive size={14} />
+          Archive
+        </button>
+        <button
+          type="button"
+          onClick={onAdd}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '7px 16px', borderRadius: '10px',
+            border: 'none', background: '#f97316',
+            color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          <Plus size={14} />
+          Add Outlet
+        </button>
+      </div>
 
     </div>
   )

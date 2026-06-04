@@ -92,7 +92,7 @@ export default function Outlets() {
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       {/* ── TOP HEADER ── */}
-      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
+      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 bg-white border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -125,28 +125,38 @@ export default function Outlets() {
         onArchive={() => setShowArchive(true)}
       />
 
-      {/* Content */}
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400">
-          <p>Loading outlets…</p>
+      {/* ── CONTENT ── */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="px-8 pb-8">
+          {loading ? (
+            <div className="flex items-center justify-center py-20 text-gray-400">
+              <p className="text-sm">Loading outlets...</p>
+            </div>
+          ) : view === 'orders' ? (
+            <OutletOrdersView outlets={outlets} />
+          ) : view === 'cards' ? (
+            <OutletCardGrid
+              outlets={filtered}
+              onEdit={(o) => setEditTarget(o)}
+              onDelete={(o) => setDeleteTarget(o)}
+              onViewOrders={(o) => setOrdersTarget(o)}
+            />
+          ) : (
+            <OutletListView
+              outlets={filtered}
+              onEdit={(o) => setEditTarget(o)}
+              onDelete={(o) => setDeleteTarget(o)}
+              onViewOrders={(o) => setOrdersTarget(o)}
+            />
+          )}
+          {!loading && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+              <p className="text-lg font-medium">No outlets found</p>
+              <p className="text-sm">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
-      ) : view === 'orders' ? (
-        <OutletOrdersView outlets={outlets} />
-      ) : view === 'cards' ? (
-        <OutletCardGrid
-          outlets={filtered}
-          onEdit={(o) => setEditTarget(o)}
-          onDelete={(o) => setDeleteTarget(o)}
-          onViewOrders={(o) => setOrdersTarget(o)}
-        />
-      ) : (
-        <OutletListView
-          outlets={filtered}
-          onEdit={(o) => setEditTarget(o)}
-          onDelete={(o) => setDeleteTarget(o)}
-          onViewOrders={(o) => setOrdersTarget(o)}
-        />
-      )}
+      </div>
 
       {/* ── MODALS / DRAWERS ── */}
       {editTarget !== null && (

@@ -1,6 +1,83 @@
 // src/modules/outlets/components/OutletOrdersView.jsx
-import { useState, useEffect, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Trash2, Tag, Receipt, TrendingUp, Package, Store } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { ChevronDown, ChevronRight, Trash2, Tag, Receipt, TrendingUp, Package, Store, Check } from 'lucide-react'
+
+// ── CustomSelect ───────────────────────────────────────────────────
+function CustomSelect({ value, onChange, options, icon }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const activeLabel = options.find(o => o.value === value)?.label ?? value
+  const hasSelection = value !== '__all__'
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 shadow-sm transition-colors"
+        style={{
+          border: open ? '1px solid #f97316' : '1px solid rgba(0,0,0,0.1)',
+          minWidth: '200px',
+        }}
+      >
+        <span className={hasSelection ? 'text-orange-500' : 'text-gray-400'}>
+          {icon}
+        </span>
+        <span
+          className="flex-1 text-left text-sm"
+          style={{ color: open ? '#f97316' : '#2c2010', fontWeight: open ? 600 : 500 }}
+        >
+          {activeLabel}
+        </span>
+        <ChevronDown
+          size={14}
+          color={open ? '#f97316' : '#a09278'}
+          style={{ transition: 'transform 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          minWidth: '100%', background: '#fff', borderRadius: '12px',
+          border: '1px solid rgba(0,0,0,0.07)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+          zIndex: 999, padding: '6px', overflow: 'hidden',
+          maxHeight: '300px', overflowY: 'auto'
+        }}>
+          {options.map(opt => {
+            const isActive = opt.value === value
+            return (
+              <button
+                key={opt.value}
+                onClick={() => { onChange(opt.value); setOpen(false) }}
+                className="flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors text-left"
+                style={{
+                  background: 'transparent',
+                  color: isActive ? '#f97316' : '#374151',
+                  fontSize: '13.5px', fontWeight: isActive ? 600 : 400,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f9f8f6' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                {opt.label}
+                {isActive && <Check size={14} color="#f97316" strokeWidth={2.5} />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const fmt = (n) =>
   Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -234,20 +311,16 @@ export default function OutletOrdersView({ outlets }) {
       <div className="flex items-center gap-3 mb-5 flex-wrap">
 
         {/* Outlet selector */}
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
-          <Store size={14} className={selectedOutletId !== '__all__' ? 'text-orange-500' : 'text-gray-400'} />
-          <select
-            value={selectedOutletId}
-            onChange={(e) => setSelectedOutletId(e.target.value)}
-            className="text-sm text-gray-700 bg-transparent focus:outline-none cursor-pointer pr-1"
-          >
-            <option value="__all__">All Outlets</option>
-            <option value="__default__">Default (No Outlet)</option>
-            {outlets.map((o) => (
-              <option key={o.id} value={o.id}>{o.name}</option>
-            ))}
-          </select>
-        </div>
+        <CustomSelect
+          value={selectedOutletId}
+          onChange={setSelectedOutletId}
+          icon={<Store size={14} />}
+          options={[
+            { label: 'All Outlets', value: '__all__' },
+            { label: 'Default (No Outlet)', value: '__default__' },
+            ...outlets.map(o => ({ label: o.name, value: o.id }))
+          ]}
+        />
 
         {/* Stats chips */}
         <div className="flex items-center gap-2 flex-wrap">

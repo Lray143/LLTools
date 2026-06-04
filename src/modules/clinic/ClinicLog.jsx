@@ -9,9 +9,9 @@ import VisitArchiveModal from "./components/VisitArchiveModal"
 import DetailModal from "./components/DetailModal" // Imported DetailModal component
 
 const DISP_MAP = {
-  "sent-back":  "Back to work",
-  "sent-home":  "Sent home",
-  "referred":   "Referred",
+  "sent-back": "Back to work",
+  "sent-home": "Sent home",
+  "referred": "Referred",
   "monitoring": "Monitoring",
 }
 
@@ -23,16 +23,16 @@ function shortName(full = "") {
 }
 
 function buildEmpMaps(emps) {
-  const byName  = {}
+  const byName = {}
   const byShort = {}
-  const byId    = {}
-  const byNo    = {}
+  const byId = {}
+  const byNo = {}
   emps.forEach(e => {
     const no = e.employee_no ?? e.employeeNo ?? ""
-    if (e.name) byName[e.name]             = { no, emp: e }
+    if (e.name) byName[e.name] = { no, emp: e }
     if (e.name) byShort[shortName(e.name)] = { no, emp: e }
-    if (e.id)   byId[e.id]                 = { no, emp: e }
-    if (no)     byNo[no]                   = { no, emp: e }
+    if (e.id) byId[e.id] = { no, emp: e }
+    if (no) byNo[no] = { no, emp: e }
   })
   return { byName, byShort, byId, byNo }
 }
@@ -40,8 +40,8 @@ function buildEmpMaps(emps) {
 function dbToVisit(r, maps = {}) {
   const { byName = {}, byShort = {}, byId = {}, byNo = {} } = maps
   const [y, mo, day] = (r.date ?? "").split("-").map(Number)
-  const month   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][mo - 1] ?? ""
-  const year    = y
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][mo - 1] ?? ""
+  const year = y
   const dateStr = `${month} ${day}`
   const fullName = r.fullName ?? r.full_name ?? ""
 
@@ -49,8 +49,8 @@ function dbToVisit(r, maps = {}) {
   let empNo = (rawCode && byNo[rawCode]) ? rawCode : ""
 
   if (!empNo) {
-    const byIdHit    = (r.employeeId || r.employee_id) ? byId[r.employeeId ?? r.employee_id] : null
-    const byNameHit  = byName[fullName]
+    const byIdHit = (r.employeeId || r.employee_id) ? byId[r.employeeId ?? r.employee_id] : null
+    const byNameHit = byName[fullName]
     const byShortHit = byShort[fullName] || byShort[shortName(fullName)]
     const hit = byIdHit || byNameHit || byShortHit
     empNo = hit?.no ?? ""
@@ -70,28 +70,28 @@ function dbToVisit(r, maps = {}) {
         ? JSON.parse(r.attachments)
         : r.attachments
     }
-  } catch (_) {}
+  } catch (_) { }
 
   return {
-    id:           r.id,
-    date:         dateStr,
+    id: r.id,
+    date: dateStr,
     month,
     year,
-    time:         r.time        ?? "",
+    time: r.time ?? "",
     employeeCode: empNo,
-    employee:     displayName,
+    employee: displayName,
     fullName,
-    complaint:    r.complaint   ?? "",
-    disposition:  r.disposition ?? "",
-    bp:           r.bp          ?? "",
-    temp:         r.temp        ?? "",
-    treatment:    r.treatment   ?? "",
-    gender:       r.gender      ?? "",
-    age:          r.age         ?? "",
-    pulse:        r.pulse       ?? "",
-    spo2:         r.spo2        ?? "",
+    complaint: r.complaint ?? "",
+    disposition: r.disposition ?? "",
+    bp: r.bp ?? "",
+    temp: r.temp ?? "",
+    treatment: r.treatment ?? "",
+    gender: r.gender ?? "",
+    age: r.age ?? "",
+    pulse: r.pulse ?? "",
+    spo2: r.spo2 ?? "",
     attachments,
-    _rawDate:     r.date,
+    _rawDate: r.date,
   }
 }
 
@@ -106,11 +106,11 @@ function to12(timeStr = "") {
 
 export default function ClinicLog() {
   const todayISO = new Date().toISOString().split("T")[0]
-  const nowTime  = new Date().toTimeString().slice(0, 5)
+  const nowTime = new Date().toTimeString().slice(0, 5)
 
-  const [visits,    setVisits]    = useState([])
-  const [archived,  setArchived]  = useState([])
-  const [loading,   setLoading]   = useState(true)
+  const [visits, setVisits] = useState([])
+  const [archived, setArchived] = useState([])
+  const [loading, setLoading] = useState(true)
   const [employees, setEmployees] = useState([])
 
   // State hook to store the visit data currently previewed in the details panel
@@ -118,35 +118,35 @@ export default function ClinicLog() {
 
   function empFromDb(row) {
     return {
-      id:          row.id,
+      id: row.id,
       employee_no: row.employee_no,
-      name:        row.name,
-      dept:        row.department ?? "",
-      contact:     row.contact    ?? "",
+      name: row.name,
+      dept: row.department ?? "",
+      contact: row.contact ?? "",
     }
   }
 
   const [form, setForm] = useState({
-    date:         todayISO,
-    time:         nowTime,
-    employee:     "",
+    date: todayISO,
+    time: nowTime,
+    employee: "",
     employeeCode: "",
-    gender:       "",
-    age:          "",
-    complaint:    "",
-    bp:           "",
-    temp:         "",
-    pulse:        "",
-    spo2:         "",
-    treatment:    "",
-    disposition:  "sent-back",
-    attachments:  [],
+    gender: "",
+    age: "",
+    complaint: "",
+    bp: "",
+    temp: "",
+    pulse: "",
+    spo2: "",
+    treatment: "",
+    disposition: "sent-back",
+    attachments: [],
   })
   const [saved, setSaved] = useState(false)
 
-  const [modal,         setModal]         = useState(null)
+  const [modal, setModal] = useState(null)
   const [tableExpanded, setTableExpanded] = useState(false)
-  const [searchQuery,   setSearchQuery]   = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -203,30 +203,30 @@ export default function ClinicLog() {
   async function handleSave() {
     if (!form.employee.trim()) return
 
-    const id       = crypto.randomUUID()
+    const id = crypto.randomUUID()
     const fullName = form.employee.trim()
-    const timeStr  = to12(form.time)
+    const timeStr = to12(form.time)
 
     const matchedEmp = employees.find(e => e.name === fullName)
     const employeeNo = form.employeeCode || matchedEmp?.employee_no || ""
 
     const log = {
       id,
-      employeeId:   matchedEmp?.id ?? null,
+      employeeId: matchedEmp?.id ?? null,
       fullName,
       employeeCode: employeeNo,
-      date:         form.date,
-      time:         timeStr,
-      complaint:    form.complaint,
-      disposition:  DISP_MAP[form.disposition] || form.disposition,
-      bp:           form.bp,
-      temp:         form.temp,
-      treatment:    form.treatment,
-      gender:       form.gender,
-      age:          form.age,
-      pulse:        form.pulse,
-      spo2:         form.spo2,
-      attachments:  JSON.stringify(form.attachments ?? []),
+      date: form.date,
+      time: timeStr,
+      complaint: form.complaint,
+      disposition: DISP_MAP[form.disposition] || form.disposition,
+      bp: form.bp,
+      temp: form.temp,
+      treatment: form.treatment,
+      gender: form.gender,
+      age: form.age,
+      pulse: form.pulse,
+      spo2: form.spo2,
+      attachments: JSON.stringify(form.attachments ?? []),
     }
 
     try {
@@ -240,20 +240,20 @@ export default function ClinicLog() {
     setTimeout(() => {
       setSaved(false)
       setForm({
-        date:         todayISO,
-        time:         new Date().toTimeString().slice(0, 5),
-        employee:     "",
+        date: todayISO,
+        time: new Date().toTimeString().slice(0, 5),
+        employee: "",
         employeeCode: "",
-        gender:       "",
-        age:          "",
-        complaint:    "",
-        bp:           "",
-        temp:         "",
-        pulse:        "",
-        spo2:         "",
-        treatment:    "",
-        disposition:  "sent-back",
-        attachments:  [],
+        gender: "",
+        age: "",
+        complaint: "",
+        bp: "",
+        temp: "",
+        pulse: "",
+        spo2: "",
+        treatment: "",
+        disposition: "sent-back",
+        attachments: [],
       })
     }, 2000)
   }
@@ -263,22 +263,22 @@ export default function ClinicLog() {
     const employeeNo = matchedEmp?.employee_no || modal.visit.employeeCode || ""
 
     const log = {
-      id:           modal.visit.id,
-      employeeId:   matchedEmp?.id ?? null,
-      fullName:     updatedVisit.fullName,
+      id: modal.visit.id,
+      employeeId: matchedEmp?.id ?? null,
+      fullName: updatedVisit.fullName,
       employeeCode: employeeNo,
-      date:         modal.visit._rawDate,
-      time:         modal.visit.time,
-      complaint:    updatedVisit.complaint,
-      disposition:  updatedVisit.disposition,
-      bp:           updatedVisit.bp,
-      temp:         updatedVisit.temp,
-      treatment:    updatedVisit.treatment,
-      gender:       updatedVisit.gender,
-      age:          updatedVisit.age,
-      pulse:        updatedVisit.pulse,
-      spo2:         updatedVisit.spo2,
-      attachments:  JSON.stringify(updatedVisit.attachments ?? []),
+      date: modal.visit._rawDate,
+      time: modal.visit.time,
+      complaint: updatedVisit.complaint,
+      disposition: updatedVisit.disposition,
+      bp: updatedVisit.bp,
+      temp: updatedVisit.temp,
+      treatment: updatedVisit.treatment,
+      gender: updatedVisit.gender,
+      age: updatedVisit.age,
+      pulse: updatedVisit.pulse,
+      spo2: updatedVisit.spo2,
+      attachments: JSON.stringify(updatedVisit.attachments ?? []),
     }
     try {
       await window.electronAPI.upsertClinicLog(log)
@@ -390,8 +390,8 @@ export default function ClinicLog() {
           visits={visits}
           loading={loading}
           searchQuery={searchQuery}
-          onEditVisit={v   => setModal({ mode: "edit",    visit: v })}
-          onDeleteVisit={v => setModal({ mode: "delete",  visit: v })}
+          onEditVisit={v => setModal({ mode: "edit", visit: v })}
+          onDeleteVisit={v => setModal({ mode: "delete", visit: v })}
           onOpenArchive={() => setModal({ mode: "archive" })}
           tableExpanded={tableExpanded}
           onToggleExpand={() => setTableExpanded(e => !e)}
