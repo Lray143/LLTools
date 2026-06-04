@@ -37,21 +37,25 @@ export const avatarColors = [
 ]
 
 export const statusStyles = {
-  "Active": "bg-green-50 text-green-600 border border-green-200",
+  Active:     'bg-green-50 text-green-600 border border-green-200',
+  Intern:     'bg-blue-50 text-blue-600 border border-blue-200',
+  'On Leave': 'bg-amber-50 text-amber-600 border border-amber-200',
 }
 
 export function getLiveStatus(emp) {
-  if (emp.status === "On Leave" && emp.leaveStart && emp.leaveEnd) {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const start = new Date(emp.leaveStart)
-    start.setHours(0, 0, 0, 0)
-    const end = new Date(emp.leaveEnd)
-    end.setHours(0, 0, 0, 0)
-    if (today < start || today > end) return "Active"
-    return emp.leaveType || "On Leave"
+  // 1. Auto-detected from leave_requests (approved + covers today) — highest priority
+  if (emp.autoLeave) return emp.autoLeave.type || 'On Leave'
+
+  // 2. Manually set by HR on the employee record
+  if (emp.status === 'On Leave' && emp.leaveStart && emp.leaveEnd) {
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const start = new Date(emp.leaveStart); start.setHours(0, 0, 0, 0)
+    const end   = new Date(emp.leaveEnd);   end.setHours(0, 0, 0, 0)
+    if (today >= start && today <= end) return emp.leaveType || 'On Leave'
   }
-  return emp.status || "Active"
+
+  // 3. Plain employee status
+  return emp.status || 'Active'
 }
 
 export const seedEmployees = [
