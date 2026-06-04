@@ -4,19 +4,7 @@ import { STATUS_STYLES } from '../biometricConstants'
 
 const Dash = () => <span style={{ color: '#c9bfaf' }}>-</span>
 
-const COLUMNS = [
-  { label: '#',           key: 'id',          width: '100px',  sortable: true  },
-  { label: 'Name',        key: 'name',         width: '180px',  sortable: false },
-  { label: 'Department',  key: 'department',   width: '140px',  sortable: false },
-  { label: 'Time Frame',  key: 'date',         width: '200px',  sortable: true  },
-  { label: 'Shift In',    key: 'shiftIn',      width: '100px',  sortable: false },
-  { label: 'Lunch Out',   key: 'lunchOut',     width: '100px',  sortable: false },
-  { label: 'Lunch In',    key: 'lunchIn',      width: '100px',  sortable: false },
-  { label: 'Shift Out',   key: 'shiftOut',     width: '100px',  sortable: false },
-  { label: 'Total Hours', key: 'totalHours',   width: '110px',  sortable: true  },
-  { label: 'Status',      key: 'status',       width: '90px',   sortable: false },
-]
-
+// Parse "7:30 AM" / "6:00 PM" → total minutes from midnight
 function parseTime(t) {
   if (!t) return null
   const [time, meridiem] = t.split(' ')
@@ -26,7 +14,16 @@ function parseTime(t) {
   return h * 60 + m
 }
 
-function calcTotalHours(r) {
+// Parse "HH:MM" (24-hr) → total minutes from midnight
+function parseHHMM(str) {
+  if (!str) return null
+  const [h, m] = str.split(':').map(Number)
+  if (isNaN(h) || isNaN(m)) return null
+  return h * 60 + m
+}
+
+// ACTUAL hours: raw tap-in to tap-out (deducts actual lunch, or 60 min default)
+function calcActualHours(r) {
   const inMin  = parseTime(r.shiftIn)
   const outMin = parseTime(r.shiftOut)
   if (inMin == null || outMin == null) return null
@@ -38,10 +35,45 @@ function calcTotalHours(r) {
   if (lunchOutMin != null && lunchInMin != null) {
     diff -= (lunchInMin - lunchOutMin)
   } else {
-    diff -= 90
+    diff -= 60   // default 1-hr lunch deduction
   }
 
   if (diff <= 0) return null
+  const h  = Math.floor(diff / 60)
+  const mn = diff % 60
+  return mn > 0 ? `${h}h ${mn}m` : `${h}h`
+}
+
+// SCHEDULED hours: clamp tap-in to schedStart, tap-out to schedEnd
+// Employee who arrives early → starts counting at scheduled start
+// Employee who leaves late   → stops counting at scheduled end
+function calcSchedHours(r) {
+  const tapIn  = parseTime(r.shiftIn)
+  const tapOut = parseTime(r.shiftOut)
+  if (tapIn == null || tapOut == null) return null
+
+  const schedIn  = parseHHMM(r.schedStart)
+  const schedOut = parseHHMM(r.schedEnd)
+  if (schedIn == null || schedOut == null) return calcActualHours(r)
+
+  // Clamp: don't count time before schedule start or after schedule end
+  const effectiveIn  = Math.max(tapIn,  schedIn)
+  const effectiveOut = Math.min(tapOut, schedOut)
+
+  if (effectiveOut <= effectiveIn) return '0h'
+
+  let diff = effectiveOut - effectiveIn
+
+  // Lunch deduction (actual if available, else 60 min)
+  const lunchOutMin = parseTime(r.lunchOut)
+  const lunchInMin  = parseTime(r.lunchIn)
+  if (lunchOutMin != null && lunchInMin != null) {
+    diff -= (lunchInMin - lunchOutMin)
+  } else {
+    diff -= 60
+  }
+
+  if (diff <= 0) return '0h'
   const h  = Math.floor(diff / 60)
   const mn = diff % 60
   return mn > 0 ? `${h}h ${mn}m` : `${h}h`
@@ -157,11 +189,11 @@ const PAGE_SIZE  = 10
 const ROW_HEIGHT = 52
 
 export function BiometricTable({ records, total, viewMode }) {
-  const [page,    setPage]    = useState(1)
-  const [sortKey, setSortKey] = useState('date')
-  const [sortDir, setSortDir] = useState('desc')   // newest first by default
+  const [page,      setPage]      = useState(1)
+  const [sortKey,   setSortKey]   = useState('date')
+  const [sortDir,   setSortDir]   = useState('desc')
+  const [hoursMode, setHoursMode] = useState('scheduled') // 'scheduled' | 'actual'
 
-  // Reset to page 1 whenever filtered record count changes
   useEffect(() => { setPage(1) }, [total])
 
   function handleSort(colKey) {
@@ -174,22 +206,23 @@ export function BiometricTable({ records, total, viewMode }) {
     setPage(1)
   }
 
+  function getHoursLabel(r) {
+    return hoursMode === 'scheduled' ? calcSchedHours(r) : calcActualHours(r)
+  }
+
   // ── Sort records ─────────────────────────────────────────────
   const sorted = [...records].sort((a, b) => {
     let aVal, bVal
 
     if (sortKey === 'id') {
-      // Numeric sort on employee number
       aVal = parseInt(String(a.id).replace(/\D/g, ''), 10) || 0
       bVal = parseInt(String(b.id).replace(/\D/g, ''), 10) || 0
     } else if (sortKey === 'date') {
-      // ISO date string sort — works lexicographically
       aVal = a.date ?? ''
       bVal = b.date ?? ''
     } else if (sortKey === 'totalHours') {
-      // Convert "8h 59m" → minutes for numeric comparison; nulls go to bottom
-      aVal = hoursLabelToMinutes(calcTotalHours(a))
-      bVal = hoursLabelToMinutes(calcTotalHours(b))
+      aVal = hoursLabelToMinutes(getHoursLabel(a))
+      bVal = hoursLabelToMinutes(getHoursLabel(b))
     } else {
       aVal = String(a[sortKey] ?? '').toLowerCase()
       bVal = String(b[sortKey] ?? '').toLowerCase()
@@ -212,6 +245,20 @@ export function BiometricTable({ records, total, viewMode }) {
     return [1, 'ellipsis1', safePage - 1, safePage, safePage + 1, 'ellipsis2', totalPages]
   }
 
+  // Column definitions — Total Hours header is rendered specially
+  const COLUMNS = [
+    { label: '#',           key: 'id',          width: '100px',  sortable: true  },
+    { label: 'Name',        key: 'name',         width: '180px',  sortable: false },
+    { label: 'Department',  key: 'department',   width: '140px',  sortable: false },
+    { label: 'Time Frame',  key: 'date',         width: '200px',  sortable: true  },
+    { label: 'Shift In',    key: 'shiftIn',      width: '100px',  sortable: false },
+    { label: 'Lunch Out',   key: 'lunchOut',     width: '100px',  sortable: false },
+    { label: 'Lunch In',    key: 'lunchIn',      width: '100px',  sortable: false },
+    { label: 'Shift Out',   key: 'shiftOut',     width: '100px',  sortable: false },
+    { label: 'Total Hours', key: 'totalHours',   width: '130px',  sortable: true, isHours: true },
+    { label: 'Status',      key: 'status',       width: '90px',   sortable: false },
+  ]
+
   return (
     <div
       className="rounded-2xl flex flex-col"
@@ -232,7 +279,7 @@ export function BiometricTable({ records, total, viewMode }) {
 
       {/* Scrollable table */}
       <div className="overflow-x-auto flex-shrink-0">
-        <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: '1060px' }}>
+        <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: '1080px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
               {COLUMNS.map((col, i) => (
@@ -255,12 +302,47 @@ export function BiometricTable({ records, total, viewMode }) {
                   onMouseEnter={e => { if (col.sortable) e.currentTarget.style.color = '#f97316' }}
                   onMouseLeave={e => { if (col.sortable) e.currentTarget.style.color = sortKey === col.key ? '#f97316' : '#a09278' }}
                 >
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>
-                    {col.label}
-                    {col.sortable && (
-                      <SortIcon colKey={col.key} sortKey={sortKey} sortDir={sortDir} />
-                    )}
-                  </span>
+                  {col.isHours ? (
+                    // ── Toggle header for Total Hours ──────────────────────
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        Total Hours
+                        <SortIcon colKey={col.key} sortKey={sortKey} sortDir={sortDir} />
+                      </span>
+                      <button
+                        onClick={e => { e.stopPropagation(); setHoursMode(m => m === 'scheduled' ? 'actual' : 'scheduled') }}
+                        title={hoursMode === 'scheduled'
+                          ? 'Showing scheduled hours (clamped to shift). Click for actual tap hours.'
+                          : 'Showing actual tap hours. Click for scheduled hours.'}
+                        style={{
+                          display       : 'inline-flex',
+                          alignItems    : 'center',
+                          gap           : '3px',
+                          padding       : '2px 7px',
+                          borderRadius  : '6px',
+                          border        : `1px solid ${hoursMode === 'scheduled' ? '#f97316' : 'rgba(0,0,0,0.15)'}`,
+                          background    : hoursMode === 'scheduled' ? '#fff8f2' : '#fff',
+                          color         : hoursMode === 'scheduled' ? '#f97316' : '#a09278',
+                          fontSize      : '9px',
+                          fontWeight    : 700,
+                          letterSpacing : '0.04em',
+                          cursor        : 'pointer',
+                          transition    : 'all 150ms',
+                          flexShrink    : 0,
+                          textTransform : 'uppercase',
+                        }}
+                      >
+                        {hoursMode === 'scheduled' ? '⏱ Sched' : '⏱ Actual'}
+                      </button>
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      {col.label}
+                      {col.sortable && (
+                        <SortIcon colKey={col.key} sortKey={sortKey} sortDir={sortDir} />
+                      )}
+                    </span>
+                  )}
                 </th>
               ))}
             </tr>
@@ -289,6 +371,7 @@ export function BiometricTable({ records, total, viewMode }) {
                 {paginated.map((r, idx) => {
                   const ss    = STATUS_STYLES[r.status] || STATUS_STYLES['Full Time']
                   const rowBg = idx % 2 === 0 ? '#fff' : '#faf9f6'
+                  const hoursLabel = getHoursLabel(r)
                   return (
                     <tr
                       key={r.id + '_' + r.date}
@@ -329,8 +412,15 @@ export function BiometricTable({ records, total, viewMode }) {
                       <td className="px-4" style={{ fontSize: '13px', color: '#4b3a2a', whiteSpace: 'nowrap' }}>
                         {r.shiftOut != null ? r.shiftOut : <Dash />}
                       </td>
-                      <td className="px-4" style={{ fontSize: '13px', color: '#4b3a2a', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                        {calcTotalHours(r) ?? <Dash />}
+                      <td className="px-4" style={{ whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                          <span style={{ fontSize: '13px', color: '#4b3a2a', fontWeight: 500 }}>
+                            {hoursLabel ?? <Dash />}
+                          </span>
+                          <span style={{ fontSize: '9px', color: '#c9bfaf', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                            {hoursMode === 'scheduled' ? 'sched' : 'actual'}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4">
                         <span className="text-xs font-semibold" style={{ color: ss.color, whiteSpace: 'nowrap' }}>
