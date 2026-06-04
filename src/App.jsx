@@ -50,7 +50,7 @@ function App() {
   const allowedModules = MODULE_ACCESS[currentUser.role] ?? []
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-[#fcfcfc]">
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}

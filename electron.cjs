@@ -1,5 +1,7 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, shell } = require('electron')
 const path = require('path')
+const fs = require('fs')
+const crypto = require('crypto')
 const {
   initDb, loginUser,
   getEmployees, getArchivedEmployees,
@@ -98,6 +100,20 @@ ipcMain.handle('orders:getByOutlet',   (_, outletId) => getOrdersByOutlet(outlet
 ipcMain.handle('orders:getByDefault',  ()            => getOrdersByDefault())
 ipcMain.handle('orders:getAll',        ()            => getAllOrders())
 ipcMain.handle('orders:delete',        (_, id)       => deleteOrder(id))
+
+// ── ATTACHMENTS ───────────────────────────────────────────────────
+ipcMain.handle('attachments:save', async (_, { name, buffer }) => {
+  const uploadsDir = path.join(app.getPath('userData'), 'uploads')
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+  const ext = path.extname(name) || ''
+  const filename = `${crypto.randomUUID()}${ext}`
+  const filepath = path.join(uploadsDir, filename)
+  fs.writeFileSync(filepath, buffer)
+  return { path: filepath }
+})
+ipcMain.handle('attachments:open', async (_, filepath) => {
+  await shell.openPath(filepath)
+})
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────
 app.whenReady().then(async () => {

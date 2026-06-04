@@ -1,8 +1,11 @@
 import { useRef, useState, useEffect } from "react"
-import { ChevronDown, Check, Search, X } from "lucide-react"
+import { ChevronDown, Check, Search, X, Paperclip, FileText, Image as ImageIcon, ExternalLink } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
-// ── Inlined helpers (avoids cross-module import) ──────────────────────────────
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+import { COMPLAINT_GROUPS } from "./clinicConstants"
+
+// ── Inlined helpers ────────────────────────────────────────────────────────────
 const avatarColors = [
   "bg-orange-500", "bg-blue-600",  "bg-purple-500",
   "bg-teal-600",   "bg-yellow-500","bg-red-700",
@@ -24,6 +27,27 @@ const DISPOSITION_OPTIONS = [
   { value: "monitoring",  label: "Monitoring" },
 ]
 
+const GENDER_OPTIONS = [
+  { value: "male",   label: "Male" },
+  { value: "female", label: "Female" },
+]
+
+// ── File to Data URL (for lightweight DB storage) ─────────────────────────────
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload  = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error("File read failed"))
+    reader.readAsDataURL(file)
+  })
+}
+
+function getFileIcon(name = "") {
+  const ext = name.split(".").pop().toLowerCase()
+  if (["jpg","jpeg","png","gif","webp","bmp","svg"].includes(ext)) return ImageIcon
+  return FileText
+}
+
 // ── Employee autocomplete ─────────────────────────────────────────────────────
 function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
   const [open,  setOpen]  = useState(false)
@@ -31,7 +55,6 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
   const containerRef      = useRef(null)
   const inputRef          = useRef(null)
 
-  // Keep query in sync when form resets externally
   useEffect(() => { setQuery(value ?? "") }, [value])
 
   const filtered = query.trim().length > 0
@@ -42,12 +65,9 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
       )
     : employees
 
-  // Close on outside click
   useEffect(() => {
     function onDown(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false)
-      }
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false)
     }
     document.addEventListener("mousedown", onDown)
     return () => document.removeEventListener("mousedown", onDown)
@@ -56,33 +76,29 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
   function select(emp) {
     setQuery(emp.name)
     onChange(emp.name)
-    onSelect?.(emp)       // ← pass full employee object so parent can grab employee_no
+    onSelect?.(emp)
     setOpen(false)
   }
 
   function handleChange(e) {
     setQuery(e.target.value)
     onChange(e.target.value)
-    onSelect?.(null)      // ← typed freely, clear stored employee_no
+    onSelect?.(null)
     setOpen(true)
   }
 
   function handleClear() {
     setQuery("")
     onChange("")
-    onSelect?.(null)      // ← cleared, so clear stored employee_no too
+    onSelect?.(null)
     inputRef.current?.focus()
     setOpen(true)
   }
 
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Input row */}
       <div className="relative flex items-center">
-        <Search
-          size={13}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-        />
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
           ref={inputRef}
           type="text"
@@ -93,24 +109,16 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
           className="w-full h-9 pl-8 pr-8 text-sm border border-gray-200 rounded-md bg-white outline-none focus:border-orange-400 transition-colors placeholder:text-gray-400 text-gray-800"
         />
         {query && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
-          >
+          <button type="button" onClick={handleClear} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
             <X size={13} />
           </button>
         )}
       </div>
-
-      {/* Dropdown */}
       {open && (
         <div className="absolute z-[999] mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
           <div className="max-h-44 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center py-4">
-                No employees match &ldquo;{query}&rdquo;
-              </p>
+              <p className="text-xs text-gray-400 text-center py-4">No employees match &ldquo;{query}&rdquo;</p>
             ) : (
               filtered.map(emp => {
                 const isActive = emp.name === value
@@ -126,9 +134,7 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="font-medium text-gray-900 block truncate">{emp.name}</span>
-                      <span className="text-xs text-gray-400">
-                        {[emp.dept, emp.employee_no].filter(Boolean).join(" · ")}
-                      </span>
+                      <span className="text-xs text-gray-400">{[emp.dept, emp.employee_no].filter(Boolean).join(" · ")}</span>
                     </span>
                     {isActive && <Check size={13} color="#f97316" strokeWidth={2.5} className="flex-shrink-0" />}
                   </button>
@@ -142,92 +148,240 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
   )
 }
 
-function CustomSelect({ value, onChange, options }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
 
-  useEffect(() => {
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+// ── Attachment uploader ────────────────────────────────────────────────────────
+function AttachmentUploader({ attachments = [], onChange }) {
+  const fileInputRef = useRef(null)
+
+  async function handleFiles(e) {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+
+    const newAttachments = await Promise.all(
+      files.map(async (file) => {
+        if (file.size > 5 * 1024 * 1024) {
+          alert(`"${file.name}" exceeds 5 MB and was skipped.`)
+          return null
+        }
+        const buffer = await file.arrayBuffer()
+        const result = await window.electronAPI.saveAttachment({ name: file.name, buffer: new Uint8Array(buffer) })
+        return {
+          name:    file.name,
+          type:    file.type,
+          size:    file.size,
+          path:    result.path,
+        }
+      })
+    )
+
+    const valid = newAttachments. filter(Boolean)
+    onChange([...attachments, ...valid])
+    e.target.value = ""
+  }
+
+  function remove(idx) {
+    onChange(attachments.filter((_, i) => i !== idx))
+  }
+
+  async function openPreview(att) {
+    if (window.electronAPI && att.path) {
+      window.electronAPI.openAttachment(att.path)
+    } else if (window.electronAPI && att.dataUrl) {
+      try {
+        const res = await fetch(att.dataUrl)
+        const buffer = await res.arrayBuffer()
+        const result = await window.electronAPI.saveAttachment({ name: att.name, buffer: new Uint8Array(buffer) })
+        window.electronAPI.openAttachment(result.path)
+      } catch (err) {
+        alert("Failed to render legacy attachment.")
+      }
+    } else if (att.dataUrl) {
+      const w = window.open()
+      w.document.write(`
+        <title>${att.name}</title>
+        <body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh">
+          ${att.type && att.type.startsWith("image/")
+            ? `<img src="${att.dataUrl}" style="max-width:100%;max-height:100vh;object-fit:contain" />`
+            : `<iframe src="${att.dataUrl}" style="width:100%;height:100vh;border:none"></iframe>`
+          }
+        </body>
+      `)
     }
-    if (open) document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  const selected = options.find(o => o.value === value)
+  }
 
   return (
-    <div ref={ref} style={{ position: "relative", display: "block", width: "100%" }}>
-      {/* Trigger */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: "inline-flex", alignItems: "center", justifyContent: "space-between",
-          width: "100%", padding: "0 10px", height: "36px", borderRadius: "8px",
-          border: "1px solid rgba(0,0,0,0.1)", background: "#fff",
-          fontSize: "13px", fontWeight: 500, color: "#2c2010",
-          cursor: "pointer", gap: "8px",
-        }}
-      >
-        <span style={{ flex: 1, textAlign: "left" }}>{selected?.label ?? ""}</span>
-        <ChevronDown
-          size={13}
-          color="#a09278"
-          style={{ transition: "transform 150ms", transform: open ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}
-        />
-      </button>
-
-      {/* Dropdown panel */}
-      {open && (
-        <div style={{
-          position: "absolute",
-          top: "calc(100% + 6px)",
-          left: 0,
-          width: "100%",
-          minWidth: "180px",
-          background: "#fff",
-          borderRadius: "12px",
-          border: "1px solid rgba(0,0,0,0.08)",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
-          zIndex: 999,
-          padding: "6px",
-          overflow: "hidden",
-        }}>
-          {options.map(opt => {
-            const isActive = opt.value === value
+    <div className="flex flex-col gap-2">
+      {/* Uploaded list */}
+      {attachments.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {attachments.map((att, idx) => {
+            const Icon = getFileIcon(att.name)
             return (
-              <button
-                key={opt.value}
-                onClick={() => { onChange(opt.value); setOpen(false) }}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  width: "100%", padding: "8px 10px", borderRadius: "8px",
-                  border: "none",
-                  background: isActive ? "#fff8f2" : "transparent",
-                  color: isActive ? "#f97316" : "#2c2010",
-                  fontSize: "13px", fontWeight: isActive ? 600 : 400,
-                  cursor: "pointer", textAlign: "left",
-                  transition: "background 100ms",
-                }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#f9f8f6" }}
-                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent" }}
+              <div
+                key={idx}
+                className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-lg group"
               >
-                {opt.label}
-                {isActive && <Check size={13} color="#f97316" strokeWidth={2.5} />}
-              </button>
+                <Icon size={13} className="text-orange-400 flex-shrink-0" />
+                <span className="flex-1 text-xs text-gray-700 truncate font-medium">{att.name}</span>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {att.size < 1024 * 1024
+                    ? `${(att.size / 1024).toFixed(0)} KB`
+                    : `${(att.size / 1024 / 1024).toFixed(1)} MB`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => openPreview(att)}
+                  className="text-gray-300 hover:text-orange-400 transition-colors flex-shrink-0"
+                  title="Preview"
+                >
+                  <ExternalLink size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(idx)}
+                  className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                  title="Remove"
+                >
+                  <X size={12} />
+                </button>
+              </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Trigger button */}
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        className="flex items-center gap-2 px-3 py-2 border border-dashed border-gray-200 rounded-lg text-xs text-gray-400 hover:border-orange-300 hover:text-orange-400 hover:bg-orange-50/50 transition-colors"
+      >
+        <Paperclip size={13} />
+        <span>Attach file or photo</span>
+        <span className="ml-auto text-gray-300">max 5 MB each</span>
+      </button>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="image/*,.pdf,.doc,.docx,.txt,.xlsx,.csv"
+        className="hidden"
+        onChange={handleFiles}
+      />
+    </div>
+  )
+}
+
+// ── Complaint Autocomplete ───────────────────────────────────────────────────
+function ComplaintAutocomplete({ value, onChange }) {
+  const [open,  setOpen]  = useState(false)
+  const [query, setQuery] = useState(value ?? "")
+  const containerRef      = useRef(null)
+  const inputRef          = useRef(null)
+
+  useEffect(() => { setQuery(value ?? "") }, [value])
+
+  useEffect(() => {
+    function onDown(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener("mousedown", onDown)
+    return () => document.removeEventListener("mousedown", onDown)
+  }, [])
+
+  const q = query.trim().toLowerCase()
+  const filtered = COMPLAINT_GROUPS
+    .map(g => ({ group: g.group, options: q ? g.options.filter(o => o.toLowerCase().includes(q)) : g.options }))
+    .filter(g => g.options.length > 0)
+
+  function select(opt) {
+    setQuery(opt)
+    onChange(opt)
+    setOpen(false)
+  }
+
+  function handleChange(e) {
+    setQuery(e.target.value)
+    onChange(e.target.value)
+    setOpen(true)
+  }
+
+  function handleClear() {
+    setQuery("")
+    onChange("")
+    inputRef.current?.focus()
+    setOpen(true)
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative flex items-center">
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          placeholder="Search complaint / reason…"
+          onChange={handleChange}
+          onFocus={() => setOpen(true)}
+          className="w-full h-9 pl-8 pr-8 text-sm border border-gray-200 rounded-md bg-white outline-none focus:border-orange-400 transition-colors placeholder:text-gray-400 text-gray-800"
+        />
+        {query && (
+          <button type="button" onClick={handleClear} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+            <X size={13} />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute z-[999] mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+          <div className="max-h-52 overflow-y-auto py-1">
+            {query.trim() && !COMPLAINT_GROUPS.some(g => g.options.some(o => o.toLowerCase() === query.trim().toLowerCase())) && (
+              <button
+                type="button"
+                onClick={() => select(query.trim())}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors hover:bg-orange-100 bg-orange-50 mb-1"
+              >
+                <span className="text-orange-600 font-medium">Use "{query.trim()}"</span>
+                <Check size={13} color="#ea580c" strokeWidth={2.5} className="flex-shrink-0" />
+              </button>
+            )}
+            {filtered.length === 0 ? (
+              !query.trim() && <p className="text-xs text-gray-400 text-center py-4">No complaints match “{query}”</p>
+            ) : (
+              filtered.map(g => (
+                <div key={g.group}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-orange-400 px-3 pt-2 pb-1">{g.group}</p>
+                  {g.options.map(opt => {
+                    const isActive = opt === value
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => select(opt)}
+                        className={`w-full flex items-center justify-between px-3 py-1.5 text-sm text-left transition-colors hover:bg-gray-50 ${isActive ? "bg-orange-50" : ""}`}
+                      >
+                        <span className={isActive ? "text-orange-500 font-medium" : "text-gray-800"}>{opt}</span>
+                        {isActive && <Check size={13} color="#f97316" strokeWidth={2.5} className="flex-shrink-0" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+// ── Main form ─────────────────────────────────────────────────────────────────
 export default function NewEntryForm({ form, set, saved, onSave, employees = [] }) {
   return (
-    <div className="w-full h-full bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4">
+    <div className="w-full h-full bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 overflow-y-auto">
 
-      <h2 className="text-sm font-semibold text-gray-900">New Clinic Entry</h2>
+      <h2 className="text-sm font-semibold text-gray-900 flex-shrink-0">New Clinic Entry</h2>
 
       {/* ── Row 1: Date + Time ── */}
       <div className="grid grid-cols-2 gap-3">
@@ -249,34 +403,69 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
           value={form.employee}
           onChange={v => set("employee", v)}
           onSelect={emp => {
-            // Store as "employeeCode" to match the DB column name (employee_code)
             set("employeeCode", emp ? (emp.employee_no ?? "") : "")
           }}
         />
       </div>
 
-      {/* ── Row 3: Complaint + Disposition side by side ── */}
+      {/* ── Row 3: Gender + Age ── */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Complaint / Reason</label>
-          <Input
-            placeholder="e.g. Headache, Fever..."
-            value={form.complaint}
-            onChange={e => set("complaint", e.target.value)}
-            className="bg-white border-gray-200 h-9"
-          />
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Gender</label>
+          <Select value={form.gender} onValueChange={v => set("gender", v)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select…" />
+            </SelectTrigger>
+            <SelectContent>
+              {GENDER_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Disposition</label>
-          <CustomSelect
-            value={form.disposition}
-            onChange={v => set("disposition", v)}
-            options={DISPOSITION_OPTIONS}
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Age</label>
+          <Input
+            type="number"
+            min="1"
+            max="120"
+            placeholder="e.g. 35"
+            value={form.age}
+            onChange={e => set("age", e.target.value)}
+            className="bg-white border-gray-200 h-9"
           />
         </div>
       </div>
 
-      {/* ── Row 4: Vital Signs ── */}
+      {/* ── Row 4: Complaint + Disposition ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Complaint / Reason</label>
+          <ComplaintAutocomplete
+            value={form.complaint}
+            onChange={v => set("complaint", v)}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Disposition</label>
+          <Select value={form.disposition} onValueChange={v => set("disposition", v)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DISPOSITION_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* ── Row 5: Vital Signs (BP, Temp, Pulse, SpO2) ── */}
       <div>
         <label className="block text-xs font-medium text-gray-500 mb-1.5">Vital Signs</label>
         <div className="grid grid-cols-2 gap-3">
@@ -292,30 +481,61 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">°C</span>
             <Input
+              type="number"
+              step="any"
               placeholder="36.5"
               value={form.temp}
               onChange={e => set("temp", e.target.value)}
               className="bg-white border-gray-200 h-9 pl-9"
             />
           </div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none leading-none" style={{fontSize:"10px"}}>bpm</span>
+            <Input
+              type="number"
+              placeholder="Pulse (e.g. 72)"
+              value={form.pulse}
+              onChange={e => set("pulse", e.target.value)}
+              className="bg-white border-gray-200 h-9 pl-10"
+            />
+          </div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium pointer-events-none">SpO₂</span>
+            <Input
+              type="number"
+              placeholder="98"
+              value={form.spo2}
+              onChange={e => set("spo2", e.target.value)}
+              className="bg-white border-gray-200 h-9 pl-12"
+            />
+          </div>
         </div>
       </div>
 
-      {/* ── Row 5: Treatment (flex-1 so it fills remaining space) ── */}
-      <div className="flex-1 flex flex-col min-h-0">
+      {/* ── Row 6: Treatment ── */}
+      <div className="flex flex-col min-h-0">
         <label className="block text-xs font-medium text-gray-500 mb-1.5">Treatment / Action Taken</label>
         <textarea
           placeholder="Treatment or medication given..."
           value={form.treatment}
           onChange={e => set("treatment", e.target.value)}
-          className="flex-1 w-full min-h-[80px] px-3 py-2.5 text-sm border border-gray-200 rounded-md bg-white resize-none outline-none focus:border-orange-400 transition-colors"
+          className="w-full min-h-[70px] px-3 py-2.5 text-sm border border-gray-200 rounded-md bg-white resize-none outline-none focus:border-orange-400 transition-colors"
+        />
+      </div>
+
+      {/* ── Row 7: Attachments ── */}
+      <div>
+        <label className="block text-xs font-medium text-gray-500 mb-1.5">Attachments</label>
+        <AttachmentUploader
+          attachments={form.attachments ?? []}
+          onChange={v => set("attachments", v)}
         />
       </div>
 
       {/* ── Save button ── */}
       <Button
         onClick={onSave}
-        className={`w-full h-9 text-sm font-medium ${saved ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"} text-white`}
+        className={`w-full h-9 text-sm font-medium flex-shrink-0 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"} text-white`}
       >
         {saved ? "✓ Record Saved!" : "Save Clinic Record"}
       </Button>

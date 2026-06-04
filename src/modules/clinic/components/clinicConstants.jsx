@@ -6,3 +6,215 @@ export const DISP_CLASS = {
 }
 
 export const ALL_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+export const COMPLAINT_GROUPS = [
+  {
+    group: "Skin",
+    options: [
+      "Allergy",
+      "Dermatomes",
+      "Folliculitis / Abscess / Paronychia",
+      "Other (Skin)",
+    ],
+  },
+  {
+    group: "Head",
+    options: [
+      "Tension Headache",
+      "Other (Head)",
+    ],
+  },
+  {
+    group: "Eyes",
+    options: [
+      "Error of Refraction",
+      "Bacterial / Viral Conjunctivitis",
+      "Cataract",
+      "Other (Eyes)",
+    ],
+  },
+  {
+    group: "Mouth & ENT",
+    options: [
+      "Gingivitis",
+      "Herpes Labialis / Nasalis",
+      "Otitis Media / External",
+      "Deafness",
+      "Meniere's Syndrome / Vertigo",
+      "Rhinitis / Cold",
+      "Nasal Polyps",
+      "Sinusitis",
+      "Tonsillopharyngitis",
+      "Laryngitis",
+      "Other (Mouth & ENT)",
+    ],
+  },
+  {
+    group: "Respiratory",
+    options: [
+      "Bronchitis",
+      "Pneumonia",
+      "Tuberculosis",
+      "Pneumoconiosis",
+      "Other (Respiratory)",
+    ],
+  },
+  {
+    group: "Heart & Blood Vessels",
+    options: [
+      "Hypertension",
+      "Angina Pectoris",
+      "Myocardial Infarction",
+      "Vascular Disturbance (Vibration)",
+      "Other (Heart & Blood Vessels)",
+    ],
+  },
+  {
+    group: "Gastrointestinal",
+    options: [
+      "Gastroenteritis",
+      "Amoebiasis",
+      "Gastritis / Hyperacidity",
+      "Appendicitis",
+      "Infectious Hepatitis",
+      "Liver Cirrhosis",
+      "Hepatic Abscess",
+      "Cancer (Hepatic / Gastric)",
+      "Ulcer",
+      "Other (Gastrointestinal)",
+    ],
+  },
+  {
+    group: "Genito Urinary",
+    options: [
+      "Urinary Tract Infection",
+      "Kidney / Bladder Stones",
+      "Cancer (GU)",
+      "Other (Genito Urinary)",
+    ],
+  },
+  {
+    group: "Reproductive",
+    options: [
+      "Dysmenorrhea",
+      "Cervicitis / Vaginitis",
+      "Abortion (Spontaneous)",
+      "Abortion (Threatened)",
+      "Hyperemesis Gravidarum",
+      "Uterine Tumors",
+      "Cervical Polyp / Cancer",
+      "Ovarian Cyst / Tumors",
+      "Sexually Transmitted Disease",
+      "Hernia (Inguinal / Femoral)",
+      "Other (Reproductive)",
+    ],
+  },
+  {
+    group: "Neuromuscular / Skeletal",
+    options: [
+      "Peripheral Neuritis",
+      "Torticollis",
+      "Arthritis",
+      "Other (Neuromuscular / Skeletal)",
+    ],
+  },
+  {
+    group: "Lymphatic & Circulatory",
+    options: [
+      "Anemia",
+      "Leukemia",
+      "Cerebrovascular Disease",
+      "Lymphadenitis",
+      "Lymphoma",
+      "Other (Lymphatic & Circulatory)",
+    ],
+  },
+  {
+    group: "Infectious Diseases",
+    options: [
+      "Influenza",
+      "Typhoid / Paratyphoid Fever",
+      "Cholera",
+      "Measles",
+      "Mumps",
+      "Tetanus",
+      "Malaria",
+      "Schistosomiasis",
+      "Herpes Zoster",
+      "Chicken Pox",
+      "German Measles (Rubella)",
+      "Rabies",
+      "Other (Infectious Diseases)",
+    ],
+  },
+  {
+    group: "Environmental – Noise & Vibration",
+    options: [
+      "Noise-Induced Deafness",
+      "White Finger Disease",
+      "Musculo-skeletal Disturbances",
+      "Fatigue",
+      "Other (Noise & Vibration)",
+    ],
+  },
+  {
+    group: "Environmental – Heat",
+    options: [
+      "Heat Stroke",
+      "Heat Cramps",
+      "Dehydration",
+      "Heat Exhaustion",
+      "Other (Heat)",
+    ],
+  },
+  {
+    group: "Environmental – Cold",
+    options: [
+      "Chilblain",
+      "Frostbite",
+      "Immersion Foot",
+      "General Hypothermia",
+      "Other (Cold)",
+    ],
+  },
+  {
+    group: "Environmental – Pressure",
+    options: [
+      "Decompression Sickness",
+      "Air Embolism",
+      "Bends Disease",
+      "Barotrauma",
+      "Hypoxia",
+      "Altitude Sickness",
+      "Other (Pressure)",
+    ],
+  },
+  {
+    group: "Environmental – Radiation",
+    options: [
+      "Cataracts (Radiation)",
+      "Keratitis",
+      "Burns (Radiation)",
+      "Radiation-related Cancer",
+      "Other (Radiation)",
+    ],
+  },
+  {
+    group: "Injuries (Sec. 11)",
+    options: [
+      "Contusion / Bruises / Hematoma",
+      "Abrasion",
+      "Cut / Laceration / Puncture",
+      "Concussion",
+      "Avulsion",
+      "Amputation / Loss of Body Part",
+      "Crushing Injury",
+      "Spinal Injury",
+      "Cranial Injury",
+      "Sprain",
+      "Dislocation / Fracture",
+      "Burns (Injury)",
+      "Other (Injury)",
+    ],
+  },
+]

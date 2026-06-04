@@ -149,8 +149,13 @@ const initDb = async () => {
       complaint     TEXT,
       disposition   TEXT,
       bp            TEXT,
-      temp          TEXT,
+      temp          REAL,
+      pulse         INTEGER,
+      spo2          INTEGER,
+      gender        TEXT,
+      age           INTEGER,
       treatment     TEXT,
+      attachments   TEXT DEFAULT '[]',
       status        TEXT DEFAULT 'Active',
       created_at    TEXT DEFAULT (datetime('now')),
       synced_at     TEXT DEFAULT NULL,
@@ -234,6 +239,12 @@ const initDb = async () => {
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN bp            TEXT`)                       } catch (_) {}
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN temp          TEXT`)                       } catch (_) {}
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN treatment     TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN pulse         TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN spo2          TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN gender        TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN age           TEXT`)                       } catch (_) {}
+  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN attachments   TEXT DEFAULT '[]'`)          } catch (_) {}
+  try { db.run(`UPDATE clinic_logs SET attachments = '[]' WHERE attachments IS NULL`) }       catch (_) {}
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN status        TEXT DEFAULT 'Active'`)      } catch (_) {}
   try { db.run(`ALTER TABLE clinic_logs ADD COLUMN created_at    TEXT DEFAULT (datetime('now'))`) } catch (_) {}
   try { db.run(`UPDATE clinic_logs SET status = 'Active' WHERE status IS NULL`) }             catch (_) {}
@@ -657,6 +668,11 @@ const mapClinicLog = (r) => ({
   bp:           r.bp            ?? '',
   temp:         r.temp          ?? '',
   treatment:    r.treatment     ?? '',
+  pulse:        r.pulse         ?? '',
+  spo2:         r.spo2          ?? '',
+  gender:       r.gender        ?? '',
+  age:          r.age           ?? '',
+  attachments:  (() => { try { return JSON.parse(r.attachments ?? '[]') } catch { return [] } })(),
   status:       r.status        ?? 'Active',
   createdAt:    r.created_at    ?? '',
 })
@@ -672,8 +688,9 @@ const getArchivedClinicLogs = () =>
 const upsertClinicLog = (log) => run(`
   INSERT INTO clinic_logs
     (id, employee_id, full_name, employee_code, date, time,
-     complaint, disposition, bp, temp, treatment, status)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
+     complaint, disposition, bp, temp, treatment,
+     pulse, spo2, gender, age, attachments, status)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
   ON CONFLICT(id) DO UPDATE SET
     employee_id   = excluded.employee_id,
     full_name     = excluded.full_name,
@@ -685,12 +702,19 @@ const upsertClinicLog = (log) => run(`
     bp            = excluded.bp,
     temp          = excluded.temp,
     treatment     = excluded.treatment,
+    pulse         = excluded.pulse,
+    spo2          = excluded.spo2,
+    gender        = excluded.gender,
+    age           = excluded.age,
+    attachments   = excluded.attachments,
     sync_status   = 'pending'
 `, [
   log.id, log.employeeId ?? null, log.fullName, log.employeeCode ?? null,
   log.date, log.time,
   log.complaint ?? null, log.disposition ?? null,
   log.bp ?? null, log.temp ?? null, log.treatment ?? null,
+  log.pulse ?? null, log.spo2 ?? null, log.gender ?? null, log.age ?? null,
+  typeof log.attachments === 'string' ? log.attachments : JSON.stringify(log.attachments ?? []),
 ])
 
 const archiveClinicLog = (id) =>
