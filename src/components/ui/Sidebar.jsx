@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
-  SoapDispenserDroplet, Pin, PinOff
+  SoapDispenserDroplet, Pin, PinOff, CalendarClock
 } from 'lucide-react'
 
 const ROLE_LABELS = {
@@ -14,14 +14,15 @@ const ROLE_LABELS = {
 }
 
 const ALL_NAV_ITEMS = [
-  { id: 'dashboard',    label: 'Dashboard',    icon: LayoutDashboard      },
-  { id: 'employees',    label: 'Employees',    icon: Users                },
-  { id: 'biometrics',   label: 'Biometrics',   icon: Fingerprint          },
-  { id: 'clinic',       label: 'Clinic Log',   icon: ClipboardList        },
-  { id: 'products',     label: 'Products',     icon: SoapDispenserDroplet },
-  { id: 'outlets',      label: 'Outlets',      icon: Store                },
-  { id: 'calculations', label: 'Calculations', icon: Calculator           },
-  { id: 'reports',      label: 'Reports',      icon: BarChart3            },
+  { id: 'dashboard',    label: 'Dashboard',       icon: LayoutDashboard      },
+  { id: 'employees',    label: 'Employees',       icon: Users                },
+  { id: 'biometrics',   label: 'Biometrics',      icon: Fingerprint          },
+  { id: 'clinic',       label: 'Clinic Log',      icon: ClipboardList        },
+  { id: 'products',     label: 'Products',        icon: SoapDispenserDroplet },
+  { id: 'outlets',      label: 'Outlets',         icon: Store                },
+  { id: 'calculations', label: 'Calculations',    icon: Calculator           },
+  { id: 'reports',      label: 'Reports',         icon: BarChart3            },
+  { id: 'leaves',       label: 'Leave Requests',  icon: CalendarClock        },
 ]
 
 const SYSTEM_ITEMS = [

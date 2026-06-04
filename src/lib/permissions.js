@@ -6,19 +6,19 @@ export const MODULE_ACCESS = {
   admin: [
     'dashboard', 'employees', 'biometrics',
     'clinic', 'products', 'outlets',
-    'calculations', 'reports', 'settings'
+    'calculations', 'reports', 'settings', 'leaves'
   ],
   hr: [
-    'dashboard', 'employees', 'biometrics', 'reports'
+    'dashboard', 'employees', 'biometrics', 'reports', 'leaves'
   ],
   clinic: [
-    'dashboard', 'clinic', 'reports'
+    'dashboard', 'clinic', 'reports', 'leaves'
   ],
   inventory: [
-    'dashboard', 'products', 'calculations', 'reports'
+    'dashboard', 'products', 'calculations', 'reports', 'leaves'
   ],
   outlets: [
-    'dashboard', 'outlets', 'reports'
+    'dashboard', 'outlets', 'reports', 'leaves'
   ],
 }
 

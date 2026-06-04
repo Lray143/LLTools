@@ -61,7 +61,19 @@ window.electronAPI = {
   getAllOrders:             ()         => ipcRenderer.invoke('orders:getAll'),
   deleteOrder:             (id)       => ipcRenderer.invoke('orders:delete', id),
 
+  // ── Leave Requests ───────────────────────────────────────────────
+  submitLeaveRequest:      (req)                   => ipcRenderer.invoke('leaves:submit', req),
+  getLeaveRequests:        ()                       => ipcRenderer.invoke('leaves:getAll'),
+  getMyLeaveRequests:      (employeeId)             => ipcRenderer.invoke('leaves:getMine', employeeId),
+  reviewLeaveRequest:      (id, status, note)       => ipcRenderer.invoke('leaves:review', id, status, note),
+
   // ── Attachments ─────────────────────────────────────────────────
   saveAttachment:          (data)     => ipcRenderer.invoke('attachments:save', data),
   openAttachment:          (path)     => ipcRenderer.invoke('attachments:open', path),
+
+  // ── Leave Requests ──────────────────────────────────────────────
+  submitLeaveRequest:      (req)                   => ipcRenderer.invoke('leaves:submit', req),
+  getLeaveRequests:        ()                      => ipcRenderer.invoke('leaves:getAll'),
+  getMyLeaveRequests:      (employeeNo)            => ipcRenderer.invoke('leaves:getMine', employeeNo),
+  reviewLeaveRequest:      (id, status, note, reviewedBy) => ipcRenderer.invoke('leaves:review', id, status, note, reviewedBy),
 }

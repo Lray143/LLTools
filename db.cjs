@@ -216,6 +216,21 @@ const initDb = async () => {
       grand_total    REAL NOT NULL DEFAULT 0,
       created_at     TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id            TEXT PRIMARY KEY,
+      employee_id   TEXT REFERENCES employees(id) ON DELETE CASCADE,
+      employee_no   TEXT,
+      employee_name TEXT,
+      leave_type    TEXT NOT NULL,
+      start_date    TEXT NOT NULL,
+      end_date      TEXT NOT NULL,
+      reason        TEXT,
+      status        TEXT DEFAULT 'Pending',
+      review_note   TEXT DEFAULT NULL,
+      reviewed_at   TEXT DEFAULT NULL,
+      created_at    TEXT DEFAULT (datetime('now')),
+      sync_status   TEXT DEFAULT 'pending'
+    );
   `)
 
   try { db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date)`) } catch (_) {}
@@ -284,6 +299,27 @@ const initDb = async () => {
       created_at     TEXT DEFAULT (datetime('now'))
     )`)
   } catch (_) {}
+
+  // ── LEAVE REQUESTS MIGRATION ─────────────────────────────────────
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS leave_requests (
+      id            TEXT PRIMARY KEY,
+      employee_id   TEXT REFERENCES employees(id) ON DELETE CASCADE,
+      employee_no   TEXT,
+      employee_name TEXT,
+      leave_type    TEXT NOT NULL,
+      start_date    TEXT NOT NULL,
+      end_date      TEXT NOT NULL,
+      reason        TEXT,
+      status        TEXT DEFAULT 'Pending',
+      review_note   TEXT DEFAULT NULL,
+      reviewed_at   TEXT DEFAULT NULL,
+      reviewed_by   TEXT DEFAULT NULL,
+      created_at    TEXT DEFAULT (datetime('now')),
+      sync_status   TEXT DEFAULT 'pending'
+    )`)
+  } catch (_) {}
+  try { db.run(`ALTER TABLE leave_requests ADD COLUMN reviewed_by TEXT DEFAULT NULL`) } catch (_) {}
 
   // ── SEED USERS ────────────────────────────────────────────────
   const seedUsers = [
@@ -769,6 +805,39 @@ const getAllOrders = () =>
 const deleteOrder = (id) => run(`DELETE FROM saved_orders WHERE id = ?`, [id])
 
 
+// ── LEAVE REQUESTS ────────────────────────────────────────────────
+const submitLeaveRequest = (req) => {
+  run(`
+    INSERT INTO leave_requests
+      (id, employee_id, employee_no, employee_name, leave_type, start_date, end_date, reason)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [req.id, req.employee_id, req.employee_no, req.employee_name,
+      req.leave_type, req.start_date, req.end_date, req.reason ?? null])
+  save()
+}
+
+const getLeaveRequests = () => queryAll(`
+  SELECT lr.*, e.name AS emp_name, e.department
+  FROM leave_requests lr
+  LEFT JOIN employees e ON e.id = lr.employee_id
+  ORDER BY lr.created_at DESC
+`)
+
+const getMyLeaveRequests = (employeeNo) => queryAll(`
+  SELECT * FROM leave_requests
+  WHERE employee_no = ?
+  ORDER BY created_at DESC
+`, [employeeNo])
+
+const reviewLeaveRequest = (id, status, note, reviewedBy) => {
+  run(`
+    UPDATE leave_requests
+    SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = datetime('now'), sync_status = 'pending'
+    WHERE id = ?
+  `, [status, note ?? null, reviewedBy ?? null, id])
+  save()
+}
+
 module.exports = {
   initDb, loginUser, queryAll, queryOne, run,
   getEmployees, getArchivedEmployees,
@@ -784,4 +853,5 @@ module.exports = {
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
+  submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
 }

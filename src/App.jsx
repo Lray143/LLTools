@@ -4,19 +4,20 @@ import './App.css'
 import LoginPage   from './components/ui/LoginPage'
 import Sidebar     from './components/ui/Sidebar'
 
-import Dashboard   from './modules/dashboard/Dashboard'
-import Employees   from './modules/hrms/Employees'
-import Biometrics  from './modules/biometrics/Biometrics'
-import ClinicLog   from './modules/clinic/ClinicLog'
-import Products    from './modules/products/Products'
-import Outlets     from './modules/outlets/Outlets'
-import Calculations from './modules/calculations/Calculations'
-import Reports     from './modules/reports/Reports'
-import Settings    from './modules/settings/Settings'
+import Dashboard      from './modules/dashboard/Dashboard'
+import Employees      from './modules/hrms/Employees'
+import Biometrics     from './modules/biometrics/Biometrics'
+import ClinicLog      from './modules/clinic/ClinicLog'
+import Products       from './modules/products/Products'
+import Outlets        from './modules/outlets/Outlets'
+import Calculations   from './modules/calculations/Calculations'
+import Reports        from './modules/reports/Reports'
+import Settings       from './modules/settings/Settings'
+import LeaveRequests  from './modules/leaves/LeaveRequests'
 
 import { MODULE_ACCESS } from './lib/permissions'
 
-const ALL_PAGES = {
+const STATIC_PAGES = {
   dashboard:    <Dashboard />,
   employees:    <Employees />,
   biometrics:   <Biometrics />,
@@ -29,7 +30,7 @@ const ALL_PAGES = {
 }
 
 function App() {
-  const [currentUser, setCurrentUser] = useState(null)   // { id, username, role }
+  const [currentUser, setCurrentUser] = useState(null)   // { id, username, role, employeeId }
   const [activePage,  setActivePage]  = useState('dashboard')
 
   const handleLogin = (user) => {
@@ -46,8 +47,15 @@ function App() {
     return <LoginPage onLogin={handleLogin} />
   }
 
-  // Only render pages this role is allowed to see
   const allowedModules = MODULE_ACCESS[currentUser.role] ?? []
+
+  function renderPage() {
+    // Pages that need currentUser get it as a prop
+    if (activePage === 'leaves') {
+      return <LeaveRequests currentUser={currentUser} />
+    }
+    return STATIC_PAGES[activePage] ?? null
+  }
 
   return (
     <div className="flex h-screen bg-[#fcfcfc]">
@@ -59,7 +67,7 @@ function App() {
         currentUser={currentUser}
       />
       <main className="flex-1 overflow-auto">
-        {ALL_PAGES[activePage]}
+        {renderPage()}
       </main>
     </div>
   )

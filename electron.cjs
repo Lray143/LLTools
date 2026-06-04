@@ -17,6 +17,7 @@ const {
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
+  submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -100,6 +101,12 @@ ipcMain.handle('orders:getByOutlet',   (_, outletId) => getOrdersByOutlet(outlet
 ipcMain.handle('orders:getByDefault',  ()            => getOrdersByDefault())
 ipcMain.handle('orders:getAll',        ()            => getAllOrders())
 ipcMain.handle('orders:delete',        (_, id)       => deleteOrder(id))
+
+// ── LEAVE REQUESTS ────────────────────────────────────────────────
+ipcMain.handle('leaves:submit',  (_, req)              => submitLeaveRequest(req))
+ipcMain.handle('leaves:getAll',  ()                    => getLeaveRequests())
+ipcMain.handle('leaves:getMine', (_, employeeId)       => getMyLeaveRequests(employeeId))
+ipcMain.handle('leaves:review',  (_, id, status, note, reviewedBy) => reviewLeaveRequest(id, status, note, reviewedBy))
 
 // ── ATTACHMENTS ───────────────────────────────────────────────────
 ipcMain.handle('attachments:save', async (_, { name, buffer }) => {
