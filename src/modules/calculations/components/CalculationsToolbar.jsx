@@ -1,11 +1,97 @@
 // src/modules/calculations/components/CalculationsToolbar.jsx
-import { Search, Store, RotateCcw, BarChart2, Table2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Search, Bell, User, Store, RotateCcw, BarChart2, Table2, ChevronDown, Check } from 'lucide-react'
+
+// ── Shared inline styles (matches Employees / Outlets) ──────────────
+const displayPill = {
+  display: 'inline-flex', alignItems: 'center', gap: '6px',
+  padding: '5px 12px', borderRadius: '8px',
+  border: '1px solid rgba(0,0,0,0.1)', background: '#fff',
+  fontSize: '13px', fontWeight: 500, color: '#2c2010',
+  whiteSpace: 'nowrap', cursor: 'pointer',
+}
+
+// ── CustomSelect (same pattern as Outlets / Employees) ──────────────
+function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handler(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const activeLabel = options.find(o => (o.value ?? o) === value)?.label ?? value
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          ...displayPill,
+          paddingRight: '10px',
+          gap: '8px',
+          minWidth,
+          justifyContent: 'space-between',
+          border: open ? '1px solid #f97316' : '1px solid rgba(0,0,0,0.1)',
+          color: open ? '#f97316' : '#2c2010',
+          transition: 'border-color 150ms, color 150ms',
+        }}
+      >
+        <span style={{ flex: 1, textAlign: 'left', fontWeight: open ? 600 : 500 }}>
+          {activeLabel}
+        </span>
+        <ChevronDown
+          size={13}
+          color={open ? '#f97316' : '#a09278'}
+          style={{ transition: 'transform 150ms, color 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+        />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+          minWidth: '200px', background: '#fff', borderRadius: '14px',
+          border: '1px solid rgba(0,0,0,0.07)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
+          zIndex: 999, padding: '8px', overflow: 'hidden',
+        }}>
+          {options.map(opt => {
+            const isActive = opt.value === value || opt === value
+            const label    = opt.label ?? opt
+            const val      = opt.value ?? opt
+            return (
+              <button
+                key={val}
+                onClick={() => { onChange(val); setOpen(false) }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none',
+                  background: 'transparent',
+                  color: isActive ? '#f97316' : '#374151',
+                  fontSize: '13.5px', fontWeight: isActive ? 600 : 400,
+                  cursor: 'pointer', textAlign: 'left', transition: 'background 100ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f9f8f6' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                {label}
+                {isActive && <Check size={14} color="#f97316" strokeWidth={2.5} />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function CalculationsToolbar({
-  // mode
   mode,
   onSetMode,
-  // existing props
   search,
   onSearchChange,
   outlets,
@@ -18,113 +104,125 @@ export default function CalculationsToolbar({
 }) {
   const isSummary = mode === 'summary'
 
+  // Build outlet options for the CustomSelect
+  const outletOptions = [
+    { label: 'Default Prices', value: '' },
+    ...outlets.map(o => ({ label: o.name, value: o.id })),
+  ]
+
   return (
-    <div className="px-6 pt-6 pb-4 bg-white border-b border-gray-100 flex flex-col gap-4">
-
-      {/* Top row: title + controls */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-
-        {/* Title */}
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Calculations</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {isSummary
-              ? 'Monthly overview of all saved orders'
-              : `${totalItems} item${totalItems !== 1 ? 's' : ''} across ${totalGroups} group${totalGroups !== 1 ? 's' : ''}`
-            }
-          </p>
+    <>
+      {/* ── TOP HEADER (matches Outlets / Employees) ── */}
+      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 bg-white border-b border-gray-200">
+        <h1 className="text-2xl font-semibold text-gray-900">Calculations</h1>
+        <div className="flex items-center gap-3">
+          {/* Search — always visible */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              placeholder="Search products…"
+              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-gray-300"
+              style={{ width: '14rem', height: '34px', fontSize: '13px' }}
+              value={search}
+              onChange={e => onSearchChange(e.target.value)}
+            />
+          </div>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+            <Bell className="w-4 h-4" />
+          </button>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+            <User className="w-4 h-4" />
+          </button>
         </div>
+      </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* ── FILTER / TOOLBAR BAR (matches Outlets / Employees) ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', paddingBottom: '12px', paddingLeft: '32px', paddingRight: 'calc(32px + 15px)', gap: '16px', flexWrap: 'wrap' }}>
 
-          {/* Mode toggle: Table | Summary */}
-          <div className="flex bg-gray-100 rounded-lg p-1 gap-1">
-            <button
-              onClick={() => onSetMode('table')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                mode === 'table'
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Table2 size={13} />
-              Table
-            </button>
-            <button
-              onClick={() => onSetMode('summary')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                mode === 'summary'
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <BarChart2 size={13} />
-              Monthly Summary
-            </button>
+        {/* LEFT: view toggle + filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+
+          {/* Table / Monthly Summary segmented toggle */}
+          <div style={{
+            display: 'flex', alignItems: 'center',
+            background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
+            borderRadius: '10px', padding: '3px', gap: '2px',
+          }}>
+            {[
+              { id: 'table',   label: 'Table',           icon: <Table2 size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
+              { id: 'summary', label: 'Monthly Summary', icon: <BarChart2 size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
+            ].map(({ id, label, icon }) => (
+              <button
+                key={id}
+                onClick={() => onSetMode(id)}
+                style={{
+                  display: 'flex', alignItems: 'center',
+                  padding: '5px 16px', borderRadius: '8px',
+                  fontSize: '13px', fontWeight: mode === id ? 600 : 400,
+                  background: mode === id ? '#f97316' : 'transparent',
+                  color: mode === id ? '#fff' : '#6b5c4c',
+                  border: 'none', cursor: 'pointer',
+                  transition: 'background 150ms, color 150ms',
+                }}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
           </div>
 
-          {/* Outlet selector — table mode only */}
+          {/* Divider + table-mode filters */}
           {!isSummary && (
-            <div className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-2 bg-white">
-              <Store size={14} className={selectedOutletId ? 'text-orange-500' : 'text-gray-400'} />
-              <select
-                value={selectedOutletId ?? ''}
-                onChange={(e) => onSelectOutlet(e.target.value || null)}
-                className="text-sm text-gray-700 bg-transparent focus:outline-none cursor-pointer pr-1"
-              >
-                <option value="">Default Prices</option>
-                {outlets.map((o) => (
-                  <option key={o.id} value={o.id}>{o.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
+            <>
+              <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
 
-          {/* Clear all quantities — table mode only, when there are qtys */}
+              {/* Outlet selector */}
+              <CustomSelect
+                value={selectedOutletId ?? ''}
+                onChange={(val) => onSelectOutlet(val || null)}
+                options={outletOptions}
+                minWidth="160px"
+              />
+
+              {/* Count */}
+              <span style={{ fontSize: '13px', color: '#a09278', fontWeight: 400, userSelect: 'none' }}>
+                {totalItems} item{totalItems !== 1 ? 's' : ''} · {totalGroups} group{totalGroups !== 1 ? 's' : ''}
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* RIGHT: action buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Clear all — table mode, has qty */}
           {!isSummary && hasQty && (
             <button
               onClick={onClearAll}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200
-                         text-gray-500 text-sm font-medium hover:bg-gray-50 transition-colors"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '7px 16px', borderRadius: '10px',
+                border: '1px solid rgba(0,0,0,0.12)', background: '#fff',
+                color: '#4b3a2a', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+              }}
             >
               <RotateCcw size={14} />
               Clear All
             </button>
           )}
-
         </div>
+
       </div>
 
-      {/* Table-mode only sections */}
-      {!isSummary && (
-        <>
-          {/* Outlet context hint */}
-          {selectedOutletId && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700">
-              <Store size={13} />
-              <span>
-                Using <strong>{outlets.find((o) => o.id === selectedOutletId)?.name ?? 'outlet'}</strong> prices.
-                Orange prices are outlet-specific overrides.
-              </span>
-            </div>
-          )}
-
-          {/* Search */}
-          <div className="relative max-w-sm">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Search products, barcodes…"
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent
-                         placeholder:text-gray-300"
-            />
-          </div>
-        </>
+      {/* Outlet context hint */}
+      {!isSummary && selectedOutletId && (
+        <div className="mx-8 mb-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700">
+          <Store size={13} />
+          <span>
+            Using <strong>{outlets.find((o) => o.id === selectedOutletId)?.name ?? 'outlet'}</strong> prices.
+            Orange prices are outlet-specific overrides.
+          </span>
+        </div>
       )}
-
-    </div>
+    </>
   )
 }

@@ -50,7 +50,7 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
 
   if (editing) {
     return (
-      <td style={{ ...cellBase, padding: '6px 8px' }}>
+      <td className="px-3 py-1.5 align-middle select-none">
         <input
           ref={inputRef}
           type={type === 'number' ? 'number' : 'text'}
@@ -59,12 +59,8 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          style={{
-            width: '100%', textAlign,
-            padding: '4px 8px', fontSize: '12px', borderRadius: '6px',
-            border: '1px solid #f97316', outline: 'none',
-            background: '#fff8f2', color: '#2c2010',
-          }}
+          className="w-full px-2 py-1 text-xs rounded-md border border-orange-500 outline-none bg-orange-50 text-orange-900"
+          style={{ textAlign }}
         />
       </td>
     )
@@ -74,16 +70,10 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
     <td
       onClick={startEdit}
       title={editMode ? 'Click to edit' : undefined}
-      style={{
-        ...cellBase,
-        textAlign,
-        cursor: editMode ? 'pointer' : 'default',
-        transition: 'background 100ms',
-      }}
-      onMouseEnter={e => { if (editMode) e.currentTarget.style.background = '#fff8f2' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+      className={`px-3 py-2 text-xs align-middle select-none transition-colors ${editMode ? 'cursor-pointer hover:bg-orange-50' : 'cursor-default'}`}
+      style={{ textAlign }}
     >
-      <span style={{ transition: 'color 100ms' }}>
+      <span className="transition-colors text-gray-700">
         {display}
       </span>
     </td>
@@ -124,7 +114,7 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
 
   if (editing) {
     return (
-      <td style={{ ...cellBase, padding: '6px 8px', textAlign: 'right' }}>
+      <td className="px-3 py-1.5 text-right align-middle select-none">
         <input
           ref={inputRef}
           type="number"
@@ -133,12 +123,7 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          style={{
-            width: '100%', textAlign: 'right',
-            padding: '4px 8px', fontSize: '12px', borderRadius: '6px',
-            border: '1px solid #f97316', outline: 'none',
-            background: '#fff8f2', color: '#2c2010',
-          }}
+          className="w-full text-right px-2 py-1 text-xs rounded-md border border-orange-500 outline-none bg-orange-50 text-orange-900"
         />
       </td>
     )
@@ -147,20 +132,9 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
   return (
     <td
       onClick={startEdit}
-      style={{
-        ...cellBase,
-        textAlign: 'right',
-        cursor: editMode ? 'pointer' : 'default',
-        position: 'relative',
-        transition: 'background 100ms',
-      }}
-      onMouseEnter={e => { if (editMode) e.currentTarget.style.background = '#fff8f2' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+      className={`px-3 py-2 text-xs text-right align-middle select-none relative transition-colors ${editMode ? 'cursor-pointer hover:bg-orange-50' : 'cursor-default'}`}
     >
-      <span style={{
-        color: isOutletMode && hasOverride ? '#f97316' : '#4b3a2a',
-        fontWeight: isOutletMode && hasOverride ? 600 : 400,
-      }}>
+      <span className={isOutletMode && hasOverride ? 'text-orange-600 font-semibold' : 'text-gray-700'}>
         {formatted}
       </span>
       {/* Reset button — outlet override hover */}
@@ -168,15 +142,7 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
         <button
           onClick={(e) => { e.stopPropagation(); onResetOutlet() }}
           title="Reset to default price"
-          style={{
-            position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)',
-            border: 'none', background: 'transparent', cursor: 'pointer',
-            color: '#9ca3af', padding: '2px', borderRadius: '4px',
-            opacity: 0, transition: 'opacity 150ms',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.opacity = 1 }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#9ca3af' }}
-          className="price-reset-btn"
+          className="absolute right-1 top-1/2 -translate-y-1/2 border-none bg-transparent cursor-pointer text-gray-400 p-0.5 rounded opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
         >
           <RotateCcw size={10} />
         </button>
@@ -193,36 +159,20 @@ export default function ProductRow({
   isOutletMode, outletPrice, onUpdateOutletPrice, onResetOutletPrice,
 }) {
   const isEven = rowIndex % 2 === 0
-  const rowBg = selected
-    ? '#fff8f2'
-    : isEven ? '#fff' : '#faf9f6'
 
   return (
     <tr
-      style={{
-        background: rowBg,
-        borderBottom: '1px solid #f0ebe3',
-        transition: 'background 100ms',
-      }}
-      onMouseEnter={e => {
-        if (!selected && !editMode) return
-        // reveal the reset button on hover
-        const resetBtn = e.currentTarget.querySelector('.price-reset-btn')
-        if (resetBtn) resetBtn.style.opacity = '1'
-      }}
-      onMouseLeave={e => {
-        const resetBtn = e.currentTarget.querySelector('.price-reset-btn')
-        if (resetBtn) resetBtn.style.opacity = '0'
-      }}
+      className={`group border-b border-gray-100 transition-colors
+                  ${selected ? 'bg-orange-50/30' : isEven ? 'bg-white' : 'bg-gray-50/60'}`}
     >
       {/* Checkbox */}
-      <td style={{ padding: '9px 12px', width: '32px', verticalAlign: 'middle' }}>
+      <td className="px-3 py-2 w-8 align-middle">
         {editMode && !isOutletMode && (
           <input
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(row.id)}
-            style={{ cursor: 'pointer', accentColor: '#f97316' }}
+            className="cursor-pointer accent-orange-500"
           />
         )}
       </td>
@@ -249,19 +199,12 @@ export default function ProductRow({
       />
 
       {/* Delete */}
-      <td style={{ padding: '9px 12px', textAlign: 'center', verticalAlign: 'middle', width: '40px' }}>
+      <td className="px-3 py-2 text-center align-middle w-10">
         {editMode && !isOutletMode && (
           <button
             onClick={() => onDeleteRow(groupId, row.id)}
             title="Archive row"
-            style={{
-              border: 'none', background: 'transparent', cursor: 'pointer',
-              color: '#d1cbbf', padding: '2px', borderRadius: '4px',
-              opacity: 0, transition: 'opacity 150ms, color 150ms',
-            }}
-            className="row-delete-btn"
-            onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.opacity = '1' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#d1cbbf' }}
+            className="border-none bg-transparent cursor-pointer text-gray-300 p-0.5 rounded opacity-0 transition-all group-hover:opacity-100 hover:text-red-500"
           >
             <Trash2 size={13} />
           </button>
