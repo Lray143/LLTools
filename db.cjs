@@ -102,6 +102,8 @@ const initDb = async () => {
       password_hash TEXT NOT NULL,
       role          TEXT NOT NULL DEFAULT 'hr',
       employee_id   TEXT DEFAULT NULL REFERENCES employees(id) ON DELETE SET NULL,
+      theme_color   TEXT DEFAULT NULL,
+      theme_mode    TEXT DEFAULT 'light',
       created_at    TEXT DEFAULT (datetime('now')),
       synced_at     TEXT DEFAULT NULL,
       sync_status   TEXT DEFAULT 'pending'
@@ -244,6 +246,8 @@ const initDb = async () => {
   try { db.run(`UPDATE product_groups SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
   // ── USERS MIGRATIONS ────────────────────────────────────────────
   try { db.run(`ALTER TABLE users ADD COLUMN employee_id TEXT DEFAULT NULL`) } catch (_) {}
+  try { db.run(`ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT NULL`) } catch (_) {}
+  try { db.run(`ALTER TABLE users ADD COLUMN theme_mode TEXT DEFAULT 'light'`) } catch (_) {}
   // ── EMPLOYEE SCHEDULE MIGRATION ─────────────────────────────────
   try { db.run(`ALTER TABLE employees ADD COLUMN day_schedule TEXT DEFAULT NULL`) } catch (_) {}
 
@@ -359,7 +363,7 @@ const loginUser = (username, password) => {
   const user = queryOne('SELECT * FROM users WHERE username = ?', [username])
   if (!user) return { success: false, message: 'User not found.' }
   if (!bcrypt.compareSync(password, user.password_hash)) return { success: false, message: 'Incorrect password.' }
-  return { success: true, user: { id: user.id, username: user.username, role: user.role, employeeId: user.employee_id ?? null } }
+  return { success: true, user: { id: user.id, username: user.username, role: user.role, employeeId: user.employee_id ?? null, themeColor: user.theme_color ?? null, themeMode: user.theme_mode ?? 'light' } }
 }
 
 // ── EMPLOYEE ACCOUNTS ─────────────────────────────────────────────
@@ -443,6 +447,10 @@ const resetUserPassword = (id, newPassword) => {
 // Deletes only employee-linked accounts (not the seeded admin accounts)
 const deleteUserAccount = (id) => {
   run(`DELETE FROM users WHERE id = ? AND employee_id IS NOT NULL`, [id])
+}
+
+const updateUserTheme = (id, color, mode) => {
+  run(`UPDATE users SET theme_color = ?, theme_mode = ?, sync_status = 'pending' WHERE id = ?`, [color, mode, id])
 }
 
 
@@ -851,7 +859,7 @@ module.exports = {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
-  getUsers, updateUserRole, resetUserPassword, deleteUserAccount,
+  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
 }

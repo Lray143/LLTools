@@ -15,31 +15,31 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
     }}>
       {/* Landscape modal */}
       <div style={{
-        background: '#fff', borderRadius: '20px',
+        background: 'var(--surface)', borderRadius: '20px',
         width: '820px', maxWidth: '95vw',
         maxHeight: '90vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden',
       }}>
         {/* ── Top bar ── */}
         <div style={{
-          padding: '20px 28px', borderBottom: '1px solid rgba(0,0,0,0.07)',
+          padding: '20px 28px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexShrink: 0,
         }}>
           <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1c1008', margin: 0 }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Review Leave Request
             </h2>
-            <p style={{ fontSize: '12px', color: '#a09278', margin: '2px 0 0' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
               {request.emp_name || request.employee_name || request.employee_no}
               {' · '}
-              <span style={{ color: '#f97316', fontWeight: 500 }}>{request.leave_type}</span>
+              <span style={{ color: 'var(--theme-500)', fontWeight: 500 }}>{request.leave_type}</span>
             </p>
           </div>
           <button onClick={onClose} style={{
             width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e5e7eb',
-            background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '16px', color: '#a09278', lineHeight: 1,
+            background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1,
           }}>
             ×
           </button>
@@ -57,9 +57,9 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
           }}>
             {/* Info cards */}
             <div style={{
-              background: '#faf9f6', borderRadius: '12px', padding: '16px',
+              background: 'var(--surface-hover)', borderRadius: '12px', padding: '16px',
               display: 'flex', flexDirection: 'column', gap: '10px',
-              fontSize: '13px', color: '#4b3a2a',
+              fontSize: '13px', color: 'var(--text-primary)',
             }}>
               <InfoRow label="Employee">{request.emp_name || request.employee_name || request.employee_no}</InfoRow>
               <InfoRow label="Employee No">{request.employee_no}</InfoRow>
@@ -67,7 +67,7 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
                 {formatDate(request.start_date)} – {formatDate(request.end_date)}
               </InfoRow>
               <InfoRow label="Duration">
-                <span style={{ fontWeight: 700, color: '#f97316' }}>
+                <span style={{ fontWeight: 700, color: 'var(--theme-500)' }}>
                   {dayCount(request.start_date, request.end_date)} day(s)
                 </span>
               </InfoRow>
@@ -80,17 +80,17 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
 
             {/* Reason — scrollable box */}
             <div>
-              <p style={{ fontSize: '11px', fontWeight: 600, color: '#a09278', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+              <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
                 Reason
               </p>
               <div style={{
-                background: '#faf9f6', borderRadius: '10px', padding: '14px',
-                fontSize: '13px', color: '#4b3a2a', lineHeight: '1.6',
+                background: 'var(--surface-hover)', borderRadius: '10px', padding: '14px',
+                fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.6',
                 maxHeight: '220px', overflowY: 'auto',
-                border: '1px solid rgba(0,0,0,0.06)',
+                border: '1px solid var(--border)',
                 wordBreak: 'break-word', whiteSpace: 'pre-wrap',
               }}>
-                {request.reason || <span style={{ color: '#c9bfaf', fontStyle: 'italic' }}>No reason provided.</span>}
+                {request.reason || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>No reason provided.</span>}
               </div>
             </div>
           </div>
@@ -103,11 +103,11 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
           }}>
             <div>
               <label style={{
-                fontSize: '12px', fontWeight: 600, color: '#6b5c4c',
+                fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)',
                 display: 'block', marginBottom: '6px',
               }}>
                 Review Note
-                <span style={{ color: '#a09278', fontWeight: 400, marginLeft: '6px' }}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '6px' }}>
                   (optional — employee will see this)
                 </span>
               </label>
@@ -119,7 +119,7 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
                 style={{
                   width: '100%', padding: '12px',
                   border: '1px solid #e5e7eb', borderRadius: '10px',
-                  fontSize: '13px', color: '#1c1008', outline: 'none',
+                  fontSize: '13px', color: 'var(--text-primary)', outline: 'none',
                   resize: 'vertical', boxSizing: 'border-box',
                   fontFamily: 'inherit', lineHeight: '1.6',
                 }}
@@ -128,9 +128,9 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
 
             {/* Decision reminder */}
             <div style={{
-              background: '#fff8f2', borderRadius: '10px', padding: '12px 14px',
+              background: 'var(--surface-hover)', borderRadius: '10px', padding: '12px 14px',
               fontSize: '12px', color: '#92400e', lineHeight: '1.5',
-              border: '1px solid #fed7aa',
+              border: '1px solid var(--theme-200)',
             }}>
               <strong>Heads up:</strong> This action will update the request status immediately and the employee will be notified on their next login.
             </div>
@@ -139,8 +139,8 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
             <div style={{ display: 'flex', gap: '10px', marginTop: 'auto', paddingTop: '8px' }}>
               <button onClick={onClose} style={{
                 flex: 1, padding: '11px', borderRadius: '10px',
-                border: '1px solid #e5e7eb', background: '#fff',
-                color: '#6b5c4c', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                border: '1px solid #e5e7eb', background: 'var(--surface)',
+                color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
               }}>
                 Cancel
               </button>
@@ -149,7 +149,7 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
                 disabled={loading}
                 style={{
                   flex: 1, padding: '11px', borderRadius: '10px', border: 'none',
-                  background: '#fee2e2', color: '#dc2626',
+                  background: 'var(--surface-hover)', color: '#dc2626',
                   fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                 }}
               >
@@ -160,7 +160,7 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
                 disabled={loading}
                 style={{
                   flex: 1, padding: '11px', borderRadius: '10px', border: 'none',
-                  background: '#f97316', color: '#fff',
+                  background: 'var(--theme-500)', color: '#fff',
                   fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                   boxShadow: '0 2px 8px rgba(249,115,22,0.3)',
                 }}
@@ -178,7 +178,7 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
 function InfoRow({ label, children }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-      <span style={{ color: '#a09278', flexShrink: 0, fontSize: '12px' }}>{label}</span>
+      <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '12px' }}>{label}</span>
       <span style={{ fontWeight: 500, textAlign: 'right', fontSize: '13px' }}>{children}</span>
     </div>
   )

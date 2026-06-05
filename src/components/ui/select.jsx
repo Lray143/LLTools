@@ -39,7 +39,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 h-9 text-[13px] font-medium text-gray-800 transition-colors outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400 data-[state=open]:border-orange-400 data-[state=open]:ring-1 data-[state=open]:ring-orange-400 data-[placeholder]:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "flex w-full items-center justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 h-9 text-[13px] font-medium text-[var(--text-primary)] transition-colors outline-none focus:border-[var(--theme-500)] focus:ring-1 focus:ring-[var(--theme-500)] data-[state=open]:border-[var(--theme-500)] data-[state=open]:ring-1 data-[state=open]:ring-[var(--theme-500)] data-[placeholder]:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
         className
       )}
       {...props}>
@@ -63,7 +63,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "relative z-50 max-h-96 min-w-36 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_8px_24px_rgba(0,0,0,0.10)] p-1.5 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          "relative z-50 max-h-96 min-w-36 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[0_8px_24px_rgba(0,0,0,0.10)] p-1.5 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1.5 data-[side=left]:-translate-x-1.5 data-[side=right]:translate-x-1.5 data-[side=top]:-translate-y-1.5",
           className
@@ -92,7 +92,7 @@ function SelectLabel({
   return (
     <SelectPrimitive.Label
       data-slot="select-label"
-      className={cn("px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-orange-400", className)}
+      className={cn("px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--theme-500)]", className)}
       {...props} />
   );
 }
@@ -106,14 +106,14 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex w-full cursor-pointer select-none items-center justify-between rounded-lg py-2 px-2.5 text-[13px] outline-none transition-colors text-[#2c2010] focus:bg-[#f9f8f6] data-[state=checked]:bg-[#fff8f2] data-[state=checked]:text-[#f97316] data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex w-full cursor-pointer select-none items-center justify-between rounded-lg py-2 px-2.5 text-[13px] outline-none transition-colors text-[var(--text-primary)] focus:bg-[var(--surface-hover)] data-[state=checked]:bg-[var(--surface-hover)] data-[state=checked]:text-[var(--theme-500)] data-[state=checked]:font-semibold data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className
       )}
       {...props}>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
       <span className="flex items-center justify-center">
         <SelectPrimitive.ItemIndicator>
-          <CheckIcon className="size-4 text-[#f97316] stroke-[2.5]" />
+          <CheckIcon className="size-4 text-[var(--theme-500)] stroke-[2.5]" />
         </SelectPrimitive.ItemIndicator>
       </span>
     </SelectPrimitive.Item>
@@ -127,7 +127,7 @@ function SelectSeparator({
   return (
     <SelectPrimitive.Separator
       data-slot="select-separator"
-      className={cn("-mx-1.5 my-1 h-px bg-gray-100", className)}
+      className={cn("-mx-1.5 my-1 h-px bg-gray-50", className)}
       {...props} />
   );
 }

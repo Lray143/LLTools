@@ -88,11 +88,11 @@ export default function Outlets() {
   }, [outlets, search, statusFilter, regionFilter])
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#fcfcfc] overflow-hidden">
+    <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       {/* ── TOP HEADER ── */}
-      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 bg-white border-b border-gray-200">
+      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <h1 className="text-2xl font-semibold text-gray-900">Outlets</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -105,10 +105,10 @@ export default function Outlets() {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <Bell className="w-4 h-4" />
           </button>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />
           </button>
         </div>

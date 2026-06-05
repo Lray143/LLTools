@@ -1,18 +1,45 @@
 import { useState, useEffect } from 'react'
-import { Monitor, Sun, Moon } from 'lucide-react'
+import { Check } from 'lucide-react'
+import {
+  THEME_PRESETS, generateThemeColors,
+  getSavedTheme, saveTheme, applyThemeToDocument,
+  getSavedMode, saveMode, applyModeToDocument,
+} from '../../../lib/theme'
 
-const THEMES = [
-  { id: 'light',  label: 'Light',  icon: Sun     },
-  { id: 'dark',   label: 'Dark',   icon: Moon    },
-  { id: 'system', label: 'System', icon: Monitor },
-]
 
-export function AppearanceSection() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('ll-theme') ?? 'light')
 
+export function AppearanceSection({ currentUser }) {
+  const [mode, setMode]             = useState(() => getSavedMode())
+  const [themeColor, setThemeColor] = useState(() => getSavedTheme())
+  const [saveState, setSaveState]   = useState('idle') // 'idle' | 'saving' | 'saved'
+
+  // Apply mode live when user changes it
   useEffect(() => {
-    localStorage.setItem('ll-theme', theme)
-  }, [theme])
+    saveMode(mode)
+    applyModeToDocument(mode)
+  }, [mode])
+
+  // Apply theme color live when user changes it
+  useEffect(() => {
+    saveTheme(themeColor)
+    applyThemeToDocument(themeColor)
+  }, [themeColor])
+
+  const handleSave = async () => {
+    setSaveState('saving')
+    try {
+      if (currentUser?.id && window.electronAPI?.updateUserTheme) {
+        await window.electronAPI.updateUserTheme(currentUser.id, themeColor, mode)
+      }
+      setSaveState('saved')
+      setTimeout(() => setSaveState('idle'), 2000)
+    } catch {
+      setSaveState('idle')
+    }
+  }
+
+  // Get current preview colors
+  const currentPalette = generateThemeColors(themeColor)
 
   return (
     <div>
@@ -21,71 +48,123 @@ export function AppearanceSection() {
         description="Customize how LLTools looks on your device."
       />
 
-      {/* Theme picker */}
+      {/* ── Theme Color Picker (Microsoft-style) ─────────────────── */}
       <SettingRow
-        label="Theme"
-        description="Choose between Light, Dark, or follow your system preference."
+        label="Theme Color"
+        description="Pick a color theme. Each option applies 3 coordinated colors across the entire app."
       >
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          {THEMES.map(({ id, label, icon: Icon }) => {
-            const active = theme === id
+        {/* Grid of preset theme swatches — each shows 3 color bars */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '10px',
+          padding: '12px 0',
+          maxWidth: '480px',
+        }}>
+          {THEME_PRESETS.map((preset) => {
+            const active = themeColor === preset.base && mode === (preset.mode || 'default')
             return (
               <button
-                key={id}
-                onClick={() => setTheme(id)}
+                key={preset.name}
+                onClick={() => {
+                  setThemeColor(preset.base)
+                  setMode(preset.mode || 'default')
+                }}
+                title={preset.name}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  width: '90px',
-                  padding: '16px 0 12px',
-                  borderRadius: '14px',
-                  border: active ? '2px solid #f97316' : '2px solid rgba(0,0,0,0.08)',
-                  background: active ? '#fff5ee' : '#fff',
+                  borderRadius: '10px',
+                  overflow: 'hidden',
+                  border: active ? `2.5px solid ${preset.preview[0]}` : '2.5px solid transparent',
+                  boxShadow: active
+                    ? `0 0 0 1px ${preset.preview[0]}40, 0 4px 12px ${preset.preview[0]}30`
+                    : '0 1px 3px rgba(0,0,0,0.08)',
                   cursor: 'pointer',
-                  transition: 'border-color 150ms, background 150ms',
-                  boxShadow: active ? '0 0 0 4px rgba(249,115,22,0.08)' : 'none',
+                  outline: 'none',
+                  transition: 'all 150ms ease',
+                  transform: active ? 'scale(1.03)' : 'scale(1)',
+                  position: 'relative',
                 }}
               >
-                <Icon
-                  size={20}
-                  color={active ? '#f97316' : '#9ca3af'}
-                  strokeWidth={active ? 2.5 : 1.8}
-                />
-                <span style={{
-                  fontSize: '12.5px',
+                {/* 3-color bar preview */}
+                <div style={{ display: 'flex', height: '32px', width: '100%' }}>
+                  <div style={{ flex: 1, background: preset.preview[0] }} />
+                  <div style={{ flex: 1, background: preset.preview[1] }} />
+                  <div style={{ flex: 1, background: preset.preview[2] }} />
+                </div>
+                {/* Label */}
+                <div style={{
+                  padding: '6px 8px',
+                  fontSize: '11px',
                   fontWeight: active ? 600 : 400,
-                  color: active ? '#f97316' : '#6b7280',
+                  color: active ? preset.preview[0] : 'var(--text-secondary)',
+                  background: active ? `${preset.preview[1]}` : 'var(--surface)',
+                  textAlign: 'center',
+                  transition: 'all 150ms',
                 }}>
-                  {label}
-                </span>
+                  {preset.name}
+                </div>
+                {/* Active check */}
+                {active && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '6px',
+                    right: '6px',
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: 'var(--surface)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }}>
+                    <Check size={11} color={preset.preview[0]} strokeWidth={3} />
+                  </div>
+                )}
               </button>
             )
           })}
         </div>
 
-        {/* Coming soon badge */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '6px',
-          marginTop: '12px',
-          padding: '5px 10px',
-          borderRadius: '99px',
-          background: 'rgba(249,115,22,0.08)',
-          border: '1px solid rgba(249,115,22,0.15)',
-        }}>
-          <span style={{
-            width: '6px', height: '6px', borderRadius: '50%',
-            background: '#f97316', flexShrink: 0,
-          }} />
-          <span style={{ fontSize: '11.5px', color: '#f97316', fontWeight: 500 }}>
-            Theme switching coming soon — preference saved
-          </span>
-        </div>
       </SettingRow>
+
+
+
+      {/* ── Save Button ──────────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '32px' }}>
+        <button
+          onClick={handleSave}
+          disabled={saveState === 'saving'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            padding: '10px 28px', borderRadius: '8px',
+            background: saveState === 'saved' ? '#16a34a' : 'var(--theme-500)',
+            border: 'none',
+            color: '#fff', fontSize: '14px', fontWeight: 600,
+            cursor: saveState === 'saving' ? 'wait' : 'pointer',
+            opacity: saveState === 'saving' ? 0.7 : 1,
+            transition: 'background 200ms, transform 100ms',
+            minWidth: '180px',
+          }}
+          onMouseEnter={e => {
+            if (saveState === 'idle') e.currentTarget.style.background = 'var(--theme-600)'
+          }}
+          onMouseLeave={e => {
+            if (saveState === 'idle') e.currentTarget.style.background = 'var(--theme-500)'
+          }}
+        >
+          {saveState === 'saving' && 'Saving...'}
+          {saveState === 'saved' && (
+            <>
+              <Check size={16} strokeWidth={2.5} />
+              Saved
+            </>
+          )}
+          {saveState === 'idle' && 'Save Appearance'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -95,13 +174,13 @@ export function AppearanceSection() {
 export function SectionHeading({ title, description }) {
   return (
     <div style={{ marginBottom: '28px' }}>
-      <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#1c1410', margin: 0, marginBottom: '4px' }}>
+      <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0, marginBottom: '4px' }}>
         {title}
       </h2>
-      <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>
+      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
         {description}
       </p>
-      <div style={{ marginTop: '16px', height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+      <div style={{ marginTop: '16px', height: '1px', background: 'var(--border)' }} />
     </div>
   )
 }
@@ -113,14 +192,14 @@ export function SettingRow({ label, description, children }) {
       flexDirection: 'column',
       gap: '12px',
       padding: '20px 0',
-      borderBottom: '1px solid rgba(0,0,0,0.05)',
+      borderBottom: '1px solid var(--border)',
     }}>
       <div>
-        <p style={{ fontSize: '13.5px', fontWeight: 600, color: '#1c1410', margin: 0, marginBottom: '3px' }}>
+        <p style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-primary)', margin: 0, marginBottom: '3px' }}>
           {label}
         </p>
         {description && (
-          <p style={{ fontSize: '12.5px', color: '#9ca3af', margin: 0 }}>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>
             {description}
           </p>
         )}

@@ -23,15 +23,15 @@ function formatDow(dateObj) {
 const navBtn = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   width: '30px', height: '30px', borderRadius: '8px',
-  border: '1px solid rgba(0,0,0,0.1)', background: '#fff',
-  color: '#4b3a2a', cursor: 'pointer', flexShrink: 0,
+  border: '1px solid var(--border)', background: 'var(--surface)',
+  color: 'var(--text-primary)', cursor: 'pointer', flexShrink: 0,
 }
 
 const displayPill = {
   display: 'inline-flex', alignItems: 'center', gap: '6px',
   padding: '5px 12px', borderRadius: '8px',
-  border: '1px solid rgba(0,0,0,0.1)', background: '#fff',
-  fontSize: '13px', fontWeight: 500, color: '#2c2010',
+  border: '1px solid var(--border)', background: 'var(--surface)',
+  fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)',
   whiteSpace: 'nowrap', cursor: 'pointer',
 }
 
@@ -65,7 +65,7 @@ function CustomSelect({ value, onChange, options }) {
         <span style={{ flex: 1, textAlign: 'left' }}>{value}</span>
         <ChevronDown
           size={13}
-          color="#a09278"
+          color="var(--text-secondary)"
           style={{ transition: 'transform 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
         />
       </button>
@@ -77,9 +77,9 @@ function CustomSelect({ value, onChange, options }) {
           top: 'calc(100% + 6px)',
           left: 0,
           minWidth: '180px',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: '12px',
-          border: '1px solid rgba(0,0,0,0.08)',
+          border: '1px solid var(--border)',
           boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
           zIndex: 999,
           padding: '6px',
@@ -99,19 +99,19 @@ function CustomSelect({ value, onChange, options }) {
                   padding: '8px 10px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: isActive ? '#fff8f2' : 'transparent',
-                  color: isActive ? '#f97316' : '#2c2010',
+                  background: isActive ? 'var(--page-bg-alt)' : 'transparent',
+                  color: isActive ? 'var(--theme-500)' : 'var(--text-primary)',
                   fontSize: '13px',
                   fontWeight: isActive ? 600 : 400,
                   cursor: 'pointer',
                   textAlign: 'left',
                   transition: 'background 100ms',
                 }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#f9f8f6' }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'var(--surface-hover)' }}
                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
               >
                 {opt}
-                {isActive && <Check size={13} color="#f97316" strokeWidth={2.5} />}
+                {isActive && <Check size={13} color="var(--theme-500)" strokeWidth={2.5} />}
               </button>
             )
           })}
@@ -163,7 +163,7 @@ export function BiometricFilterBar({
         {/* Segmented mode toggle */}
         <div style={{
           display: 'flex', alignItems: 'center',
-          background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
+          background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '10px', padding: '3px', gap: '2px',
         }}>
           {MODES.map(mode => (
@@ -173,8 +173,8 @@ export function BiometricFilterBar({
               style={{
                 padding: '5px 16px', borderRadius: '8px',
                 fontSize: '13px', fontWeight: viewMode === mode ? 600 : 400,
-                background: viewMode === mode ? '#f97316' : 'transparent',
-                color: viewMode === mode ? '#fff' : '#6b5c4c',
+                background: viewMode === mode ? 'var(--theme-500)' : 'transparent',
+                color: viewMode === mode ? '#fff' : 'var(--text-secondary)',
                 border: 'none', cursor: 'pointer',
                 transition: 'background 150ms, color 150ms',
                 whiteSpace: 'nowrap', lineHeight: '1.4',
@@ -186,7 +186,7 @@ export function BiometricFilterBar({
         </div>
 
         {/* Divider */}
-        <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
+        <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
 
         {/* DAILY */}
         {viewMode === 'Daily' && (
@@ -198,8 +198,8 @@ export function BiometricFilterBar({
               style={displayPill}
               onClick={() => hiddenDateRef.current?.showPicker?.() || hiddenDateRef.current?.click()}
             >
-              <Calendar size={14} color="#f97316" />
-              <span style={{ color: '#a09278', fontSize: '11px', fontWeight: 400, marginRight: '2px' }}>
+              <Calendar size={14} color="var(--theme-500)" />
+              <span style={{ color: 'var(--text-secondary)', fontSize: '11px', fontWeight: 400, marginRight: '2px' }}>
                 {formatDow(selectedDate)}
               </span>
               {formatDate(selectedDate)}
@@ -225,7 +225,7 @@ export function BiometricFilterBar({
               <ChevronLeft size={14} strokeWidth={2.5} />
             </button>
             <div style={displayPill}>
-              <Calendar size={14} color="#f97316" />
+              <Calendar size={14} color="var(--theme-500)" />
               {MONTH_NAMES[selectedMonth - 1]} {selectedYear}
             </div>
             <button style={navBtn} onClick={() => stepMonth(1)}>
@@ -259,8 +259,8 @@ export function BiometricFilterBar({
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             padding: '7px 16px', borderRadius: '10px',
-            border: '1px solid rgba(0,0,0,0.12)', background: '#fff',
-            color: '#4b3a2a', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+            border: '1px solid var(--border)', background: 'var(--surface)',
+            color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
           }}
         >
           <Upload size={14} />
@@ -271,7 +271,7 @@ export function BiometricFilterBar({
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             padding: '7px 16px', borderRadius: '10px',
-            border: 'none', background: '#f97316',
+            border: 'none', background: 'var(--theme-500)',
             color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
           }}
         >

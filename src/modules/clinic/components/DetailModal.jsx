@@ -68,7 +68,7 @@ export default function DetailModal({ visit, onClose }) {
                 </span>
               </div>
 
-              <div className="h-px bg-gray-100" />
+              <div className="h-px bg-gray-50" />
 
               {/* Complaint */}
               <div>
@@ -80,19 +80,19 @@ export default function DetailModal({ visit, onClose }) {
               <div>
                 <p className="text-xs text-gray-400 mb-2">Vital Signs</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                  <div className="bg-white rounded-xl px-4 py-3">
                     <p className="text-xs text-gray-400 mb-0.5">Blood Pressure</p>
                     <p className="text-sm font-semibold text-gray-800">{visit.bp || "—"}</p>
                   </div>
-                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                  <div className="bg-white rounded-xl px-4 py-3">
                     <p className="text-xs text-gray-400 mb-0.5">Temperature</p>
                     <p className="text-sm font-semibold text-gray-800">{visit.temp ? `${visit.temp} °C` : "—"}</p>
                   </div>
-                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                  <div className="bg-white rounded-xl px-4 py-3">
                     <p className="text-xs text-gray-400 mb-0.5">Pulse Rate</p>
                     <p className="text-sm font-semibold text-gray-800">{visit.pulse ? `${visit.pulse} bpm` : "—"}</p>
                   </div>
-                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                  <div className="bg-white rounded-xl px-4 py-3">
                     <p className="text-xs text-gray-400 mb-0.5">Oxygen Saturation</p>
                     <p className="text-sm font-semibold text-gray-800">{visit.spo2 ? `${visit.spo2}%` : "—"}</p>
                   </div>
@@ -102,7 +102,7 @@ export default function DetailModal({ visit, onClose }) {
               {/* Treatment */}
               <div>
                 <p className="text-xs text-gray-400 mb-1">Treatment / Action Taken</p>
-                <div className="bg-gray-50 rounded-xl px-4 py-3 max-h-40 overflow-y-auto">
+                <div className="bg-white rounded-xl px-4 py-3 max-h-40 overflow-y-auto">
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-all">{visit.treatment || "—"}</p>
                 </div>
               </div>

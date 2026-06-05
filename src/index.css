@@ -1,3 +1,194 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* Fallback values — overwritten at runtime by theme.js */
+    --page-bg: #eff6ff;
+    --page-bg-alt: #dbeafe;
+    --surface: #ffffff;
+    --surface-hover: #f8fafc;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text-primary: #1e293b;
+    --text-secondary: #6b7280;
+    --accent-bg: #3b82f6;
+    --accent-text: #ffffff;
+    --accent-hover: #2563eb;
+    --sidebar-bg: #1e293b;
+    --sidebar-active: #3b82f6;
+
+    /* Legacy theme vars — overwritten at runtime */
+    --theme-50: #eff6ff;
+    --theme-100: #dbeafe;
+    --theme-200: #bfdbfe;
+    --theme-300: #93c5fd;
+    --theme-400: #60a5fa;
+    --theme-500: #3b82f6;
+    --theme-600: #2563eb;
+    --theme-700: #1d4ed8;
+    --theme-800: #1e40af;
+    --theme-900: #1e3a8a;
+  }
+
+  /* Global page background and text */
+  html, body, #root {
+    background-color: var(--page-bg);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* ── Dark mode overrides for Tailwind utility classes ────────────────────────
+   When .dark is on <html>, override common hardcoded bg/text classes so the
+   entire app adapts without touching every component file.                    */
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Override bg-white used in tables, cards, modals, etc. */
+.dark .bg-white {
+  background-color: var(--surface) !important;
+}
+
+/* Override bg-gray-50, bg-gray-100 used for alternating rows, inputs, etc. */
+.dark .bg-gray-50 {
+  background-color: var(--surface-hover) !important;
+}
+.dark .bg-gray-100 {
+  background-color: var(--page-bg-alt) !important;
+}
+
+/* Override text colors so they stay readable on dark backgrounds */
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-700 {
+  color: var(--text-primary) !important;
+}
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: var(--text-secondary) !important;
+}
+.dark .text-gray-400 {
+  color: #6b7280 !important;
+}
+
+/* Override border colors */
+.dark .border-gray-50,
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-gray-400 {
+  border-color: var(--border) !important;
+}
+.dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-300 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+/* Brighter/higher-contrast orange text in dark mode */
+.dark .text-orange-900,
+.dark .text-orange-800,
+.dark .text-orange-700 {
+  color: #fdba74 !important; /* light orange/peach */
+}
+.dark .text-orange-600,
+.dark .text-orange-500 {
+  color: #f97316 !important; /* logo orange */
+}
+.dark .text-orange-400 {
+  color: #fb923c !important;
+}
+
+/* Orange backgrounds in dark mode */
+.dark .bg-orange-50,
+.dark .bg-orange-50\/80,
+.dark .bg-orange-50\/20,
+.dark .bg-orange-50\/30,
+.dark .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.15) !important; /* dark translucent orange */
+}
+
+.dark .hover\:bg-orange-50:hover,
+.dark .hover\:bg-orange-50\/50:hover,
+.dark .hover\:bg-orange-100:hover,
+.dark .hover\:bg-orange-200:hover {
+  background-color: rgba(249, 115, 22, 0.25) !important;
+}
+
+/* Orange borders in dark mode */
+.dark .border-orange-100,
+.dark .border-orange-200,
+.dark .border-orange-300,
+.dark .border-orange-400,
+.dark .border-orange-500 {
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+
+/* Override hover backgrounds */
+.dark .hover\:bg-gray-50:hover {
+  background-color: var(--surface-hover) !important;
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: var(--page-bg-alt) !important;
+}
+
+/* Override ring colors for focus states */
+.dark .ring-gray-200,
+.dark .ring-gray-300 {
+  --tw-ring-color: var(--border) !important;
+}
+
+/* Scrollbar styling in dark mode */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: var(--page-bg);
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Input/select elements in dark mode */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+/* Inline style overrides for borders and dividers in dark mode */
+.dark [style*="border: 1px solid rgba(0,0,0,0.1)"],
+.dark [style*="border: 1px solid rgba(0, 0, 0, 0.1)"],
+.dark [style*="border-right: 1px solid rgba(0,0,0,0.07)"],
+.dark [style*="border-right: 1px solid rgba(0, 0, 0, 0.07)"],
+.dark [style*="borderRight: 1px solid rgba(0,0,0,0.07)"],
+.dark [style*="borderRight: 1px solid rgba(0, 0, 0, 0.07)"] {
+  border-color: var(--border) !important;
+}
+
+.dark [style*="background: rgba(0,0,0,0.1)"],
+.dark [style*="background: rgba(0, 0, 0, 0.1)"] {
+  background-color: var(--border) !important;
+}
+
+/* Prevent bg-white text fields and lists from hover-whiting out */
+.dark .hover\:bg-white:hover,
+.dark [class*="hover:bg-white"]:hover {
+  background-color: var(--surface-hover) !important;
+}

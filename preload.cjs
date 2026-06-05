@@ -53,6 +53,7 @@ window.electronAPI = {
   updateUserRole:          (id, role)           => ipcRenderer.invoke('users:updateRole', id, role),
   resetUserPassword:       (id, newPassword)    => ipcRenderer.invoke('users:resetPassword', id, newPassword),
   deleteUserAccount:       (id)                 => ipcRenderer.invoke('users:delete', id),
+  updateUserTheme:         (id, color, mode)    => ipcRenderer.invoke('users:updateTheme', id, color, mode),
 
   // ── Saved Orders ─────────────────────────────────────────────────
   saveOrder:               (order)    => ipcRenderer.invoke('orders:save', order),

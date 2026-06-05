@@ -14,7 +14,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-100">
+        <thead className="bg-white border-b border-gray-100">
           <tr>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Outlet</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</th>
@@ -30,7 +30,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
             const discounts  = o.discounts ?? []
 
             return (
-              <tr key={o.id} className="hover:bg-gray-50/60 transition-colors group">
+              <tr key={o.id} className="hover:bg-white transition-colors group">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 rounded-full ${colorClass} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
@@ -64,7 +64,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
                   <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${
                     o.status === 'Active'
                       ? 'border-green-300 text-green-700 bg-green-50'
-                      : 'border-gray-300 text-gray-500 bg-gray-50'
+                      : 'border-gray-300 text-gray-500 bg-white'
                   }`}>
                     {o.status}
                   </span>
@@ -81,7 +81,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
                     </button>
                     <button
                       onClick={() => onEdit(o)}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-400 hover:text-gray-700 transition-colors"
                     >
                       <Pencil size={14} />
                     </button>

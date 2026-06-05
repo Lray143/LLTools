@@ -125,7 +125,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
                   </SelectTrigger>
                   <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: 'var(--radix-select-trigger-width)' }}>
                     {['Active', 'Inactive'].map(s => (
-                      <SelectItem key={s} value={s} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer text-sm">
+                      <SelectItem key={s} value={s} className="focus:bg-white focus:text-gray-900 cursor-pointer text-sm">
                         {s}
                       </SelectItem>
                     ))}
@@ -262,7 +262,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
         </div>
 
         <DialogFooter className="gap-2 pt-2">
-          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50 text-sm" onClick={onClose}>
+          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose}>
             Cancel
           </Button>
           <Button

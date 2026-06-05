@@ -8,31 +8,18 @@ function Settings({ currentUser }) {
   const [activeSection, setActiveSection] = useState('appearance')
 
   function renderSection() {
-    if (activeSection === 'appearance') return <AppearanceSection />
+    if (activeSection === 'appearance') return <AppearanceSection currentUser={currentUser} />
     if (activeSection === 'account')    return <AccountSection currentUser={currentUser} />
     if (activeSection === 'about')      return <AboutSection />
     return null
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: '#fcfcfc', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', background: 'var(--page-bg)', overflow: 'hidden' }}>
 
-      {/* ── HEADER ── */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingLeft: '32px',
-        paddingRight: 'calc(32px + 15px)',
-        paddingTop: '16px',
-        paddingBottom: '16px',
-        background: '#fff',
-        borderBottom: '1px solid rgba(0,0,0,0.08)',
-        flexShrink: 0,
-      }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#1c1410', margin: 0 }}>
-          Settings
-        </h1>
+      {/* ── TOP HEADER ── */}
+      <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Settings</h1>
       </div>
 
       {/* ── BODY: left nav + content ── */}
@@ -40,8 +27,8 @@ function Settings({ currentUser }) {
 
         {/* Left nav */}
         <div style={{
-          background: '#fff',
-          borderRight: '1px solid rgba(0,0,0,0.07)',
+          background: 'var(--page-bg)',
+          borderRight: '1px solid var(--border)',
           padding: '16px 8px',
           flexShrink: 0,
           overflowY: 'auto',

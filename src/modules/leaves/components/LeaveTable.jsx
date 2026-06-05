@@ -7,11 +7,11 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
     return (
       <div style={{ padding: '60px', textAlign: 'center' }}>
         <FileText size={36} color="#e5e0d8" style={{ margin: '0 auto 12px', display: 'block' }} />
-        <p style={{ fontSize: '14px', color: '#c9bfaf', margin: 0 }}>No leave requests found</p>
+        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>No leave requests found</p>
         {!isManageView && (
           <button onClick={onNewRequest} style={{
             marginTop: '14px', padding: '8px 20px', borderRadius: '10px', border: 'none',
-            background: '#f97316', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+            background: 'var(--theme-500)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
           }}>
             File your first request
           </button>
@@ -24,7 +24,7 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
             {isManageView && <th style={thStyle}>Employee</th>}
             <th style={thStyle}>Leave Type</th>
             <th style={thStyle}>Start</th>
@@ -40,27 +40,27 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
         </thead>
         <tbody>
           {rows.map((r, i) => {
-            const bg = i % 2 === 0 ? '#fff' : '#faf9f6'
+            const bg = i % 2 === 0 ? 'var(--surface)' : 'var(--surface-hover)'
             return (
               <tr
                 key={r.id}
                 onClick={() => onView(r)}
                 style={{
                   background: bg,
-                  borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  borderBottom: '1px solid var(--border)',
                   cursor: 'pointer',
                   transition: 'background 100ms',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#fff8f2'}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--page-bg-alt)'}
                 onMouseLeave={e => e.currentTarget.style.background = bg}
               >
                 {/* Employee */}
                 {isManageView && (
                   <td style={tdStyle}>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: '13px', color: '#2c2010', whiteSpace: 'nowrap' }}>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                       {r.emp_name || r.employee_name || '—'}
                     </p>
-                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#a09278', whiteSpace: 'nowrap' }}>
+                    <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                       {r.employee_no}
                     </p>
                   </td>
@@ -68,19 +68,19 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
 
                 {/* Leave Type */}
                 <td style={tdStyle}>
-                  <span style={{ fontSize: '13px', color: '#2c2010', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                     {r.leave_type}
                   </span>
                 </td>
 
                 {/* Dates */}
                 <td style={tdStyle}>
-                  <span style={{ fontSize: '12px', color: '#6b5c4c', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     {formatDate(r.start_date)}
                   </span>
                 </td>
                 <td style={tdStyle}>
-                  <span style={{ fontSize: '12px', color: '#6b5c4c', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     {formatDate(r.end_date)}
                   </span>
                 </td>
@@ -89,8 +89,8 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
                 <td style={tdStyle}>
                   <span style={{
                     display: 'inline-block', padding: '2px 9px',
-                    background: '#f3f4f6', borderRadius: '20px',
-                    fontSize: '11px', fontWeight: 600, color: '#4b3a2a',
+                    background: 'var(--surface-hover)', borderRadius: '20px',
+                    fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)',
                   }}>
                     {dayCount(r.start_date, r.end_date)}d
                   </span>
@@ -99,7 +99,7 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
                 {/* Reason — truncated */}
                 <td style={{ ...tdStyle, maxWidth: '160px' }}>
                   <span style={{
-                    fontSize: '12px', color: '#6b5c4c',
+                    fontSize: '12px', color: 'var(--text-secondary)',
                     whiteSpace: 'nowrap', overflow: 'hidden',
                     textOverflow: 'ellipsis', display: 'block',
                   }}>
@@ -114,7 +114,7 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
 
                 {/* Filed */}
                 <td style={tdStyle}>
-                  <span style={{ fontSize: '11px', color: '#c9bfaf', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                     {r.created_at
                       ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                       : '—'}
@@ -125,7 +125,7 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
                 <td style={{ ...tdStyle, maxWidth: '160px' }}>
                   {r.review_note ? (
                     <span style={{
-                      fontSize: '12px', color: '#4b3a2a',
+                      fontSize: '12px', color: 'var(--text-primary)',
                       whiteSpace: 'nowrap', overflow: 'hidden',
                       textOverflow: 'ellipsis', display: 'block',
                     }}>
@@ -142,11 +142,11 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
                 <td style={tdStyle}>
                   {r.reviewed_by ? (
                     <div>
-                      <p style={{ margin: 0, fontSize: '12px', color: '#4b3a2a', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-primary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
                         {r.reviewed_by}
                       </p>
                       {r.reviewed_at && (
-                        <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#c9bfaf', whiteSpace: 'nowrap' }}>
+                        <p style={{ margin: '2px 0 0', fontSize: '10px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                           {new Date(r.reviewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </p>
                       )}
@@ -163,7 +163,7 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
                       onClick={() => onReview(r)}
                       style={{
                         padding: '5px 14px', borderRadius: '8px',
-                        border: '1px solid #f97316', background: '#fff8f2', color: '#f97316',
+                        border: '1px solid var(--theme-500)', background: 'var(--surface-hover)', color: 'var(--theme-500)',
                         fontSize: '12px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
                     >
@@ -174,7 +174,7 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
                       onClick={() => onView(r)}
                       style={{
                         padding: '5px 14px', borderRadius: '8px',
-                        border: '1px solid #e5e7eb', background: '#fff', color: '#6b5c4c',
+                        border: '1px solid #e5e7eb', background: 'var(--surface)', color: 'var(--text-secondary)',
                         fontSize: '12px', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
                     >

@@ -127,7 +127,7 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
                     key={emp.id}
                     type="button"
                     onClick={() => select(emp)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-gray-50 ${isActive ? "bg-orange-50" : ""}`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-white ${isActive ? "bg-orange-50" : ""}`}
                   >
                     <span className={`flex-shrink-0 inline-flex w-7 h-7 rounded-full items-center justify-center text-white text-xs font-bold ${getColor(emp.name)}`}>
                       {getInitials(emp.name)}
@@ -136,7 +136,7 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
                       <span className="font-medium text-gray-900 block truncate">{emp.name}</span>
                       <span className="text-xs text-gray-400">{[emp.dept, emp.employee_no].filter(Boolean).join(" · ")}</span>
                     </span>
-                    {isActive && <Check size={13} color="#f97316" strokeWidth={2.5} className="flex-shrink-0" />}
+                    {isActive && <Check size={13} color="var(--theme-500)" strokeWidth={2.5} className="flex-shrink-0" />}
                   </button>
                 )
               })
@@ -343,7 +343,7 @@ function ComplaintAutocomplete({ value, onChange }) {
                 className="w-full flex items-center justify-between px-3 py-2 text-sm text-left transition-colors hover:bg-orange-100 bg-orange-50 mb-1"
               >
                 <span className="text-orange-600 font-medium">Use "{query.trim()}"</span>
-                <Check size={13} color="#ea580c" strokeWidth={2.5} className="flex-shrink-0" />
+                <Check size={13} color="var(--theme-600)" strokeWidth={2.5} className="flex-shrink-0" />
               </button>
             )}
             {filtered.length === 0 ? (
@@ -359,10 +359,10 @@ function ComplaintAutocomplete({ value, onChange }) {
                         key={opt}
                         type="button"
                         onClick={() => select(opt)}
-                        className={`w-full flex items-center justify-between px-3 py-1.5 text-sm text-left transition-colors hover:bg-gray-50 ${isActive ? "bg-orange-50" : ""}`}
+                        className={`w-full flex items-center justify-between px-3 py-1.5 text-sm text-left transition-colors hover:bg-white ${isActive ? "bg-orange-50" : ""}`}
                       >
                         <span className={isActive ? "text-orange-500 font-medium" : "text-gray-800"}>{opt}</span>
-                        {isActive && <Check size={13} color="#f97316" strokeWidth={2.5} className="flex-shrink-0" />}
+                        {isActive && <Check size={13} color="var(--theme-500)" strokeWidth={2.5} className="flex-shrink-0" />}
                       </button>
                     )
                   })}

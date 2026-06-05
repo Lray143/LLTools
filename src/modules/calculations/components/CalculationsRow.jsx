@@ -35,7 +35,7 @@ export default function CalculationsRow({
   return (
     <tr
       className={`border-b border-gray-100 transition-colors
-                  ${lineTotal !== null ? 'bg-orange-50/30' : isEven ? 'bg-white' : 'bg-gray-50/60'}`}
+                  ${lineTotal !== null ? 'bg-orange-50/30' : isEven ? 'bg-white' : 'bg-white'}`}
     >
       {/* Item Description */}
       <td className="px-3 py-2 text-xs text-gray-700 w-auto">

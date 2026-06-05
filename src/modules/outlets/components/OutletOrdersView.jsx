@@ -24,7 +24,7 @@ function CustomSelect({ value, onChange, options, icon }) {
         onClick={() => setOpen(o => !o)}
         className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 shadow-sm transition-colors"
         style={{
-          border: open ? '1px solid #f97316' : '1px solid rgba(0,0,0,0.1)',
+          border: open ? '1px solid var(--theme-500)' : '1px solid rgba(0,0,0,0.1)',
           minWidth: '200px',
         }}
       >
@@ -33,13 +33,13 @@ function CustomSelect({ value, onChange, options, icon }) {
         </span>
         <span
           className="flex-1 text-left text-sm"
-          style={{ color: open ? '#f97316' : '#2c2010', fontWeight: open ? 600 : 500 }}
+          style={{ color: open ? 'var(--theme-500)' : 'var(--text-primary)', fontWeight: open ? 600 : 500 }}
         >
           {activeLabel}
         </span>
         <ChevronDown
           size={14}
-          color={open ? '#f97316' : '#a09278'}
+          color={open ? 'var(--theme-500)' : 'var(--text-secondary)'}
           style={{ transition: 'transform 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
       </button>
@@ -47,8 +47,8 @@ function CustomSelect({ value, onChange, options, icon }) {
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-          minWidth: '100%', background: '#fff', borderRadius: '12px',
-          border: '1px solid rgba(0,0,0,0.07)',
+          minWidth: '100%', background: 'var(--surface)', borderRadius: '12px',
+          border: '1px solid var(--border)',
           boxShadow: '0 12px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
           zIndex: 999, padding: '6px', overflow: 'hidden',
           maxHeight: '300px', overflowY: 'auto'
@@ -62,14 +62,14 @@ function CustomSelect({ value, onChange, options, icon }) {
                 className="flex items-center justify-between w-full px-3 py-2 rounded-md transition-colors text-left"
                 style={{
                   background: 'transparent',
-                  color: isActive ? '#f97316' : '#374151',
+                  color: isActive ? 'var(--theme-500)' : 'var(--text-primary)',
                   fontSize: '13.5px', fontWeight: isActive ? 600 : 400,
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f9f8f6' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
               >
                 {opt.label}
-                {isActive && <Check size={14} color="#f97316" strokeWidth={2.5} />}
+                {isActive && <Check size={14} color="var(--theme-500)" strokeWidth={2.5} />}
               </button>
             )
           })}
@@ -195,7 +195,7 @@ function OrderRow({ order, onDelete, showOutletCol, colCount }) {
 
         {/* Item count */}
         <td className="px-3 py-3">
-          <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap">
+          <span className="text-xs bg-gray-50 text-gray-600 px-2 py-0.5 rounded-full whitespace-nowrap">
             {itemCount} item{itemCount !== 1 ? 's' : ''}
           </span>
         </td>
@@ -357,7 +357,7 @@ export default function OutletOrdersView({ outlets }) {
       ) : (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
           <table className="w-full text-sm border-collapse">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-white border-b border-gray-100">
               <tr>
                 <th className="w-8 px-3 py-3" />
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Series #</th>
@@ -386,7 +386,7 @@ export default function OutletOrdersView({ outlets }) {
             </tbody>
 
             {/* Footer total */}
-            <tfoot className="bg-gray-50 border-t-2 border-gray-200">
+            <tfoot className="bg-white border-t-2 border-gray-200">
               <tr>
                 <td
                   colSpan={showOutletCol ? 7 : 6}

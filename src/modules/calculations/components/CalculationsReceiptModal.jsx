@@ -93,14 +93,14 @@ export default function CalculationsReceiptModal({
             <button
               onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200
-                         text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                         text-sm text-gray-600 hover:bg-white transition-colors"
             >
               <Printer size={14} />
               Print
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-400 transition-colors"
             >
               <X size={18} />
             </button>

@@ -31,7 +31,7 @@ function OrderRow({ order, onDelete }) {
   const hasDiscount = discountSteps.length > 0
 
   return (
-    <div className="hover:bg-gray-50/60 transition-colors">
+    <div className="hover:bg-white transition-colors">
       {/* Row header */}
       <div className="flex items-center gap-3 px-6 py-3.5 group">
         <button
@@ -73,7 +73,7 @@ function OrderRow({ order, onDelete }) {
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="px-6 pb-4 pt-1 space-y-3 bg-gray-50/60 border-t border-gray-100">
+        <div className="px-6 pb-4 pt-1 space-y-3 bg-white border-t border-gray-100">
 
           {/* Line items by group */}
           {order.groups.map((group) => (
@@ -185,7 +185,7 @@ export default function OutletOrdersDrawer({ outlet, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
+            className="p-1.5 rounded-lg hover:bg-gray-50 text-gray-400 transition-colors"
           >
             <X size={18} />
           </button>

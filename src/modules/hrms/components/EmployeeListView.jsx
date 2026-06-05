@@ -7,7 +7,7 @@ export function EmployeeListView({ employees, onEdit, onDelete }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* 6-COLUMN HEADER LAYOUT */}
-      <div className="grid grid-cols-6 px-6 py-3 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <div className="grid grid-cols-6 px-6 py-3 bg-white border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
         <span>Employee</span>
         <span>Department</span>
         <span>ID</span>
@@ -19,7 +19,7 @@ export function EmployeeListView({ employees, onEdit, onDelete }) {
       {employees.map(emp => (
         <div
           key={emp.id}
-          className="grid grid-cols-6 px-6 py-4 items-center border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors group"
+          className="grid grid-cols-6 px-6 py-4 items-center border-b border-gray-100 last:border-0 hover:bg-white transition-colors group"
         >
           {/* 1. NAME & AVATAR */}
           <div className="flex items-center gap-3">

@@ -262,9 +262,9 @@ export default function VisitsTable({
                   display: "flex", alignItems: "center", gap: "6px",
                   padding: "5px 12px", borderRadius: "8px",
                   fontSize: "13px", fontWeight: 500,
-                  background: complaintFilter ? "#fff7ed" : "#fff",
-                  color: complaintFilter ? "#ea580c" : "#6b5c4c",
-                  border: complaintFilter ? "1.5px solid #fb923c" : "1px solid rgba(0,0,0,0.1)",
+                  background: complaintFilter ? "var(--surface-hover)" : "var(--surface)",
+                  color: complaintFilter ? "var(--theme-600)" : "var(--text-secondary)",
+                  border: complaintFilter ? "1.5px solid var(--theme-400)" : "1px solid rgba(0,0,0,0.1)",
                   cursor: "pointer",
                   transition: "all 150ms",
                   whiteSpace: "nowrap", lineHeight: "1.4",
@@ -290,7 +290,7 @@ export default function VisitsTable({
                   style={{
                     position: "absolute", top: "calc(100% + 6px)", right: 0,
                     width: "340px", maxHeight: "420px",
-                    background: "#fff", border: "1px solid #e5e7eb",
+                    background: 'var(--surface)', border: "1px solid #e5e7eb",
                     borderRadius: "12px", boxShadow: "0 12px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06)",
                     zIndex: 50, display: "flex", flexDirection: "column",
                     overflow: "hidden",
@@ -306,10 +306,10 @@ export default function VisitsTable({
                       style={{
                         width: "100%", padding: "7px 10px", fontSize: "12px",
                         border: "1px solid #e5e7eb", borderRadius: "8px",
-                        outline: "none", color: "#374151",
-                        background: "#fafafa",
+                        outline: "none", color: 'var(--text-primary)',
+                        background: 'var(--surface-hover)',
                       }}
-                      onFocus={e => e.target.style.borderColor = "#fb923c"}
+                      onFocus={e => e.target.style.borderColor = "var(--theme-400)"}
                       onBlur={e => e.target.style.borderColor = "#e5e7eb"}
                     />
                   </div>
@@ -320,8 +320,8 @@ export default function VisitsTable({
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "9px 14px", fontSize: "12.5px", fontWeight: 600,
-                      color: !complaintFilter ? "#ea580c" : "#374151",
-                      background: !complaintFilter ? "#fff7ed" : "transparent",
+                      color: !complaintFilter ? "var(--theme-600)" : "var(--text-primary)",
+                      background: !complaintFilter ? "var(--surface-hover)" : "transparent",
                       border: "none", borderBottom: "1px solid #f3f4f6",
                       cursor: "pointer", textAlign: "left", width: "100%",
                       transition: "background 100ms",
@@ -332,7 +332,7 @@ export default function VisitsTable({
                     <span>All Complaints</span>
                     <span style={{
                       fontSize: "11px", fontWeight: 700,
-                      color: "#9ca3af", background: "#f3f4f6",
+                      color: "var(--text-secondary)", background: 'var(--surface-hover)',
                       borderRadius: "6px", padding: "2px 8px",
                       minWidth: "28px", textAlign: "center",
                     }}>
@@ -343,7 +343,7 @@ export default function VisitsTable({
                   {/* Scrollable complaint list */}
                   <div style={{ flex: 1, overflowY: "auto", padding: "4px 0" }}>
                     {filteredDropdownItems.length === 0 ? (
-                      <div style={{ padding: "20px 14px", textAlign: "center", color: "#9ca3af", fontSize: "12px" }}>
+                      <div style={{ padding: "20px 14px", textAlign: "center", color: "var(--text-secondary)", fontSize: "12px" }}>
                         No complaints found
                       </div>
                     ) : (
@@ -356,8 +356,8 @@ export default function VisitsTable({
                             style={{
                               display: "flex", alignItems: "center", justifyContent: "space-between",
                               padding: "7px 14px", fontSize: "12.5px", fontWeight: isActive ? 600 : 400,
-                              color: isActive ? "#ea580c" : item.count > 0 ? "#374151" : "#9ca3af",
-                              background: isActive ? "#fff7ed" : "transparent",
+                              color: isActive ? "var(--theme-600)" : item.count > 0 ? "var(--text-primary)" : "var(--text-secondary)",
+                              background: isActive ? "var(--surface-hover)" : "transparent",
                               border: "none", cursor: "pointer",
                               textAlign: "left", width: "100%",
                               transition: "background 100ms",
@@ -371,8 +371,8 @@ export default function VisitsTable({
                             </span>
                             <span style={{
                               fontSize: "11px", fontWeight: 700, flexShrink: 0,
-                              color: item.count > 0 ? (isActive ? "#ea580c" : "#6b7280") : "#d1d5db",
-                              background: item.count > 0 ? (isActive ? "#fed7aa" : "#f3f4f6") : "#fafafa",
+                              color: item.count > 0 ? (isActive ? "var(--theme-600)" : "var(--text-secondary)") : "var(--text-secondary)",
+                              background: item.count > 0 ? (isActive ? "var(--theme-200)" : "#f3f4f6") : "#fafafa",
                               borderRadius: "6px", padding: "2px 8px",
                               minWidth: "28px", textAlign: "center",
                             }}>
@@ -389,7 +389,7 @@ export default function VisitsTable({
 
             <div style={{
               display: "flex", alignItems: "center",
-              background: "#fff", border: "1px solid rgba(0,0,0,0.1)",
+              background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: "10px", padding: "3px", gap: "2px",
             }}>
               {["daily", "monthly", "yearly"].map(m => (
@@ -399,8 +399,8 @@ export default function VisitsTable({
                   style={{
                     padding: "5px 16px", borderRadius: "8px",
                     fontSize: "13px", fontWeight: mode === m ? 600 : 400,
-                    background: mode === m ? "#f97316" : "transparent",
-                    color: mode === m ? "#fff" : "#6b5c4c",
+                    background: mode === m ? "var(--theme-500)" : "transparent",
+                    color: mode === m ? "#fff" : "var(--text-secondary)",
                     border: "none", cursor: "pointer",
                     transition: "background 150ms, color 150ms",
                     whiteSpace: "nowrap", lineHeight: "1.4",
@@ -437,7 +437,7 @@ export default function VisitsTable({
             <Button
               variant="outline"
               size="icon"
-              className="border-gray-200 text-gray-600 hover:bg-gray-50 w-8 h-8"
+              className="border-gray-200 text-gray-600 hover:bg-white w-8 h-8"
               onClick={onOpenArchive}
               title="Archive"
             >
@@ -461,7 +461,7 @@ export default function VisitsTable({
             <Button
               variant="outline"
               size="icon"
-              className="border-gray-200 text-gray-600 hover:bg-gray-50 w-8 h-8"
+              className="border-gray-200 text-gray-600 hover:bg-white w-8 h-8"
               onClick={onToggleExpand}
               title={tableExpanded ? "Collapse" : "Expand table"}
             >
@@ -476,11 +476,11 @@ export default function VisitsTable({
             display: "flex", alignItems: "center", gap: "8px",
             padding: "8px 0 4px",
           }}>
-            <span style={{ fontSize: "11px", color: "#9ca3af", fontWeight: 500 }}>Filtered by:</span>
+            <span style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 500 }}>Filtered by:</span>
             <span style={{
               display: "inline-flex", alignItems: "center", gap: "6px",
-              fontSize: "12px", fontWeight: 600, color: "#ea580c",
-              background: "#fff7ed", border: "1px solid #fed7aa",
+              fontSize: "12px", fontWeight: 600, color: "var(--theme-600)",
+              background: 'var(--surface-hover)', border: "1px solid var(--theme-200)",
               borderRadius: "20px", padding: "3px 10px 3px 12px",
             }}>
               {complaintFilter}
@@ -489,7 +489,7 @@ export default function VisitsTable({
                 onClick={clearComplaintFilter}
               />
             </span>
-            <span style={{ fontSize: "11px", color: "#9ca3af" }}>
+            <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
               {complaintCounts[complaintFilter] ?? 0} case{(complaintCounts[complaintFilter] ?? 0) !== 1 ? "s" : ""}
             </span>
           </div>
@@ -558,14 +558,14 @@ export default function VisitsTable({
 
             <tbody>
               {pageVisits.map((v, i) => {
-                const rowBg = i % 2 === 0 ? "#fff" : "#faf9f6"
+                const rowBg = i % 2 === 0 ? "var(--surface)" : "var(--surface-hover)"
                 const attachments = v.attachments ?? []
                 return (
                   <tr
                     key={i}
                     className="group"
-                    style={{ background: rowBg, borderBottom: "1px solid rgba(0,0,0,0.04)", transition: "background 100ms" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#fff8f2" }}
+                    style={{ background: rowBg, borderBottom: '1px solid var(--border)', transition: "background 100ms" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "var(--page-bg-alt)" }}
                     onMouseLeave={e => { e.currentTarget.style.background = rowBg }}
                   >
                     <td className="py-3.5 pr-4 pl-6 text-sm text-gray-500 whitespace-nowrap">{v.date}</td>
@@ -659,7 +659,7 @@ export default function VisitsTable({
             <button
               onClick={() => goToPage(safePage - 1)}
               disabled={safePage === 1}
-              className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
             </button>
@@ -673,7 +673,7 @@ export default function VisitsTable({
                   className={`w-7 h-7 flex items-center justify-center rounded text-xs font-medium transition-colors ${
                     p === safePage
                       ? "bg-orange-500 text-white border border-orange-500"
-                      : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                      : "border border-gray-200 text-gray-600 hover:bg-white"
                   }`}
                 >
                   {p}
@@ -683,7 +683,7 @@ export default function VisitsTable({
             <button
               onClick={() => goToPage(safePage + 1)}
               disabled={safePage === totalPages}
-              className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded border border-gray-200 text-gray-500 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-3.5 h-3.5" />
             </button>

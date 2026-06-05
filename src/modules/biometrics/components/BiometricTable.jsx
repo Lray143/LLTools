@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 import { STATUS_STYLES } from '../biometricConstants'
 
-const Dash = () => <span style={{ color: '#c9bfaf' }}>-</span>
+const Dash = () => <span style={{ color: 'var(--text-secondary)' }}>-</span>
 
 // Parse "7:30 AM" / "6:00 PM" → total minutes from midnight
 function parseTime(t) {
@@ -108,8 +108,8 @@ function ExtraTapsTooltip({ extraTaps }) {
           width          : '18px',
           height         : '18px',
           borderRadius   : '50%',
-          background     : '#f97316',
-          color          : '#fff',
+          background     : 'var(--theme-500)',
+          color        : 'var(--accent-text)',
           fontSize       : '9px',
           fontWeight     : 700,
           marginLeft     : '6px',
@@ -129,8 +129,8 @@ function ExtraTapsTooltip({ extraTaps }) {
           left         : pos.x + 14,
           transform    : 'translateY(-100%)',
           zIndex       : 99999,
-          background   : '#1c1008',
-          color        : '#fff',
+          background   : 'var(--text-primary)',
+          color        : 'var(--accent-text)',
           borderRadius : '10px',
           padding      : '10px 14px',
           minWidth     : '200px',
@@ -139,7 +139,7 @@ function ExtraTapsTooltip({ extraTaps }) {
         }}>
           <p style={{
             fontSize     : '10px',
-            color        : '#a09278',
+            color        : 'var(--text-secondary)',
             fontWeight   : 600,
             letterSpacing: '0.07em',
             textTransform: 'uppercase',
@@ -180,9 +180,9 @@ function ExtraTapsTooltip({ extraTaps }) {
 // Sort icon — shows neutral/up/down depending on state
 function SortIcon({ colKey, sortKey, sortDir }) {
   const active = sortKey === colKey
-  if (!active) return <ChevronsUpDown size={12} style={{ marginLeft: '4px', color: '#c9bfaf', flexShrink: 0 }} />
-  if (sortDir === 'asc')  return <ChevronUp   size={12} style={{ marginLeft: '4px', color: '#f97316', flexShrink: 0 }} />
-  return                         <ChevronDown size={12} style={{ marginLeft: '4px', color: '#f97316', flexShrink: 0 }} />
+  if (!active) return <ChevronsUpDown size={12} style={{ marginLeft: '4px', color: 'var(--text-secondary)', flexShrink: 0 }} />
+  if (sortDir === 'asc')  return <ChevronUp   size={12} style={{ marginLeft: '4px', color: 'var(--theme-500)', flexShrink: 0 }} />
+  return                         <ChevronDown size={12} style={{ marginLeft: '4px', color: 'var(--theme-500)', flexShrink: 0 }} />
 }
 
 const PAGE_SIZE  = 10
@@ -263,16 +263,16 @@ export function BiometricTable({ records, total, viewMode }) {
     <div
       className="rounded-2xl flex flex-col"
       style={{
-        background : '#fff',
-        border     : '1px solid rgba(0,0,0,0.07)',
+        background : 'var(--surface)',
+        border     : '1px solid var(--border)',
         boxShadow  : '0 2px 8px rgba(0,0,0,0.06)',
         flex       : 1,
         minHeight  : 0,
       }}
     >
       {/* Title bar */}
-      <div className="px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <p className="font-medium" style={{ fontSize: '14px', color: '#2c2010' }}>
+      <div className="px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <p className="font-medium" style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
           Attendance Log
         </p>
       </div>
@@ -281,7 +281,7 @@ export function BiometricTable({ records, total, viewMode }) {
       <div className="overflow-x-auto flex-shrink-0">
         <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: '1080px' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
               {COLUMNS.map((col, i) => (
                 <th
                   key={i}
@@ -290,7 +290,7 @@ export function BiometricTable({ records, total, viewMode }) {
                   style={{
                     width        : col.width,
                     fontSize     : '11px',
-                    color        : sortKey === col.key ? '#f97316' : '#a09278',
+                    color        : sortKey === col.key ? 'var(--theme-500)' : 'var(--text-secondary)',
                     fontWeight   : 500,
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
@@ -299,8 +299,8 @@ export function BiometricTable({ records, total, viewMode }) {
                     userSelect   : 'none',
                     transition   : 'color 120ms',
                   }}
-                  onMouseEnter={e => { if (col.sortable) e.currentTarget.style.color = '#f97316' }}
-                  onMouseLeave={e => { if (col.sortable) e.currentTarget.style.color = sortKey === col.key ? '#f97316' : '#a09278' }}
+                  onMouseEnter={e => { if (col.sortable) e.currentTarget.style.color = 'var(--theme-500)' }}
+                  onMouseLeave={e => { if (col.sortable) e.currentTarget.style.color = sortKey === col.key ? 'var(--theme-500)' : 'var(--text-secondary)' }}
                 >
                   {col.isHours ? (
                     // ── Toggle header for Total Hours ──────────────────────
@@ -320,9 +320,9 @@ export function BiometricTable({ records, total, viewMode }) {
                           gap           : '3px',
                           padding       : '2px 7px',
                           borderRadius  : '6px',
-                          border        : `1px solid ${hoursMode === 'scheduled' ? '#f97316' : 'rgba(0,0,0,0.15)'}`,
-                          background    : hoursMode === 'scheduled' ? '#fff8f2' : '#fff',
-                          color         : hoursMode === 'scheduled' ? '#f97316' : '#a09278',
+                          border        : `1px solid ${hoursMode === 'scheduled' ? 'var(--theme-500)' : 'var(--border)'}`,
+                          background    : hoursMode === 'scheduled' ? 'var(--page-bg-alt)' : 'var(--surface)',
+                          color         : hoursMode === 'scheduled' ? 'var(--theme-500)' : 'var(--text-secondary)',
                           fontSize      : '9px',
                           fontWeight    : 700,
                           letterSpacing : '0.04em',
@@ -353,14 +353,14 @@ export function BiometricTable({ records, total, viewMode }) {
               <>
                 <tr>
                   <td colSpan={10} className="text-center"
-                    style={{ height: ROW_HEIGHT + 'px', color: '#c9bfaf', fontSize: '13px' }}>
+                    style={{ height: ROW_HEIGHT + 'px', color: 'var(--text-secondary)', fontSize: '13px' }}>
                     No attendance records found.
                   </td>
                 </tr>
-                {Array.from({ length: PAGE_SIZE - 1 }).map((_, i) => (
+                 {Array.from({ length: PAGE_SIZE - 1 }).map((_, i) => (
                   <tr key={'empty-' + i} style={{
-                    background  : i % 2 === 0 ? '#faf9f6' : '#fff',
-                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                    background  : i % 2 === 0 ? 'var(--surface-hover)' : 'var(--surface)',
+                    borderBottom: '1px solid var(--border)',
                   }}>
                     <td colSpan={10} style={{ height: ROW_HEIGHT + 'px' }}></td>
                   </tr>
@@ -370,54 +370,54 @@ export function BiometricTable({ records, total, viewMode }) {
               <>
                 {paginated.map((r, idx) => {
                   const ss    = STATUS_STYLES[r.status] || STATUS_STYLES['Full Time']
-                  const rowBg = idx % 2 === 0 ? '#fff' : '#faf9f6'
+                  const rowBg = idx % 2 === 0 ? 'var(--surface)' : 'var(--surface-hover)'
                   const hoursLabel = getHoursLabel(r)
                   return (
                     <tr
                       key={r.id + '_' + r.date}
                       style={{
                         background  : rowBg,
-                        borderBottom: '1px solid rgba(0,0,0,0.04)',
+                        borderBottom: '1px solid var(--border)',
                         transition  : 'background 100ms',
                         cursor      : 'pointer',
                         height      : ROW_HEIGHT + 'px',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#fff8f2' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--page-bg-alt)' }}
                       onMouseLeave={e => { e.currentTarget.style.background = rowBg }}
                     >
-                      <td className="px-4" style={{ fontSize: '12px', color: '#b0a090', whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {r.id}
                       </td>
-                      <td className="px-4" style={{ fontSize: '13px', color: '#2c2010', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                           {r.name}
                           <ExtraTapsTooltip extraTaps={r.extraTaps} />
                         </span>
                       </td>
-                      <td className="px-4" style={{ fontSize: '13px', color: '#6b5c4c', whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {r.department}
                       </td>
-                      <td className="px-4" style={{ fontSize: '12px', color: '#a09278', whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {r.timeframe}
                       </td>
-                      <td className="px-4" style={{ fontSize: '13px', color: '#4b3a2a', whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                         {r.shiftIn  != null ? r.shiftIn  : <Dash />}
                       </td>
-                      <td className="px-4" style={{ fontSize: '13px', color: '#a09278', whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {r.lunchOut != null ? r.lunchOut : <Dash />}
                       </td>
-                      <td className="px-4" style={{ fontSize: '13px', color: '#a09278', whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                         {r.lunchIn  != null ? r.lunchIn  : <Dash />}
                       </td>
-                      <td className="px-4" style={{ fontSize: '13px', color: '#4b3a2a', whiteSpace: 'nowrap' }}>
+                      <td className="px-4" style={{ fontSize: '13px', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                         {r.shiftOut != null ? r.shiftOut : <Dash />}
                       </td>
                       <td className="px-4" style={{ whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                          <span style={{ fontSize: '13px', color: '#4b3a2a', fontWeight: 500 }}>
+                          <span style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>
                             {hoursLabel ?? <Dash />}
                           </span>
-                          <span style={{ fontSize: '9px', color: '#c9bfaf', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                          <span style={{ fontSize: '9px', color: 'var(--text-secondary)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                             {hoursMode === 'scheduled' ? 'sched' : 'actual'}
                           </span>
                         </div>
@@ -432,11 +432,11 @@ export function BiometricTable({ records, total, viewMode }) {
                 })}
 
                 {Array.from({ length: fillerCount }).map((_, i) => {
-                  const fillerBg = (paginated.length + i) % 2 === 0 ? '#fff' : '#faf9f6'
+                  const fillerBg = (paginated.length + i) % 2 === 0 ? 'var(--surface)' : 'var(--surface-hover)'
                   return (
                     <tr key={'filler-' + i} style={{
                       background  : fillerBg,
-                      borderBottom: '1px solid rgba(0,0,0,0.04)',
+                      borderBottom: '1px solid var(--border)',
                       height      : ROW_HEIGHT + 'px',
                     }}>
                       <td colSpan={10}></td>
@@ -453,8 +453,8 @@ export function BiometricTable({ records, total, viewMode }) {
 
       {/* Pagination footer */}
       <div className="px-6 py-4 flex items-center justify-between flex-shrink-0"
-        style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-        <p style={{ fontSize: '12px', color: '#b0a090' }}>
+        style={{ borderTop: '1px solid var(--border)' }}>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
           Showing {records.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1} to {Math.min(safePage * PAGE_SIZE, records.length)} of {records.length} records
         </p>
 
@@ -463,14 +463,14 @@ export function BiometricTable({ records, total, viewMode }) {
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={safePage === 1}
             className="inline-flex items-center justify-center w-6 h-6 disabled:opacity-30 disabled:pointer-events-none"
-            style={{ color: '#4b3a2a' }}
+            style={{ color: 'var(--text-primary)' }}
           >
             <ChevronLeft className="w-4 h-4" strokeWidth={2.5} />
           </button>
 
           {getPageNumbers().map((num) =>
             typeof num === 'string' && num.startsWith('ellipsis') ? (
-              <span key={num} style={{ fontSize: '11px', color: '#b0a090', padding: '0 2px' }}>…</span>
+              <span key={num} style={{ fontSize: '11px', color: 'var(--text-secondary)', padding: '0 2px' }}>…</span>
             ) : (
               <button
                 key={num}
@@ -481,8 +481,8 @@ export function BiometricTable({ records, total, viewMode }) {
                   borderRadius   : '6px',
                   fontSize       : '11px',
                   fontWeight     : safePage === num ? 600 : 400,
-                  background     : safePage === num ? '#f97316' : 'transparent',
-                  color          : safePage === num ? '#fff' : '#6b5c4c',
+                  background     : safePage === num ? 'var(--theme-500)' : 'transparent',
+                  color          : safePage === num ? '#fff' : 'var(--text-secondary)',
                   border         : 'none',
                   cursor         : 'pointer',
                   display        : 'inline-flex',
@@ -499,7 +499,7 @@ export function BiometricTable({ records, total, viewMode }) {
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={safePage === totalPages}
             className="inline-flex items-center justify-center w-6 h-6 disabled:opacity-30 disabled:pointer-events-none"
-            style={{ color: '#4b3a2a' }}
+            style={{ color: 'var(--text-primary)' }}
           >
             <ChevronRight className="w-4 h-4" strokeWidth={2.5} />
           </button>

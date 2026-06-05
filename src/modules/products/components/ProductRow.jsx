@@ -11,7 +11,7 @@ const BASE_FIELDS = [
 ]
 
 const cellBase = {
-  fontSize: '12px', color: '#4b3a2a', padding: '9px 12px',
+  fontSize: '12px', color: 'var(--text-primary)', padding: '9px 12px',
   verticalAlign: 'middle', userSelect: 'none',
 }
 
@@ -163,7 +163,7 @@ export default function ProductRow({
   return (
     <tr
       className={`group border-b border-gray-100 transition-colors
-                  ${selected ? 'bg-orange-50/30' : isEven ? 'bg-white' : 'bg-gray-50/60'}`}
+                  ${selected ? 'bg-orange-50/30' : isEven ? 'bg-white' : 'bg-white'}`}
     >
       {/* Checkbox */}
       <td className="px-3 py-2 w-8 align-middle">

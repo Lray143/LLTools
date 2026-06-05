@@ -73,10 +73,16 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
           transition-all duration-200
           ${isExpanded ? 'justify-start gap-3 px-3' : 'justify-center px-0'}
           ${isActive
-            ? 'bg-orange-500 text-white'
-            : 'text-gray-400 hover:bg-white/10 hover:text-white'
+            ? 'text-white'
+            : 'text-gray-400 hover:text-white'
           }
         `}
+        style={{
+          background: isActive ? 'var(--sidebar-active)' : 'transparent',
+          ...(isActive ? {} : {}),
+        }}
+        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
       >
         <Icon size={16} className="shrink-0" />
         <span
@@ -100,7 +106,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
       <aside
         className={`
           flex flex-col py-6 h-full
-          bg-[#1e1b18] text-white overflow-hidden
+          text-white overflow-hidden
           transition-[width,box-shadow] duration-300 ease-in-out
           ${isPinned
             ? 'relative w-52 px-3'
@@ -111,6 +117,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
                }`
           }
         `}
+        style={{ background: 'var(--sidebar-bg)' }}
       >
 
         {/* ── LOGO ─────────────────────────────────────── */}
@@ -139,7 +146,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
             className={`
               absolute right-1 top-1/2 -translate-y-1/2
               p-1 rounded transition-all duration-200
-              ${isPinned ? 'text-orange-400 hover:text-orange-300' : 'text-gray-500 hover:text-white'}
+              ${isPinned ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-white'}
               ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
             `}
           >
@@ -162,10 +169,10 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         {/* ── SYSTEM / SETTINGS — always pinned above user info ── */}
         <div className="shrink-0 mt-4">
           <div className={`
-            h-px mx-1 mb-4 bg-white/10
+            h-px mx-1 mb-4
             transition-all duration-200
             ${isExpanded ? 'opacity-100' : 'opacity-30'}
-          `} />
+          `} style={{ background: 'rgba(255,255,255,0.1)' }} />
           <p className={`
             text-xs text-gray-500 uppercase px-2 mb-2
             transition-all duration-200 whitespace-nowrap overflow-hidden
@@ -184,29 +191,33 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
 
           {/* Avatar with online/offline dot */}
           <div className="relative shrink-0">
-            <div className="bg-orange-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs">
+            <div
+              className="text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs"
+              style={{ background: 'var(--sidebar-active)' }}
+            >
               {initials}
             </div>
 
-            {/* Status dot — always visible even when sidebar is collapsed */}
+            {/* Status dot */}
             <span
               title={isOnline ? 'Online' : 'Offline'}
               className={`
                 absolute -bottom-0.5 -right-0.5
-                w-2.5 h-2.5 rounded-full border-2 border-[#1e1b18]
+                w-2.5 h-2.5 rounded-full
                 transition-colors duration-500
                 ${isOnline ? 'bg-green-400' : 'bg-gray-500'}
               `}
+              style={{ borderWidth: '2px', borderStyle: 'solid', borderColor: 'var(--sidebar-bg)' }}
             />
           </div>
 
-          {/* Name + role + status text */}
+          {/* Name + role */}
           <div className={`
             flex-1 transition-all duration-200 overflow-hidden whitespace-nowrap
             ${isExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}
           `}>
-            <p className="text-sm font-medium leading-none mb-1">{currentUser?.username}</p>
-            <p className="text-xs text-gray-400 leading-none">{roleLabel}</p>
+            <p className="text-sm font-medium leading-none mb-1 text-gray-100">{currentUser?.username}</p>
+            <p className="text-xs leading-none text-gray-400">{roleLabel}</p>
           </div>
 
           {/* Logout */}
