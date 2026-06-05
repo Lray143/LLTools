@@ -187,7 +187,7 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
     'B.O TOTAL AMOUNT', // J  10 (no yellow fill)
     'AREA',             // K  11
   ]
-  const NO_YELLOW = new Set([9, 10])  // Disc Price & B.O Total have no yellow header
+  const NO_YELLOW = new Set([])  // all header columns use yellow fill
 
   ws.getRow(8).height = 44.25
   for (let c = 1; c <= COLS; c++) {
