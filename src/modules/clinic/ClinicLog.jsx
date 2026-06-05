@@ -320,7 +320,7 @@ export default function ClinicLog() {
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#fcfcfc]">
+    <div className="flex flex-col w-full h-full" style={{ background: 'var(--page-bg)' }}>
 
       <VisitModal
         open={modal?.mode === "edit"}
@@ -351,7 +351,7 @@ export default function ClinicLog() {
       )}
 
       {/* TOP BAR */}
-      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
+      <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <h1 className="text-2xl font-semibold text-gray-900">Clinic Log</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -364,10 +364,10 @@ export default function ClinicLog() {
               style={{ width: '14rem', height: '34px', fontSize: '13px' }}
             />
           </div>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <Bell className="w-4 h-4" />
           </button>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />
           </button>
         </div>

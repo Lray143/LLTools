@@ -72,7 +72,7 @@ export default function CalculationsSummary({
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               padding: '7px 16px', borderRadius: '10px',
-              border: 'none', background: '#f97316',
+              border: 'none', background: 'var(--theme-500)',
               color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
             }}
           >

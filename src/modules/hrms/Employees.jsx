@@ -3,18 +3,18 @@ import { Bell, Plus, Search, User, Archive, ChevronDown, Check } from "lucide-re
 import { v4 as uuidv4 } from 'uuid'
 
 import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS, DEFAULT_DAY_SCHEDULE, DAYS_OF_WEEK } from "./employeeConstants"
-import { EmployeeCardGrid }     from "./components/EmployeeCardGrid"
-import { EmployeeListView }     from "./components/EmployeeListView"
-import { EmployeeModal }        from "./components/EmployeeModal"
-import { EmployeeDeleteModal }  from "./components/EmployeeDeleteModal"
+import { EmployeeCardGrid } from "./components/EmployeeCardGrid"
+import { EmployeeListView } from "./components/EmployeeListView"
+import { EmployeeModal } from "./components/EmployeeModal"
+import { EmployeeDeleteModal } from "./components/EmployeeDeleteModal"
 import { EmployeeArchiveModal } from "./components/EmployeeArchiveModal"
 
 // ── Shared inline styles (mirrors BiometricFilterBar) ────────────────────────
 const displayPill = {
   display: 'inline-flex', alignItems: 'center', gap: '6px',
   padding: '5px 12px', borderRadius: '8px',
-  border: '1px solid rgba(0,0,0,0.1)', background: '#fff',
-  fontSize: '13px', fontWeight: 500, color: '#2c2010',
+  border: '1px solid var(--border)', background: 'var(--surface)',
+  fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)',
   whiteSpace: 'nowrap', cursor: 'pointer',
 }
 
@@ -43,8 +43,8 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
           gap: '8px',
           minWidth,
           justifyContent: 'space-between',
-          border: open ? '1px solid #f97316' : '1px solid rgba(0,0,0,0.1)',
-          color: open ? '#f97316' : '#2c2010',
+          border: open ? '1px solid var(--theme-500)' : '1px solid rgba(0,0,0,0.1)',
+          color: open ? 'var(--theme-500)' : 'var(--text-primary)',
           transition: 'border-color 150ms, color 150ms',
         }}
       >
@@ -53,7 +53,7 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
         </span>
         <ChevronDown
           size={13}
-          color={open ? '#f97316' : '#a09278'}
+          color={open ? 'var(--theme-500)' : 'var(--text-secondary)'}
           style={{ transition: 'transform 150ms, color 150ms', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
         />
       </button>
@@ -61,15 +61,15 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-          minWidth: '200px', background: '#fff', borderRadius: '14px',
-          border: '1px solid rgba(0,0,0,0.07)',
+          minWidth: '200px', background: 'var(--surface)', borderRadius: '14px',
+          border: '1px solid var(--border)',
           boxShadow: '0 12px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
           zIndex: 999, padding: '8px', overflow: 'hidden',
         }}>
           {options.map(opt => {
             const isActive = opt.value === value || opt === value
-            const label    = opt.label ?? opt
-            const val      = opt.value ?? opt
+            const label = opt.label ?? opt
+            const val = opt.value ?? opt
             return (
               <button
                 key={val}
@@ -78,15 +78,15 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none',
                   background: 'transparent',
-                  color: isActive ? '#f97316' : '#374151',
+                  color: isActive ? 'var(--theme-500)' : 'var(--text-primary)',
                   fontSize: '13.5px', fontWeight: isActive ? 600 : 400,
                   cursor: 'pointer', textAlign: 'left', transition: 'background 100ms',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#f9f8f6' }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
               >
                 {label}
-                {isActive && <Check size={14} color="#f97316" strokeWidth={2.5} />}
+                {isActive && <Check size={14} color="var(--theme-500)" strokeWidth={2.5} />}
               </button>
             )
           })}
@@ -99,67 +99,67 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
 function fromDb(row) {
   let daySchedule = null
   if (row.day_schedule) {
-    try { daySchedule = JSON.parse(row.day_schedule) } catch (_) {}
+    try { daySchedule = JSON.parse(row.day_schedule) } catch (_) { }
   }
   return {
-    id:          row.id,
+    id: row.id,
     employee_no: row.employee_no,
-    name:        row.name,
-    dept:        row.department  ?? '',
-    role:        row.position    ?? '',
-    contact:     row.contact     ?? '',
-    status:      row.status      ?? 'Active',
-    leaveType:   row.leave_type  ?? '',
-    leaveStart:  row.leave_start ?? '',
-    leaveEnd:    row.leave_end   ?? '',
-    shiftStart:  row.shift_start ?? DEFAULT_SHIFT_START,
-    shiftEnd:    row.shift_end   ?? DEFAULT_SHIFT_END,
-    dayOffs:     row.day_offs
-                   ? row.day_offs.split(',').map(d => d.trim()).filter(Boolean)
-                   : DEFAULT_DAY_OFFS,
+    name: row.name,
+    dept: row.department ?? '',
+    role: row.position ?? '',
+    contact: row.contact ?? '',
+    status: row.status ?? 'Active',
+    leaveType: row.leave_type ?? '',
+    leaveStart: row.leave_start ?? '',
+    leaveEnd: row.leave_end ?? '',
+    shiftStart: row.shift_start ?? DEFAULT_SHIFT_START,
+    shiftEnd: row.shift_end ?? DEFAULT_SHIFT_END,
+    dayOffs: row.day_offs
+      ? row.day_offs.split(',').map(d => d.trim()).filter(Boolean)
+      : DEFAULT_DAY_OFFS,
     daySchedule: daySchedule ?? DEFAULT_DAY_SCHEDULE,
     // Auto-detected from leave_requests: non-null only when an approved leave covers today
-    autoLeave:   row.auto_leave_type
-                   ? { type: row.auto_leave_type, start: row.auto_leave_start, end: row.auto_leave_end }
-                   : null,
+    autoLeave: row.auto_leave_type
+      ? { type: row.auto_leave_type, start: row.auto_leave_start, end: row.auto_leave_end }
+      : null,
   }
 }
 
 function toDb(emp) {
   // Derive day_offs and shift_start/shift_end from daySchedule for backward compat
-  const sched    = emp.daySchedule ?? DEFAULT_DAY_SCHEDULE
-  const dayOffs  = DAYS_OF_WEEK.filter(d => sched[d] === null)
+  const sched = emp.daySchedule ?? DEFAULT_DAY_SCHEDULE
+  const dayOffs = DAYS_OF_WEEK.filter(d => sched[d] === null)
   const firstWork = DAYS_OF_WEEK.find(d => sched[d] !== null)
   const shiftStart = firstWork ? sched[firstWork].start : DEFAULT_SHIFT_START
-  const shiftEnd   = firstWork ? sched[firstWork].end   : DEFAULT_SHIFT_END
+  const shiftEnd = firstWork ? sched[firstWork].end : DEFAULT_SHIFT_END
   return {
-    id:           emp.id,
-    employee_no:  emp.employee_no,
-    name:         emp.name,
-    department:   emp.dept       ?? null,
-    position:     emp.role       ?? null,
-    contact:      emp.contact    ?? null,
-    status:       emp.status     ?? 'Active',
-    leave_type:   emp.leaveType  ?? null,
-    leave_start:  emp.leaveStart ?? null,
-    leave_end:    emp.leaveEnd   ?? null,
-    shift_start:  shiftStart,
-    shift_end:    shiftEnd,
-    day_offs:     dayOffs.join(','),
+    id: emp.id,
+    employee_no: emp.employee_no,
+    name: emp.name,
+    department: emp.dept ?? null,
+    position: emp.role ?? null,
+    contact: emp.contact ?? null,
+    status: emp.status ?? 'Active',
+    leave_type: emp.leaveType ?? null,
+    leave_start: emp.leaveStart ?? null,
+    leave_end: emp.leaveEnd ?? null,
+    shift_start: shiftStart,
+    shift_end: shiftEnd,
+    day_offs: dayOffs.join(','),
     day_schedule: JSON.stringify(sched),
   }
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
 function Employees() {
-  const [employees,    setEmployees]    = useState([])
-  const [archived,     setArchived]     = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [view,         setView]         = useState("cards")
-  const [search,       setSearch]       = useState("")
-  const [dept,         setDept]         = useState("all")
+  const [employees, setEmployees] = useState([])
+  const [archived, setArchived] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState("cards")
+  const [search, setSearch] = useState("")
+  const [dept, setDept] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [modal,        setModal]        = useState(null)
+  const [modal, setModal] = useState(null)
 
   const loadEmployees = useCallback(async () => {
     const [active, arch] = await Promise.all([
@@ -174,19 +174,19 @@ function Employees() {
   useEffect(() => { loadEmployees() }, [loadEmployees])
 
   function nextEmployeeNo() {
-    const all  = [...employees, ...archived]
+    const all = [...employees, ...archived]
     const nums = all.map(e => parseInt(e.employee_no?.split("-")[1] ?? 0))
-    const max  = nums.length ? Math.max(...nums) : 0
+    const max = nums.length ? Math.max(...nums) : 0
     return `EMP-${String(max + 1).padStart(3, "0")}`
   }
 
   async function handleSave(form) {
     const isNew = modal.mode === "add"
     const emp = {
-      id:          isNew ? uuidv4() : modal.employee.id,
+      id: isNew ? uuidv4() : modal.employee.id,
       employee_no: form.employee_no?.trim() || (isNew ? nextEmployeeNo() : modal.employee.employee_no),
       // Status is no longer editable — preserve existing or default to Active
-      status:      isNew ? 'Active' : (modal.employee.status ?? 'Active'),
+      status: isNew ? 'Active' : (modal.employee.status ?? 'Active'),
       ...form,
     }
     await window.electronAPI.upsertEmployee(toDb(emp))
@@ -214,10 +214,10 @@ function Employees() {
     .map(e => ({ ...e, liveStatus: getLiveStatus(e) }))
     .filter(e => {
       const matchSearch = e.name.toLowerCase().includes(search.toLowerCase())
-      const matchDept   = dept === "all" || e.dept === dept
+      const matchDept = dept === "all" || e.dept === dept
       const matchStatus = statusFilter === "all" ||
-                          e.liveStatus === statusFilter ||
-                          (statusFilter === "On Leave" && e.liveStatus !== "Active")
+        e.liveStatus === statusFilter ||
+        (statusFilter === "On Leave" && e.liveStatus !== "Active")
       return matchSearch && matchDept && matchStatus
     })
 
@@ -232,11 +232,11 @@ function Employees() {
   ]
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#fcfcfc] overflow-hidden">
+    <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       {/* ── TOP HEADER ── */}
-      <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 bg-white border-b border-gray-200">
+      <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <h1 className="text-2xl font-semibold text-gray-900">Employees</h1>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -249,10 +249,10 @@ function Employees() {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <Bell className="w-4 h-4" />
           </button>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />
           </button>
         </div>
@@ -266,7 +266,7 @@ function Employees() {
           {/* Cards / List segmented toggle */}
           <div style={{
             display: 'flex', alignItems: 'center',
-            background: '#fff', border: '1px solid rgba(0,0,0,0.1)',
+            background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '3px', gap: '2px',
           }}>
             {['cards', 'list'].map(v => (
@@ -276,8 +276,8 @@ function Employees() {
                 style={{
                   padding: '5px 16px', borderRadius: '8px',
                   fontSize: '13px', fontWeight: view === v ? 600 : 400,
-                  background: view === v ? '#f97316' : 'transparent',
-                  color: view === v ? '#fff' : '#6b5c4c',
+                  background: view === v ? 'var(--theme-500)' : 'transparent',
+                  color: view === v ? '#fff' : 'var(--text-secondary)',
                   border: 'none', cursor: 'pointer',
                   transition: 'background 150ms, color 150ms',
                   textTransform: 'capitalize',
@@ -308,7 +308,7 @@ function Employees() {
           />
 
           {/* Count */}
-          <span style={{ fontSize: '13px', color: '#a09278', fontWeight: 400, userSelect: 'none' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 400, userSelect: 'none' }}>
             {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
           </span>
         </div>
@@ -320,8 +320,8 @@ function Employees() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               padding: '7px 16px', borderRadius: '10px',
-              border: '1px solid rgba(0,0,0,0.12)', background: '#fff',
-              color: '#4b3a2a', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--surface)',
+              color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
             }}
           >
             <Archive size={14} />
@@ -332,7 +332,7 @@ function Employees() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               padding: '7px 16px', borderRadius: '10px',
-              border: 'none', background: '#f97316',
+              border: 'none', background: 'var(--theme-500)',
               color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
             }}
           >
@@ -345,29 +345,29 @@ function Employees() {
       {/* ── CONTENT ── */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-8 pb-8">
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400">
-            <p className="text-sm">Loading employees...</p>
-          </div>
-        ) : view === "cards" ? (
-          <EmployeeCardGrid
-            employees={filtered}
-            onEdit={e => setModal({ mode: "edit", employee: e })}
-            onDelete={e => setModal({ mode: "delete", employee: e })}
-          />
-        ) : (
-          <EmployeeListView
-            employees={filtered}
-            onEdit={e => setModal({ mode: "edit", employee: e })}
-            onDelete={e => setModal({ mode: "delete", employee: e })}
-          />
-        )}
-        {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <p className="text-lg font-medium">No employees found</p>
-            <p className="text-sm">Try adjusting your search or filters</p>
-          </div>
-        )}
+          {loading ? (
+            <div className="flex items-center justify-center py-20 text-gray-400">
+              <p className="text-sm">Loading employees...</p>
+            </div>
+          ) : view === "cards" ? (
+            <EmployeeCardGrid
+              employees={filtered}
+              onEdit={e => setModal({ mode: "edit", employee: e })}
+              onDelete={e => setModal({ mode: "delete", employee: e })}
+            />
+          ) : (
+            <EmployeeListView
+              employees={filtered}
+              onEdit={e => setModal({ mode: "edit", employee: e })}
+              onDelete={e => setModal({ mode: "delete", employee: e })}
+            />
+          )}
+          {!loading && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+              <p className="text-lg font-medium">No employees found</p>
+              <p className="text-sm">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
       </div>
 

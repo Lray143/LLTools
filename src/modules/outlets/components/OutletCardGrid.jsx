@@ -39,7 +39,7 @@ function OutletCard({ outlet, onEdit, onDelete, onViewOrders }) {
       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium w-fit ${
         outlet.status === 'Active'
           ? 'bg-green-50 text-green-600 border border-green-200'
-          : 'bg-gray-50 text-gray-500 border border-gray-200'
+          : 'bg-white text-gray-500 border border-gray-200'
       }`}>
         {outlet.status}
       </span>

@@ -32,7 +32,7 @@ export const MONTHS = [
 // ── STATUS STYLES ────────────────────────────────────────────
 export const STATUS_STYLES = {
   'Full Time'      : { color: '#16a34a', bg: '#dcfce7', border: '#bbf7d0' },
-  'Late'           : { color: '#ea580c', bg: '#ffedd5', border: '#fed7aa' },
+  'Late'           : { color: 'var(--theme-600)', bg: 'var(--theme-100)', border: 'var(--theme-200)' },
   'Undertime'      : { color: '#d97706', bg: '#fef3c7', border: '#fde68a' },
   'Late & Undertime': { color: '#dc2626', bg: '#fee2e2', border: '#fecaca' },
   'Incomplete'     : { color: '#7c3aed', bg: '#ede9fe', border: '#ddd6fe' },

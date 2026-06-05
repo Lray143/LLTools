@@ -257,7 +257,7 @@ export default function ProductsTable({ search = '', onSearchChange }) {
           <table className="w-full text-sm border-collapse">
 
             {/* ── Header ── */}
-            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+            <thead className="sticky top-0 z-10 bg-white border-b border-gray-200">
               <tr>
                 {/* Checkbox th */}
                 <th className="px-3 py-3 w-8">

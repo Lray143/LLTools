@@ -315,15 +315,15 @@ function Biometrics() {
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#fcfcfc]">
+    <div className="flex flex-col w-full h-full" style={{ background: 'var(--page-bg)' }}>
       <style>{`
         [role="option"]:focus,[data-highlighted],[role="option"][data-disabled]{
           outline:none!important;border-color:transparent!important;box-shadow:none!important;
         }
-        [role="option"][data-state="checked"]{background:#f9fafb!important;color:#111827!important;}
+        [role="option"][data-state="checked"]{background:var(--surface-hover)!important;color:var(--text-primary)!important;}
       `}</style>
 
-      <div className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
+      <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <BiometricHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       </div>
 
@@ -356,13 +356,13 @@ function Biometrics() {
 
         {importError && (
           <div className="px-4 py-2 rounded-xl text-sm"
-            style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#991b1b' }}>
+            style={{ background: 'var(--surface-hover)', border: '1px solid #fecaca', color: '#991b1b' }}>
             ⚠ {importError}
           </div>
         )}
         {importSuccess && (
           <div className="px-4 py-2 rounded-xl text-sm"
-            style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#166534' }}>
+            style={{ background: 'var(--surface-hover)', border: '1px solid #bbf7d0', color: '#166534' }}>
             ✓ {importSuccess}
           </div>
         )}

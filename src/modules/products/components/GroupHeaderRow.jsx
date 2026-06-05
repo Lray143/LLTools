@@ -38,7 +38,7 @@ export default function GroupHeaderRow({
 
   return (
     <tr className="bg-orange-50/80 border-y border-orange-100">
-      <td colSpan={8} className="px-4 py-2.5">
+      <td colSpan={8} className="px-3 py-2.5">
         <div className="flex items-center gap-2">
 
           {/* Collapse toggle */}

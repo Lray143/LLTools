@@ -10,8 +10,8 @@ import { FolderPlus, Lock, Unlock, Archive, Store,
 const pill = {
   display: 'inline-flex', alignItems: 'center', gap: '6px',
   padding: '6px 14px', borderRadius: '8px',
-  border: '1px solid #e5e7eb', background: '#fff',
-  fontSize: '13px', fontWeight: 500, color: '#374151',
+  border: '1px solid var(--border, #e5e7eb)', background: 'var(--surface, #fff)',
+  fontSize: '13px', fontWeight: 500, color: 'var(--text-primary, #374151)',
   whiteSpace: 'nowrap', cursor: 'pointer',
 }
 
@@ -39,25 +39,25 @@ function OutletSelect({ value, onChange, options }) {
         onClick={() => setOpen(o => !o)}
         style={{
           ...pill,
-          borderColor: active ? '#f97316' : '#e5e7eb',
-          color: active ? '#f97316' : '#374151',
+          borderColor: active ? 'var(--theme-500)' : '#e5e7eb',
+          color: active ? 'var(--theme-500)' : 'var(--text-primary)',
           gap: '8px', paddingRight: '10px',
           justifyContent: 'space-between', minWidth: '150px',
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Store size={13} color={active ? '#f97316' : '#9ca3af'} />
+          <Store size={13} color={active ? 'var(--theme-500)' : 'var(--text-secondary)'} />
           {label}
         </span>
-        <ChevronDown size={12} color="#9ca3af"
+        <ChevronDown size={12} color="var(--text-secondary)"
           style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }} />
       </button>
 
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-          minWidth: '175px', background: '#fff', borderRadius: '12px',
-          border: '1px solid #f3f4f6',
+          minWidth: '175px', background: 'var(--surface, #fff)', borderRadius: '12px',
+          border: '1px solid var(--border, #f3f4f6)',
           boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 999, padding: '5px',
         }}>
           {[{ id: null, name: 'Default Prices' }, ...options].map(opt => {
@@ -69,14 +69,14 @@ function OutletSelect({ value, onChange, options }) {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '8px 10px', borderRadius: '8px',
                   border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: '13px',
-                  background: sel ? '#fff8f2' : 'transparent',
-                  color: sel ? '#f97316' : '#374151', fontWeight: sel ? 600 : 400,
+                  background: sel ? 'var(--hover-bg, #f9fafb)' : 'transparent',
+                  color: sel ? 'var(--theme-500)' : 'var(--text-primary, #374151)', fontWeight: sel ? 600 : 400,
                 }}
-                onMouseEnter={e => { if (!sel) e.currentTarget.style.background = '#f9fafb' }}
+                onMouseEnter={e => { if (!sel) e.currentTarget.style.background = 'var(--hover-bg, #f9fafb)' }}
                 onMouseLeave={e => { if (!sel) e.currentTarget.style.background = 'transparent' }}
               >
                 {opt.name}
-                {sel && <Check size={12} color="#f97316" strokeWidth={2.5} />}
+                {sel && <Check size={12} color="var(--theme-500)" strokeWidth={2.5} />}
               </button>
             )
           })}
@@ -95,13 +95,12 @@ export default function ProductsToolbar({
   outlets, selectedOutletId, onSelectOutlet,
 }) {
   return (
-    <div style={{ background: '#fff', flexShrink: 0, scrollbarGutter: 'stable', overflowY: 'auto' }}>
+    <div style={{ background: 'transparent', flexShrink: 0, position: 'relative' }}>
 
       {/* ══ Controls · Action buttons ════════════════════════════ */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 32px', height: '52px',
-        borderBottom: '1px solid #f3f4f6',
         gap: '12px',
       }}>
         {/* LEFT — outlet selector + stats */}
@@ -112,10 +111,9 @@ export default function ProductsToolbar({
             options={outlets}
           />
 
-          {/* Divider */}
-          <div style={{ width: '1px', height: '20px', background: '#e5e7eb' }} />
 
-          <span style={{ fontSize: '13px', color: '#9ca3af' }}>
+
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             {totalItems} item{totalItems !== 1 ? 's' : ''} across {totalGroups} group{totalGroups !== 1 ? 's' : ''}
           </span>
 
@@ -123,11 +121,11 @@ export default function ProductsToolbar({
           {selectedOutletId && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: '5px',
-              fontSize: '12px', color: '#ea580c',
-              background: '#fff7ed', border: '1px solid #fed7aa',
+              fontSize: '12px', color: 'var(--theme-600)',
+              background: 'var(--surface-hover)', border: '1px solid var(--theme-200)',
               borderRadius: '20px', padding: '3px 10px',
             }}>
-              <Store size={11} color="#f97316" />
+              <Store size={11} color="var(--theme-500)" />
               {outlets.find(o => o.id === selectedOutletId)?.name} prices
               {editMode && ' · click price to override'}
             </span>
@@ -139,10 +137,10 @@ export default function ProductsToolbar({
           {/* Archive */}
           <button onClick={onOpenArchive}
             style={{ ...pill }}
-            onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-            onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--hover-bg, #f9fafb)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface, #fff)'}
           >
-            <Archive size={14} color="#6b7280" />
+            <Archive size={14} color="var(--text-secondary)" />
             Archive
           </button>
 
@@ -150,9 +148,9 @@ export default function ProductsToolbar({
           <button onClick={onToggleEditMode}
             style={{
               ...pill,
-              background: editMode ? '#f0fdf4' : '#f9fafb',
-              borderColor: editMode ? '#86efac' : '#e5e7eb',
-              color: editMode ? '#16a34a' : '#374151',
+              background: editMode ? '#f0fdf4' : 'var(--surface, #f9fafb)',
+              borderColor: editMode ? '#86efac' : 'var(--border, #e5e7eb)',
+              color: editMode ? '#16a34a' : 'var(--text-primary, #374151)',
               fontWeight: 600,
             }}
             onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
@@ -168,12 +166,12 @@ export default function ProductsToolbar({
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 padding: '6px 16px', borderRadius: '8px', border: 'none',
-                background: '#f97316', color: '#fff',
+                background: 'var(--theme-500)', color: '#fff',
                 fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                 transition: 'background 120ms',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#ea580c'}
-              onMouseLeave={e => e.currentTarget.style.background = '#f97316'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--theme-600)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--theme-500)'}
             >
               <FolderPlus size={14} />
               Add Group

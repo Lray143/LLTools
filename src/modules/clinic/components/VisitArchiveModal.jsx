@@ -59,7 +59,7 @@ export default function VisitArchiveModal({
             <Button
               variant="ghost"
               size="icon"
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 w-8 h-8"
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 w-8 h-8"
               onClick={onClose}
             >
               <X className="w-4 h-4" />
@@ -85,7 +85,7 @@ export default function VisitArchiveModal({
             {/* Empty state — no archived records at all */}
             {archived.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
                   <Archive className="w-7 h-7 text-gray-300 stroke-[1.5]" />
                 </div>
                 <div className="text-center">
@@ -98,7 +98,7 @@ export default function VisitArchiveModal({
             {/* No search results */}
             {archived.length > 0 && filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
                   <Search className="w-7 h-7 text-gray-300 stroke-[1.5]" />
                 </div>
                 <div className="text-center">
@@ -114,7 +114,7 @@ export default function VisitArchiveModal({
                 {filtered.map((v, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between py-2.5 px-3 bg-gray-50 hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
+                    className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
                   >
                     <div>
                       <p className="text-sm font-medium text-gray-800">
@@ -155,7 +155,7 @@ export default function VisitArchiveModal({
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/80">
+          <div className="px-6 py-3 border-t border-gray-100 bg-white">
             <p className="text-xs text-gray-400 text-center">
               Restore brings a record back to active · Permanent delete cannot be undone
             </p>

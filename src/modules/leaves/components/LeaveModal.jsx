@@ -26,7 +26,7 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       <div style={{
-        background: '#fff', borderRadius: '20px',
+        background: 'var(--surface)', borderRadius: '20px',
         width: '500px', maxWidth: '95vw',
         padding: '32px', boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
       }}>
@@ -34,16 +34,16 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <div style={{
             width: '36px', height: '36px', borderRadius: '10px',
-            background: '#fff8f2', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <CalendarClock size={18} color="#f97316" />
+            <CalendarClock size={18} color="var(--theme-500)" />
           </div>
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#1c1008', margin: 0 }}>
+            <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               File a Leave Request
             </h2>
-            <p style={{ fontSize: '12px', color: '#a09278', margin: 0 }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
               Your request will be reviewed by HR.
             </p>
           </div>
@@ -61,7 +61,7 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
               >
                 {LEAVE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <ChevronDown size={14} color="#a09278" style={chevronStyle} />
+              <ChevronDown size={14} color="var(--text-secondary)" style={chevronStyle} />
             </div>
           </div>
 
@@ -85,9 +85,9 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
           {/* Day count pill */}
           {form.start_date && form.end_date && (
             <div style={{
-              background: '#fff8f2', border: '1px solid #fed7aa',
+              background: 'var(--surface-hover)', border: '1px solid var(--theme-200)',
               borderRadius: '10px', padding: '8px 14px',
-              fontSize: '12px', color: '#ea580c', fontWeight: 600,
+              fontSize: '12px', color: 'var(--theme-600)', fontWeight: 600,
               display: 'flex', alignItems: 'center', gap: '6px',
             }}>
               <Calendar size={13} />
@@ -98,7 +98,7 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
           {/* Reason */}
           <div>
             <label style={labelStyle}>
-              Reason <span style={{ color: '#a09278', fontWeight: 400 }}>(optional)</span>
+              Reason <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(optional)</span>
             </label>
             <textarea
               value={form.reason}
@@ -131,17 +131,17 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
 
 // ── Shared input styles ──
 const labelStyle = {
-  fontSize: '12px', fontWeight: 600, color: '#6b5c4c', display: 'block', marginBottom: '5px',
+  fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '5px',
 }
 const inputStyle = {
   width: '100%', padding: '9px 12px',
   border: '1px solid #e5e7eb', borderRadius: '10px',
-  fontSize: '13px', color: '#1c1008', outline: 'none', boxSizing: 'border-box',
+  fontSize: '13px', color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box',
 }
 const selectStyle = {
   width: '100%', padding: '9px 36px 9px 12px',
   border: '1px solid #e5e7eb', borderRadius: '10px',
-  fontSize: '13px', color: '#1c1008', background: '#fff',
+  fontSize: '13px', color: 'var(--text-primary)', background: 'var(--surface)',
   appearance: 'none', outline: 'none', cursor: 'pointer',
 }
 const chevronStyle = {
@@ -151,14 +151,14 @@ const chevronStyle = {
 const textareaStyle = {
   width: '100%', padding: '10px 12px',
   border: '1px solid #e5e7eb', borderRadius: '10px',
-  fontSize: '13px', color: '#1c1008', outline: 'none',
+  fontSize: '13px', color: 'var(--text-primary)', outline: 'none',
   resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: '1.5',
 }
 const cancelBtnStyle = {
   padding: '9px 20px', borderRadius: '10px', border: '1px solid #e5e7eb',
-  background: '#fff', color: '#6b5c4c', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+  background: 'var(--surface)', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
 }
 const primaryBtnStyle = {
   padding: '9px 24px', borderRadius: '10px', border: 'none',
-  background: '#f97316', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+  background: 'var(--theme-500)', color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
 }

@@ -1,7 +1,7 @@
 export function BiometricStatCards({ stats }) {
   const cards = [
     { label: 'Full Time',       value: stats.fullTime,      color: '#16a34a' },
-    { label: 'Late',            value: stats.late,          color: '#ea580c' },
+    { label: 'Late',            value: stats.late,          color: 'var(--theme-600)' },
     { label: 'Undertime',       value: stats.undertime,     color: '#d97706' },
     { label: 'Late & Undertime',value: stats.lateUndertime, color: '#dc2626' },
     { label: 'Incomplete',      value: stats.incomplete,    color: '#7c3aed' },

@@ -482,7 +482,7 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
 // ── Expanded month orders table ───────────────────────────────────
 function MonthOrdersTable({ orders, onDelete }) {
   return (
-    <div className="bg-gray-50/60 border-t border-gray-100 px-6 py-3">
+    <div className="bg-white border-t border-gray-100 px-6 py-3">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-gray-400 uppercase tracking-wide">
@@ -510,7 +510,7 @@ function MonthOrdersTable({ orders, onDelete }) {
                 </td>
                 <td className="py-2 text-gray-400 whitespace-nowrap">{formatDate(order.createdAt)}</td>
                 <td className="py-2 text-center">
-                  <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
+                  <span className="bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded-full">
                     {itemCount}
                   </span>
                 </td>
@@ -716,7 +716,7 @@ export default function CalculationsMonthlySummary() {
             <h3 className="font-semibold text-gray-800">Monthly Breakdown</h3>
             <p className="text-xs text-gray-400 mt-0.5">Click any month to expand · Use the export button to download</p>
           </div>
-          <span className="text-xs text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
+          <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">
             {monthGroups.length} month{monthGroups.length !== 1 ? 's' : ''}
           </span>
         </div>
@@ -754,7 +754,7 @@ export default function CalculationsMonthlySummary() {
                   </div>
 
                   {/* Mini bar */}
-                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-gray-50 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full transition-all duration-500"
                       style={{ width: `${widthPct}%` }}
@@ -797,7 +797,7 @@ export default function CalculationsMonthlySummary() {
         </div>
 
         {/* Grand total footer */}
-        <div className="px-6 py-3 border-t-2 border-gray-200 bg-gray-50 flex items-center justify-between">
+        <div className="px-6 py-3 border-t-2 border-gray-200 bg-white flex items-center justify-between">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
             All-Time Grand Total
           </span>

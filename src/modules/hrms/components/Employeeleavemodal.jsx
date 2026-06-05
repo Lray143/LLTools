@@ -104,7 +104,7 @@ function EmployeeCombobox({ employees, value, onChange }) {
                   key={emp.id}
                   type="button"
                   onClick={() => select(emp)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-gray-50 ${emp.id === value ? "bg-sky-50" : ""}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors hover:bg-white ${emp.id === value ? "bg-sky-50" : ""}`}
                 >
                   <span className={`flex-shrink-0 inline-flex w-7 h-7 rounded-full items-center justify-center text-white text-xs font-bold ${getColor(emp.name)}`}>
                     {getInitials(emp.name)}
@@ -178,7 +178,7 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
 
             {/* Mini preview card */}
             {selectedEmp && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 mt-0.5">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-100 mt-0.5">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold ${getColor(selectedEmp.name)}`}>
                   {getInitials(selectedEmp.name)}
                 </div>
@@ -203,7 +203,7 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
                 style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}
               >
                 {LEAVE_TYPES.map(t => (
-                  <SelectItem key={t} value={t} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
+                  <SelectItem key={t} value={t} className="focus:bg-white focus:text-gray-900 cursor-pointer">
                     {t}
                   </SelectItem>
                 ))}
@@ -257,7 +257,7 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
         </div>
 
         <DialogFooter className="gap-2">
-          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50" onClick={onClose}>
+          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white" onClick={onClose}>
             Cancel
           </Button>
           <Button className="bg-sky-500 hover:bg-sky-600 text-white border-0" onClick={handleSave}>

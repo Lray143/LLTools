@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 import LoginPage   from './components/ui/LoginPage'
@@ -16,6 +16,7 @@ import Settings       from './modules/settings/Settings'
 import LeaveRequests  from './modules/leaves/LeaveRequests'
 
 import { MODULE_ACCESS } from './lib/permissions'
+import { getSavedTheme, applyThemeToDocument, getSavedMode, applyModeToDocument, saveTheme, saveMode } from './lib/theme'
 
 const STATIC_PAGES = {
   dashboard:    <Dashboard />,
@@ -32,8 +33,21 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null)   // { id, username, role, employeeId }
   const [activePage,  setActivePage]  = useState('dashboard')
 
+  useEffect(() => {
+    applyThemeToDocument(getSavedTheme())
+    applyModeToDocument(getSavedMode())
+  }, [])
+
   const handleLogin = (user) => {
     setCurrentUser(user)
+    if (user.themeColor) {
+      saveTheme(user.themeColor)
+      applyThemeToDocument(user.themeColor)
+    }
+    if (user.themeMode) {
+      saveMode(user.themeMode)
+      applyModeToDocument(user.themeMode)
+    }
     setActivePage('dashboard')
   }
 
@@ -56,7 +70,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#fcfcfc]">
+    <div className="flex h-screen" style={{ background: 'var(--page-bg)' }}>
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}

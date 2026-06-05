@@ -39,18 +39,18 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
         isEdit && employee
           ? {
             employee_no: employee.employee_no || "",
-            name:        employee.name,
-            role:        employee.role       || "",
-            dept:        employee.dept,
-            contact:     employee.contact    || "",
+            name: employee.name,
+            role: employee.role || "",
+            dept: employee.dept,
+            contact: employee.contact || "",
             daySchedule: employee.daySchedule || DEFAULT_DAY_SCHEDULE,
           }
           : {
             employee_no: "",
-            name:        "",
-            role:        "",
-            dept:        "Sales",
-            contact:     "",
+            name: "",
+            role: "",
+            dept: "Sales",
+            contact: "",
             daySchedule: DEFAULT_DAY_SCHEDULE,
           }
       )
@@ -153,7 +153,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                   </SelectTrigger>
                   <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
                     {DEPTS.map(d => (
-                      <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer text-sm">{d}</SelectItem>
+                      <SelectItem key={d} value={d} className="focus:bg-white focus:text-gray-900 cursor-pointer text-sm">{d}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -191,7 +191,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                       <button
                         type="button"
                         onClick={() => toggleDayOff(day)}
-                        className={`relative h-[20px] w-[36px] rounded-full transition-colors focus:outline-none ${isWork ? 'bg-orange-500' : 'bg-gray-200'}`}
+                        className={`relative h-[20px] w-[36px] rounded-full transition-colors focus:outline-none ${isWork ? 'bg-orange-500' : 'bg-gray-100 dark:bg-gray-100'}`}
                       >
                         <div className={`absolute top-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isWork ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
                       </button>
@@ -202,14 +202,14 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                       value={isWork ? (entry?.start ?? '07:00') : ''}
                       disabled={!isWork}
                       onChange={e => setDayEntry(day, { ...entry, start: e.target.value })}
-                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none bg-gray-50' : ''}`}
+                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none bg-white' : ''}`}
                     />
                     <Input
                       type="time"
                       value={isWork ? (entry?.end ?? '17:30') : ''}
                       disabled={!isWork}
                       onChange={e => setDayEntry(day, { ...entry, end: e.target.value })}
-                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none bg-gray-50' : ''}`}
+                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none bg-white' : ''}`}
                     />
                   </div>
                 )
@@ -220,7 +220,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
         </div>
 
         <DialogFooter className="gap-2 pt-4 border-t border-gray-100 mt-2">
-          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-gray-50 text-sm" onClick={onClose}>
+          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose}>
             Cancel
           </Button>
           <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave}>

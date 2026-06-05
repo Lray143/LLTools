@@ -83,8 +83,8 @@ export default function FilePreviewModal({ att, onClose }) {
         {/* File info */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {type === "image"
-            ? <ImageIcon size={16} color="#fb923c" />
-            : <FileText  size={16} color="#fb923c" />
+            ? <ImageIcon size={16} color="var(--theme-400)" />
+            : <FileText  size={16} color="var(--theme-400)" />
           }
           <span style={{
             fontSize: "13px", fontWeight: 600,
@@ -94,7 +94,7 @@ export default function FilePreviewModal({ att, onClose }) {
             {att.name}
           </span>
           {att.size && (
-            <span style={{ fontSize: "11px", color: "#6b7280" }}>
+            <span style={{ fontSize: "11px", color: 'var(--text-secondary)' }}>
               {att.size < 1024 * 1024
                 ? `${(att.size / 1024).toFixed(0)} KB`
                 : `${(att.size / 1024 / 1024).toFixed(1)} MB`}
@@ -109,7 +109,7 @@ export default function FilePreviewModal({ att, onClose }) {
               <ToolBtn onClick={() => setImgZoom(z => Math.max(0.25, z - 0.25))} title="Zoom out">
                 <ZoomOut size={15} />
               </ToolBtn>
-              <span style={{ fontSize: "11px", color: "#9ca3af", minWidth: "36px", textAlign: "center" }}>
+              <span style={{ fontSize: "11px", color: "var(--text-secondary)", minWidth: "36px", textAlign: "center" }}>
                 {Math.round(imgZoom * 100)}%
               </span>
               <ToolBtn onClick={() => setImgZoom(z => Math.min(4, z + 0.25))} title="Zoom in">
@@ -129,11 +129,11 @@ export default function FilePreviewModal({ att, onClose }) {
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
                 width: "32px", height: "32px", borderRadius: "8px",
-                color: "#9ca3af", textDecoration: "none",
+                color: "var(--text-secondary)", textDecoration: "none",
                 transition: "background 100ms, color 100ms",
               }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#f3f4f6" }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#9ca3af" }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)" }}
             >
               <Download size={15} />
             </a>
@@ -183,7 +183,7 @@ export default function FilePreviewModal({ att, onClose }) {
               borderRadius: "8px",
               border: "none",
               boxShadow: "0 8px 48px rgba(0,0,0,0.5)",
-              background: "#fff",
+              background: 'var(--surface)',
             }}
           />
         )}
@@ -191,7 +191,7 @@ export default function FilePreviewModal({ att, onClose }) {
         {type === "other" && (
           <div style={{
             display: "flex", flexDirection: "column", alignItems: "center", gap: "16px",
-            color: "#9ca3af", textAlign: "center",
+            color: "var(--text-secondary)", textAlign: "center",
           }}>
             <FileText size={48} style={{ opacity: 0.4 }} />
             <p style={{ fontSize: "14px" }}>This file type cannot be previewed inline.</p>
@@ -202,7 +202,7 @@ export default function FilePreviewModal({ att, onClose }) {
                 style={{
                   display: "inline-flex", alignItems: "center", gap: "8px",
                   padding: "10px 20px", borderRadius: "10px",
-                  background: "#f97316", color: "#fff",
+                  background: "var(--theme-500)", color: "#fff",
                   fontSize: "13px", fontWeight: 600,
                   textDecoration: "none",
                 }}
@@ -227,11 +227,11 @@ function ToolBtn({ onClick, title, children }) {
         display: "flex", alignItems: "center", justifyContent: "center",
         width: "32px", height: "32px", borderRadius: "8px",
         background: "transparent", border: "none",
-        color: "#9ca3af", cursor: "pointer",
+        color: "var(--text-secondary)", cursor: "pointer",
         transition: "background 100ms, color 100ms",
       }}
       onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#f3f4f6" }}
-      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#9ca3af" }}
+      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-secondary)" }}
     >
       {children}
     </button>

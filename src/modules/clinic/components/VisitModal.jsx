@@ -70,9 +70,9 @@ function GroupedComplaintSelect({ value, onChange }) {
         style={{
           display: "inline-flex", alignItems: "center", justifyContent: "space-between",
           width: "100%", padding: "0 10px", height: "38px", borderRadius: "8px",
-          border: `1px solid ${open ? "#fb923c" : "rgb(226,232,240)"}`,
-          background: "#fff", fontSize: "14px", fontWeight: value ? 500 : 400,
-          color: value ? "#111" : "#9ca3af", cursor: "pointer", gap: "6px",
+          border: `1px solid ${open ? "var(--theme-400)" : "rgb(226,232,240)"}`,
+          background: 'var(--surface)', fontSize: "14px", fontWeight: value ? 500 : 400,
+          color: value ? "#111" : "var(--text-secondary)", cursor: "pointer", gap: "6px",
           transition: "border-color 150ms",
         }}
       >
@@ -86,24 +86,24 @@ function GroupedComplaintSelect({ value, onChange }) {
               <X size={11} />
             </span>
           )}
-          <ChevronDown size={13} color="#a09278"
+          <ChevronDown size={13} color="var(--text-secondary)"
             style={{ transition: "transform 150ms", transform: open ? "rotate(180deg)" : "none" }} />
         </span>
       </button>
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 6px)", left: 0, width: "100%",
-          background: "#fff", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.08)",
+          background: 'var(--surface)', borderRadius: "12px", border: '1px solid var(--border)',
           boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 9999, overflow: "hidden",
         }}>
-          <div style={{ padding: "8px 8px 4px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <div style={{ padding: "8px 8px 4px", borderBottom: '1px solid var(--border)' }}>
             <div style={{ position: "relative" }}>
               <Search size={12} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "#bbb", pointerEvents: "none" }} />
               <input ref={searchRef} value={query} onChange={e => setQuery(e.target.value)}
                 placeholder="Search complaint…"
                 style={{ width: "100%", padding: "6px 8px 6px 26px", fontSize: "12px",
-                  border: "1px solid rgba(0,0,0,0.08)", borderRadius: "8px",
-                  outline: "none", background: "#f9f8f6", color: "#2c2010" }} />
+                  border: '1px solid var(--border)', borderRadius: "8px",
+                  outline: "none", background: 'var(--surface-hover)', color: 'var(--text-primary)' }} />
               {query && (
                 <button type="button" onClick={() => setQuery("")}
                   style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)",
@@ -118,11 +118,11 @@ function GroupedComplaintSelect({ value, onChange }) {
               <button type="button" onClick={() => select(query.trim())}
                 style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                   width: "100%", padding: "7px 10px", borderRadius: "8px", border: "none",
-                  background: "#fff8f2", color: "#ea580c", fontSize: "13px", fontWeight: 600,
+                  background: 'var(--surface-hover)', color: "var(--theme-600)", fontSize: "13px", fontWeight: 600,
                   cursor: "pointer", textAlign: "left", marginBottom: "4px" }}
               >
                 Use "{query.trim()}"
-                <Check size={12} color="#ea580c" strokeWidth={2.5} />
+                <Check size={12} color="var(--theme-600)" strokeWidth={2.5} />
               </button>
             )}
             {filtered.length === 0
@@ -130,22 +130,22 @@ function GroupedComplaintSelect({ value, onChange }) {
               : filtered.map(g => (
                 <div key={g.group}>
                   <p style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase",
-                    letterSpacing: "0.06em", color: "#f97316", padding: "8px 10px 4px" }}>{g.group}</p>
+                    letterSpacing: "0.06em", color: "var(--theme-500)", padding: "8px 10px 4px" }}>{g.group}</p>
                   {g.options.map(opt => {
                     const isActive = opt === value
                     return (
                       <button key={opt} type="button" onClick={() => select(opt)}
                         style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                           width: "100%", padding: "7px 10px", borderRadius: "8px", border: "none",
-                          background: isActive ? "#fff8f2" : "transparent",
-                          color: isActive ? "#f97316" : "#2c2010",
+                          background: isActive ? "var(--page-bg-alt)" : "transparent",
+                          color: isActive ? "var(--theme-500)" : "var(--text-primary)",
                           fontSize: "13px", fontWeight: isActive ? 600 : 400,
                           cursor: "pointer", textAlign: "left", transition: "background 80ms" }}
-                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#f9f8f6" }}
+                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--surface-hover)" }}
                         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent" }}
                       >
                         {opt}
-                        {isActive && <Check size={12} color="#f97316" strokeWidth={2.5} />}
+                        {isActive && <Check size={12} color="var(--theme-500)" strokeWidth={2.5} />}
                       </button>
                     )
                   })}
@@ -338,7 +338,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
                 </SelectTrigger>
                 <SelectContent className="z-[200] bg-white border border-gray-200">
                   {GENDERS.map(g => (
-                    <SelectItem key={g} value={g} className="capitalize focus:bg-gray-50 cursor-pointer">
+                    <SelectItem key={g} value={g} className="capitalize focus:bg-white cursor-pointer">
                       {g.charAt(0).toUpperCase() + g.slice(1)}
                     </SelectItem>
                   ))}
@@ -423,7 +423,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
               </SelectTrigger>
               <SelectContent className="z-[200] bg-white border border-gray-200">
                 {DISPOSITIONS.map(d => (
-                  <SelectItem key={d} value={d} className="focus:bg-gray-50 focus:text-gray-900 cursor-pointer">
+                  <SelectItem key={d} value={d} className="focus:bg-white focus:text-gray-900 cursor-pointer">
                     {d}
                   </SelectItem>
                 ))}
@@ -445,7 +445,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
         <DialogFooter className="gap-2">
           <Button
             variant="outline"
-            className="border-gray-200 text-gray-600 hover:bg-gray-50"
+            className="border-gray-200 text-gray-600 hover:bg-white"
             onClick={onClose}
           >
             Cancel

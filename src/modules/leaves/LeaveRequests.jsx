@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { CalendarClock, Plus, Search, User, Users } from 'lucide-react'
+import { Plus, Search, User, Users } from 'lucide-react'
 
 import { LeaveModal }        from './components/LeaveModal'
 import { ReviewModal }       from './components/ReviewModal'
@@ -126,27 +126,20 @@ export default function LeaveRequests({ currentUser }) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#fcfcfc' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--page-bg)' }}>
 
       {/* ── Header ── */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '18px 32px', background: '#fff',
-        borderBottom: '1px solid rgba(0,0,0,0.07)', flexShrink: 0,
+        padding: '18px 32px', background: 'var(--page-bg)',
+        borderBottom: '1px solid var(--border)', flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '38px', height: '38px', borderRadius: '11px',
-            background: '#fff8f2', border: '1px solid #fed7aa',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <CalendarClock size={18} color="#f97316" />
-          </div>
           <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 700, color: '#1c1008', margin: 0 }}>
+            <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Leave Requests
             </h1>
-            <p style={{ fontSize: '12px', color: '#a09278', margin: 0 }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>
               {isManageView
                 ? 'Review and manage all employee leave requests'
                 : 'Submit and track your leave requests'}
@@ -155,10 +148,11 @@ export default function LeaveRequests({ currentUser }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* HR tab switcher */}
+          {/* HR tab switcher — consistent with BiometricFilterbar segmented toggle */}
           {isHR && (
             <div style={{
-              display: 'flex', background: '#f3f0ec',
+              display: 'flex', alignItems: 'center',
+              background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: '10px', padding: '3px', gap: '2px',
             }}>
               {[
@@ -171,12 +165,12 @@ export default function LeaveRequests({ currentUser }) {
                     onClick={() => { setHrTab(id); setStatusFilter('All'); setSearch('') }}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
-                      padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                      fontSize: '12px', fontWeight: active ? 600 : 400,
-                      background: active ? '#fff' : 'transparent',
-                      color: active ? '#f97316' : '#6b5c4c',
-                      boxShadow: active ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-                      transition: 'all 150ms',
+                      padding: '7px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      fontSize: '13px', fontWeight: active ? 600 : 400,
+                      background: active ? 'var(--theme-500)' : 'transparent',
+                      color: active ? '#fff' : 'var(--text-secondary)',
+                      transition: 'background 150ms, color 150ms',
+                      whiteSpace: 'nowrap', lineHeight: '1.4',
                     }}
                   >
                     <Icon size={13} />
@@ -191,7 +185,7 @@ export default function LeaveRequests({ currentUser }) {
           <button onClick={() => setShowModal(true)} style={{
             display: 'inline-flex', alignItems: 'center', gap: '7px',
             padding: '9px 20px', borderRadius: '11px', border: 'none',
-            background: '#f97316', color: '#fff',
+            background: 'var(--theme-500)', color: '#fff',
             fontSize: '13px', fontWeight: 600, cursor: 'pointer',
             boxShadow: '0 2px 8px rgba(249,115,22,0.3)',
           }}>
@@ -211,16 +205,16 @@ export default function LeaveRequests({ currentUser }) {
         {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
           {[
-            { label: 'Total',    val: counts.All,      color: '#f97316', bg: '#fff8f2', border: '#fed7aa' },
+            { label: 'Total',    val: counts.All,      color: 'var(--theme-500)', bg: '#f9fafb', border: 'var(--theme-200)' },
             { label: 'Pending',  val: counts.Pending,  color: '#d97706', bg: '#fef3c7', border: '#fde68a' },
             { label: 'Approved', val: counts.Approved, color: '#16a34a', bg: '#dcfce7', border: '#bbf7d0' },
             { label: 'Denied',   val: counts.Denied,   color: '#dc2626', bg: '#fee2e2', border: '#fecaca' },
           ].map(s => (
             <div key={s.label} style={{
-              background: '#fff', borderRadius: '14px', padding: '16px 20px',
-              border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+              background: 'var(--surface)', borderRadius: '14px', padding: '16px 20px',
+              border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
             }}>
-              <p style={{ fontSize: '11px', color: '#a09278', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
                 {s.label}
               </p>
               <p style={{ fontSize: '28px', fontWeight: 700, color: s.color, margin: 0, lineHeight: 1 }}>
@@ -233,15 +227,15 @@ export default function LeaveRequests({ currentUser }) {
         {/* Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <div style={{
-            display: 'flex', background: '#fff',
-            border: '1px solid rgba(0,0,0,0.08)', borderRadius: '10px', padding: '3px', gap: '2px',
+            display: 'flex', background: 'var(--surface)',
+            border: '1px solid var(--border)', borderRadius: '10px', padding: '3px', gap: '2px',
           }}>
             {['All', 'Pending', 'Approved', 'Denied'].map(s => (
               <button key={s} onClick={() => setStatusFilter(s)} style={{
                 padding: '6px 14px', borderRadius: '8px', fontSize: '12px',
                 fontWeight: statusFilter === s ? 600 : 400,
-                background: statusFilter === s ? '#f97316' : 'transparent',
-                color: statusFilter === s ? '#fff' : '#6b5c4c',
+                background: statusFilter === s ? 'var(--theme-500)' : 'transparent',
+                color: statusFilter === s ? '#fff' : 'var(--text-secondary)',
                 border: 'none', cursor: 'pointer', transition: 'all 150ms',
               }}>
                 {s}&nbsp;
@@ -252,7 +246,7 @@ export default function LeaveRequests({ currentUser }) {
 
           {isManageView && (
             <div style={{ position: 'relative', flex: 1, maxWidth: '280px' }}>
-              <Search size={14} color="#a09278"
+              <Search size={14} color="var(--text-secondary)"
                 style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 placeholder="Search employee or leave type…"
@@ -260,9 +254,9 @@ export default function LeaveRequests({ currentUser }) {
                 onChange={e => setSearch(e.target.value)}
                 style={{
                   width: '100%', padding: '8px 12px 8px 34px',
-                  border: '1px solid rgba(0,0,0,0.1)', borderRadius: '10px',
-                  fontSize: '13px', color: '#1c1008', outline: 'none',
-                  background: '#fff', boxSizing: 'border-box',
+                  border: '1px solid var(--border)', borderRadius: '10px',
+                  fontSize: '13px', color: 'var(--text-primary)', outline: 'none',
+                  background: 'var(--surface)', boxSizing: 'border-box',
                 }}
               />
             </div>
@@ -271,13 +265,13 @@ export default function LeaveRequests({ currentUser }) {
 
         {/* Table card */}
         <div style={{
-          background: '#fff', borderRadius: '16px',
-          border: '1px solid rgba(0,0,0,0.07)',
+          background: 'var(--surface)', borderRadius: '16px',
+          border: '1px solid var(--border)',
           boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
           overflow: 'hidden',
         }}>
           {loading ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#c9bfaf', fontSize: '13px' }}>
+            <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
               Loading…
             </div>
           ) : (

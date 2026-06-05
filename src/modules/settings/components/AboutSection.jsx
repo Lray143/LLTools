@@ -18,8 +18,8 @@ export function AboutSection() {
         gap: '16px',
         padding: '20px',
         borderRadius: '16px',
-        background: 'linear-gradient(135deg, #fff5ee 0%, #fff 60%)',
-        border: '1px solid rgba(249,115,22,0.15)',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         marginBottom: '8px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
       }}>
@@ -29,10 +29,10 @@ export function AboutSection() {
           style={{ width: '52px', height: '52px', objectFit: 'contain', flexShrink: 0 }}
         />
         <div>
-          <p style={{ fontSize: '16px', fontWeight: 700, color: '#1c1410', margin: 0 }}>
+          <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
             LLTools
           </p>
-          <p style={{ fontSize: '12.5px', color: '#9ca3af', margin: '3px 0 0' }}>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '3px 0 0' }}>
             Double L Beauty Products
           </p>
         </div>
@@ -40,11 +40,11 @@ export function AboutSection() {
           marginLeft: 'auto',
           padding: '5px 12px',
           borderRadius: '99px',
-          background: 'rgba(249,115,22,0.1)',
-          border: '1px solid rgba(249,115,22,0.2)',
+          background: 'var(--page-bg-alt)',
+          border: '1px solid var(--border)',
           fontSize: '12px',
           fontWeight: 600,
-          color: '#f97316',
+          color: 'var(--accent-bg)',
         }}>
           v{APP_VERSION}
         </div>
@@ -67,7 +67,7 @@ export function AboutSection() {
       </SettingRow>
 
       <SettingRow label="Copyright" description="">
-        <p style={{ fontSize: '12.5px', color: '#9ca3af', margin: 0 }}>
+        <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: 0 }}>
           © {BUILD_YEAR} Double L Beauty Products. All rights reserved.
         </p>
       </SettingRow>
@@ -82,11 +82,11 @@ function InfoChip({ value }) {
       alignItems: 'center',
       padding: '7px 14px',
       borderRadius: '10px',
-      background: '#f9f8f7',
-      border: '1px solid rgba(0,0,0,0.07)',
+      background: 'var(--surface-hover)',
+      border: '1px solid var(--border)',
       fontSize: '13px',
       fontWeight: 500,
-      color: '#4b3a2a',
+      color: 'var(--text-primary)',
     }}>
       {value}
     </div>

@@ -1,8 +1,10 @@
+import { Palette, User, Info } from 'lucide-react'
+
 // Left-side navigation panel inside the Settings page
 const NAV_ITEMS = [
-  { id: 'appearance', label: 'Appearance', emoji: '🎨' },
-  { id: 'account',    label: 'Account',    emoji: '👤' },
-  { id: 'about',      label: 'About',      emoji: 'ℹ️'  },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'account',    label: 'Account',    icon: User },
+  { id: 'about',      label: 'About',      icon: Info  },
 ]
 
 export function SettingsNav({ active, onChange }) {
@@ -11,7 +13,7 @@ export function SettingsNav({ active, onChange }) {
       style={{
         width: '200px',
         flexShrink: 0,
-        borderRight: '1px solid rgba(0,0,0,0.07)',
+        borderRight: '1px solid var(--border)',
         paddingTop: '8px',
         paddingBottom: '8px',
         paddingRight: '8px',
@@ -20,7 +22,7 @@ export function SettingsNav({ active, onChange }) {
       <p style={{
         fontSize: '10px',
         fontWeight: 600,
-        color: '#a09278',
+        color: 'var(--text-secondary)',
         textTransform: 'uppercase',
         letterSpacing: '0.06em',
         padding: '4px 12px 10px',
@@ -44,20 +46,20 @@ export function SettingsNav({ active, onChange }) {
               cursor: 'pointer',
               fontSize: '13.5px',
               fontWeight: isActive ? 600 : 400,
-              background: isActive ? '#fff5ee' : 'transparent',
-              color: isActive ? '#f97316' : '#4b3a2a',
+              background: isActive ? 'var(--page-bg-alt)' : 'transparent',
+              color: isActive ? 'var(--accent-bg)' : 'var(--text-primary)',
               transition: 'background 120ms, color 120ms',
               textAlign: 'left',
               marginBottom: '2px',
             }}
             onMouseEnter={e => {
-              if (!isActive) e.currentTarget.style.background = '#f9f8f6'
+              if (!isActive) e.currentTarget.style.background = 'var(--surface-hover)'
             }}
             onMouseLeave={e => {
               if (!isActive) e.currentTarget.style.background = 'transparent'
             }}
           >
-            <span style={{ fontSize: '15px', lineHeight: 1 }}>{item.emoji}</span>
+            <item.icon size={16} strokeWidth={isActive ? 2.5 : 2} />
             {item.label}
             {isActive && (
               <span style={{
@@ -65,7 +67,7 @@ export function SettingsNav({ active, onChange }) {
                 width: '3px',
                 height: '16px',
                 borderRadius: '99px',
-                background: '#f97316',
+                background: 'var(--accent-bg)',
                 flexShrink: 0,
               }} />
             )}

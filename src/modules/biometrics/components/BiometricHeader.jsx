@@ -16,10 +16,10 @@ export function BiometricHeader({ searchQuery, setSearchQuery }) {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+        <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
           <Bell className="w-4 h-4" />
         </button>
-        <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
+        <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
           <User className="w-4 h-4" />
         </button>
       </div>

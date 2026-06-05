@@ -178,7 +178,7 @@ export default function CalculationsTable() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <table className="w-full text-sm border-collapse">
 
-                  <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200">
+                  <thead className="sticky top-0 z-10 bg-white border-b border-gray-200">
                     <tr>
                       {COLUMNS.map((col, i) => (
                         <th

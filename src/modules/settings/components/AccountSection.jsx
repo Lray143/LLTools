@@ -26,8 +26,8 @@ export function AccountSection({ currentUser }) {
         gap: '16px',
         padding: '16px 20px',
         borderRadius: '14px',
-        background: '#fff',
-        border: '1px solid rgba(0,0,0,0.07)',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         marginBottom: '8px',
         boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
       }}>
@@ -35,7 +35,7 @@ export function AccountSection({ currentUser }) {
           width: '48px',
           height: '48px',
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+          background: 'linear-gradient(135deg, var(--theme-500) 0%, var(--theme-600) 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -43,15 +43,15 @@ export function AccountSection({ currentUser }) {
           fontSize: '16px',
           fontWeight: 700,
           flexShrink: 0,
-          boxShadow: '0 2px 8px rgba(249,115,22,0.35)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
         }}>
           {initials}
         </div>
         <div>
-          <p style={{ fontSize: '15px', fontWeight: 700, color: '#1c1410', margin: 0 }}>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
             {currentUser?.username ?? '—'}
           </p>
-          <p style={{ fontSize: '12.5px', color: '#9ca3af', margin: '2px 0 0' }}>
+          <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
             {roleLabel}
           </p>
         </div>
@@ -95,11 +95,11 @@ function InfoChip({ value, highlight }) {
       alignItems: 'center',
       padding: '7px 14px',
       borderRadius: '10px',
-      background: highlight ? '#fff5ee' : '#f9f8f7',
-      border: `1px solid ${highlight ? 'rgba(249,115,22,0.2)' : 'rgba(0,0,0,0.07)'}`,
+      background: highlight ? 'var(--page-bg-alt)' : 'var(--surface-hover)',
+      border: `1px solid var(--border)`,
       fontSize: '13px',
       fontWeight: 500,
-      color: highlight ? '#f97316' : '#4b3a2a',
+      color: highlight ? 'var(--accent-bg)' : 'var(--text-primary)',
     }}>
       {value}
     </div>

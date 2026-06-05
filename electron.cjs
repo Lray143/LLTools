@@ -15,7 +15,7 @@ const {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
-  getUsers, updateUserRole, resetUserPassword, deleteUserAccount,
+  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
 } = require('./db.cjs')
@@ -94,6 +94,7 @@ ipcMain.handle('users:getAll',         ()                    => getUsers())
 ipcMain.handle('users:updateRole',     (_, id, role)         => updateUserRole(id, role))
 ipcMain.handle('users:resetPassword',  (_, id, newPassword)  => resetUserPassword(id, newPassword))
 ipcMain.handle('users:delete',         (_, id)               => deleteUserAccount(id))
+ipcMain.handle('users:updateTheme',    (_, id, color, mode)  => updateUserTheme(id, color, mode))
 
 // ── SAVED ORDERS ──────────────────────────────────────────────────
 ipcMain.handle('orders:save',          (_, order)    => saveOrder(order))
