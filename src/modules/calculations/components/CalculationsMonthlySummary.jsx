@@ -154,7 +154,7 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
 
   // ── ROWS 1-4: company header ──────────────────────────────
   ws.getRow(1).height = 19.5
-  banner(2, 'DOUBLE L BEAUTY PRODUCTS', { fontName: 'Corben', size: 36, height: 29.25 })
+  banner(2, 'DOUBLE L BEAUTY PRODUCTS', { fontName: 'Corben', size: 36, height: 55 })
   banner(3, '1081 Quirino Highway, Brgy., Kaligayahan, Novaliches, Quezon City', { fontName: 'Times New Roman', size: 12 })
   banner(4, 'Tel No: 291 3248 Fax No: 288- 5812', { fontName: 'Times New Roman', size: 12 })
 
@@ -183,8 +183,8 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
     "DOC'S QTY",        // F  6
     'ACTUAL QTY',       // G  7
     'OVER/ LACKING',    // H  8
-    'Discounted Price', // I  9  (no yellow fill)
-    'B.O TOTAL AMOUNT', // J  10 (no yellow fill)
+    'Discounted Price', // I  9
+    'B.O TOTAL AMOUNT', // J  10
     'AREA',             // K  11
   ]
   const NO_YELLOW = new Set([])  // all header columns use yellow fill
