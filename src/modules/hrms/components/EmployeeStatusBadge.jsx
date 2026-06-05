@@ -1,12 +1,17 @@
 import { statusStyles } from "../employeeConstants"
 
+const ACTIVE_STATUSES = new Set(["Active", "Intern"])
+
 export function EmployeeStatusBadge({ status }) {
-  // If status is Active use green style, otherwise fall back to soft sky-blue for any Leave Type
-  const styling = statusStyles[status] || "bg-sky-50 text-sky-500 border border-sky-200"
+  // Active → green, Intern → blue, any leave type → amber
+  const styling = statusStyles[status]
+    ?? (ACTIVE_STATUSES.has(status)
+      ? "bg-gray-100 text-gray-500 border border-gray-200"
+      : "bg-amber-50 text-amber-600 border border-amber-200")
 
   return (
     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium w-fit ${styling}`}>
       {status}
     </span>
   )
-}
+}

@@ -8,7 +8,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../../components/ui/select"
 import {
-  DEPTS, STATUSES, DAYS_OF_WEEK,
+  DEPTS, DAYS_OF_WEEK,
   DEFAULT_DAY_SCHEDULE,
 } from "../employeeConstants"
 
@@ -27,9 +27,9 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
   const [form, setForm] = useState({
     employee_no: "",
     name: "",
+    role: "",
     dept: "Sales",
     contact: "",
-    status: "Active",
     daySchedule: DEFAULT_DAY_SCHEDULE,
   })
 
@@ -40,17 +40,17 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
           ? {
             employee_no: employee.employee_no || "",
             name: employee.name,
+            role: employee.role || "",
             dept: employee.dept,
             contact: employee.contact || "",
-            status: employee.status || "Active",
             daySchedule: employee.daySchedule || DEFAULT_DAY_SCHEDULE,
           }
           : {
             employee_no: "",
             name: "",
+            role: "",
             dept: "Sales",
             contact: "",
-            status: "Active",
             daySchedule: DEFAULT_DAY_SCHEDULE,
           }
       )
@@ -111,21 +111,6 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                 />
               </div>
 
-              {/* STATUS */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Status</label>
-                <Select value={form.status} onValueChange={val => setForm({ ...form, status: val })}>
-                  <SelectTrigger className="w-full bg-white border-gray-200 h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
-                    {STATUSES.map(s => (
-                      <SelectItem key={s} value={s} className="focus:bg-white focus:text-gray-900 cursor-pointer text-sm">{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* FULL NAME */}
               <div className="col-span-2 flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-gray-600">Full Name <span className="text-red-400">*</span></label>
@@ -133,6 +118,17 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                   placeholder="e.g. Juan dela Cruz"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
+                  className="bg-white border-gray-200 text-sm h-9"
+                />
+              </div>
+
+              {/* POSITION */}
+              <div className="col-span-2 flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-gray-600">Position</label>
+                <Input
+                  placeholder="e.g. Sales Associate"
+                  value={form.role}
+                  onChange={e => setForm({ ...form, role: e.target.value })}
                   className="bg-white border-gray-200 text-sm h-9"
                 />
               </div>

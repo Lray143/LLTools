@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Bell, Plus, Search, User, Archive, CalendarPlus, ChevronDown, Check } from "lucide-react"
+import { Bell, Plus, Search, User, Archive, ChevronDown, Check } from "lucide-react"
 import { v4 as uuidv4 } from 'uuid'
 
 import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS, DEFAULT_DAY_SCHEDULE, DAYS_OF_WEEK } from "./employeeConstants"
-import { EmployeeCardGrid }     from "./components/EmployeeCardGrid"
-import { EmployeeListView }     from "./components/EmployeeListView"
-import { EmployeeModal }        from "./components/EmployeeModal"
-import { EmployeeDeleteModal }  from "./components/EmployeeDeleteModal"
+import { EmployeeCardGrid } from "./components/EmployeeCardGrid"
+import { EmployeeListView } from "./components/EmployeeListView"
+import { EmployeeModal } from "./components/EmployeeModal"
+import { EmployeeDeleteModal } from "./components/EmployeeDeleteModal"
 import { EmployeeArchiveModal } from "./components/EmployeeArchiveModal"
-import { EmployeeLeaveModal }   from "./components/EmployeeLeaveModal"
 
 // ── Shared inline styles (mirrors BiometricFilterBar) ────────────────────────
 const displayPill = {
@@ -69,8 +68,8 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
         }}>
           {options.map(opt => {
             const isActive = opt.value === value || opt === value
-            const label    = opt.label ?? opt
-            const val      = opt.value ?? opt
+            const label = opt.label ?? opt
+            const val = opt.value ?? opt
             return (
               <button
                 key={val}
@@ -97,67 +96,70 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
   )
 }
 
-// ── DB mappers ───────────────────────────────────────────────────────────────
 function fromDb(row) {
   let daySchedule = null
   if (row.day_schedule) {
-    try { daySchedule = JSON.parse(row.day_schedule) } catch (_) {}
+    try { daySchedule = JSON.parse(row.day_schedule) } catch (_) { }
   }
   return {
-    id:          row.id,
+    id: row.id,
     employee_no: row.employee_no,
-    name:        row.name,
-    dept:        row.department  ?? '',
-    role:        row.position    ?? '',
-    contact:     row.contact     ?? '',
-    status:      row.status      ?? 'Active',
-    leaveType:   row.leave_type  ?? '',
-    leaveStart:  row.leave_start ?? '',
-    leaveEnd:    row.leave_end   ?? '',
-    shiftStart:  row.shift_start ?? DEFAULT_SHIFT_START,
-    shiftEnd:    row.shift_end   ?? DEFAULT_SHIFT_END,
-    dayOffs:     row.day_offs
-                   ? row.day_offs.split(',').map(d => d.trim()).filter(Boolean)
-                   : DEFAULT_DAY_OFFS,
+    name: row.name,
+    dept: row.department ?? '',
+    role: row.position ?? '',
+    contact: row.contact ?? '',
+    status: row.status ?? 'Active',
+    leaveType: row.leave_type ?? '',
+    leaveStart: row.leave_start ?? '',
+    leaveEnd: row.leave_end ?? '',
+    shiftStart: row.shift_start ?? DEFAULT_SHIFT_START,
+    shiftEnd: row.shift_end ?? DEFAULT_SHIFT_END,
+    dayOffs: row.day_offs
+      ? row.day_offs.split(',').map(d => d.trim()).filter(Boolean)
+      : DEFAULT_DAY_OFFS,
     daySchedule: daySchedule ?? DEFAULT_DAY_SCHEDULE,
+    // Auto-detected from leave_requests: non-null only when an approved leave covers today
+    autoLeave: row.auto_leave_type
+      ? { type: row.auto_leave_type, start: row.auto_leave_start, end: row.auto_leave_end }
+      : null,
   }
 }
 
 function toDb(emp) {
   // Derive day_offs and shift_start/shift_end from daySchedule for backward compat
-  const sched    = emp.daySchedule ?? DEFAULT_DAY_SCHEDULE
-  const dayOffs  = DAYS_OF_WEEK.filter(d => sched[d] === null)
+  const sched = emp.daySchedule ?? DEFAULT_DAY_SCHEDULE
+  const dayOffs = DAYS_OF_WEEK.filter(d => sched[d] === null)
   const firstWork = DAYS_OF_WEEK.find(d => sched[d] !== null)
   const shiftStart = firstWork ? sched[firstWork].start : DEFAULT_SHIFT_START
-  const shiftEnd   = firstWork ? sched[firstWork].end   : DEFAULT_SHIFT_END
+  const shiftEnd = firstWork ? sched[firstWork].end : DEFAULT_SHIFT_END
   return {
-    id:           emp.id,
-    employee_no:  emp.employee_no,
-    name:         emp.name,
-    department:   emp.dept       ?? null,
-    position:     emp.role       ?? null,
-    contact:      emp.contact    ?? null,
-    status:       emp.status     ?? 'Active',
-    leave_type:   emp.leaveType  ?? null,
-    leave_start:  emp.leaveStart ?? null,
-    leave_end:    emp.leaveEnd   ?? null,
-    shift_start:  shiftStart,
-    shift_end:    shiftEnd,
-    day_offs:     dayOffs.join(','),
+    id: emp.id,
+    employee_no: emp.employee_no,
+    name: emp.name,
+    department: emp.dept ?? null,
+    position: emp.role ?? null,
+    contact: emp.contact ?? null,
+    status: emp.status ?? 'Active',
+    leave_type: emp.leaveType ?? null,
+    leave_start: emp.leaveStart ?? null,
+    leave_end: emp.leaveEnd ?? null,
+    shift_start: shiftStart,
+    shift_end: shiftEnd,
+    day_offs: dayOffs.join(','),
     day_schedule: JSON.stringify(sched),
   }
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
 function Employees() {
-  const [employees,    setEmployees]    = useState([])
-  const [archived,     setArchived]     = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [view,         setView]         = useState("cards")
-  const [search,       setSearch]       = useState("")
-  const [dept,         setDept]         = useState("all")
+  const [employees, setEmployees] = useState([])
+  const [archived, setArchived] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState("cards")
+  const [search, setSearch] = useState("")
+  const [dept, setDept] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
-  const [modal,        setModal]        = useState(null)
+  const [modal, setModal] = useState(null)
 
   const loadEmployees = useCallback(async () => {
     const [active, arch] = await Promise.all([
@@ -172,17 +174,19 @@ function Employees() {
   useEffect(() => { loadEmployees() }, [loadEmployees])
 
   function nextEmployeeNo() {
-    const all  = [...employees, ...archived]
+    const all = [...employees, ...archived]
     const nums = all.map(e => parseInt(e.employee_no?.split("-")[1] ?? 0))
-    const max  = nums.length ? Math.max(...nums) : 0
+    const max = nums.length ? Math.max(...nums) : 0
     return `EMP-${String(max + 1).padStart(3, "0")}`
   }
 
   async function handleSave(form) {
     const isNew = modal.mode === "add"
     const emp = {
-      id:          isNew ? uuidv4() : modal.employee.id,
+      id: isNew ? uuidv4() : modal.employee.id,
       employee_no: form.employee_no?.trim() || (isNew ? nextEmployeeNo() : modal.employee.employee_no),
+      // Status is no longer editable — preserve existing or default to Active
+      status: isNew ? 'Active' : (modal.employee.status ?? 'Active'),
       ...form,
     }
     await window.electronAPI.upsertEmployee(toDb(emp))
@@ -201,24 +205,6 @@ function Employees() {
     await loadEmployees()
   }
 
-  async function handleLeave({ employeeId, leaveType, leaveStart, leaveEnd }) {
-    const emp = employees.find(e => e.id === employeeId)
-    if (!emp) return
-    await window.electronAPI.upsertEmployee(toDb({
-      ...emp, status: "On Leave", leaveType, leaveStart, leaveEnd,
-    }))
-    const start = new Date(leaveStart + "T00:00:00")
-    const end   = new Date(leaveEnd   + "T00:00:00")
-    const rows  = []
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
-      rows.push({ employee_no: emp.employee_no, date: iso, shift_in: null, lunch_out: null, lunch_in: null, shift_out: null, total_hours: null, status: "Leave", extra_taps: null })
-    }
-    if (rows.length > 0) await window.electronAPI.importAttendance(rows)
-    await loadEmployees()
-    setModal(null)
-  }
-
   async function handlePermanentDelete(id) {
     await window.electronAPI.permanentDeleteEmployee(id)
     await loadEmployees()
@@ -228,10 +214,10 @@ function Employees() {
     .map(e => ({ ...e, liveStatus: getLiveStatus(e) }))
     .filter(e => {
       const matchSearch = e.name.toLowerCase().includes(search.toLowerCase())
-      const matchDept   = dept === "all" || e.dept === dept
+      const matchDept = dept === "all" || e.dept === dept
       const matchStatus = statusFilter === "all" ||
-                          e.liveStatus === statusFilter ||
-                          (statusFilter === "On Leave" && e.liveStatus !== "Active")
+        e.liveStatus === statusFilter ||
+        (statusFilter === "On Leave" && e.liveStatus !== "Active")
       return matchSearch && matchDept && matchStatus
     })
 
@@ -330,18 +316,6 @@ function Employees() {
         {/* RIGHT: action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
-            onClick={() => setModal({ mode: "leave" })}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: '6px',
-              padding: '7px 16px', borderRadius: '10px',
-              border: '1px solid var(--border)', background: 'var(--surface)',
-              color: 'var(--text-primary)', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-            }}
-          >
-            <CalendarPlus size={14} />
-            Leave
-          </button>
-          <button
             onClick={() => setModal({ mode: "archive" })}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -371,29 +345,29 @@ function Employees() {
       {/* ── CONTENT ── */}
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-8 pb-8">
-        {loading ? (
-          <div className="flex items-center justify-center py-20 text-gray-400">
-            <p className="text-sm">Loading employees...</p>
-          </div>
-        ) : view === "cards" ? (
-          <EmployeeCardGrid
-            employees={filtered}
-            onEdit={e => setModal({ mode: "edit", employee: e })}
-            onDelete={e => setModal({ mode: "delete", employee: e })}
-          />
-        ) : (
-          <EmployeeListView
-            employees={filtered}
-            onEdit={e => setModal({ mode: "edit", employee: e })}
-            onDelete={e => setModal({ mode: "delete", employee: e })}
-          />
-        )}
-        {!loading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-            <p className="text-lg font-medium">No employees found</p>
-            <p className="text-sm">Try adjusting your search or filters</p>
-          </div>
-        )}
+          {loading ? (
+            <div className="flex items-center justify-center py-20 text-gray-400">
+              <p className="text-sm">Loading employees...</p>
+            </div>
+          ) : view === "cards" ? (
+            <EmployeeCardGrid
+              employees={filtered}
+              onEdit={e => setModal({ mode: "edit", employee: e })}
+              onDelete={e => setModal({ mode: "delete", employee: e })}
+            />
+          ) : (
+            <EmployeeListView
+              employees={filtered}
+              onEdit={e => setModal({ mode: "edit", employee: e })}
+              onDelete={e => setModal({ mode: "delete", employee: e })}
+            />
+          )}
+          {!loading && filtered.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+              <p className="text-lg font-medium">No employees found</p>
+              <p className="text-sm">Try adjusting your search or filters</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -409,12 +383,6 @@ function Employees() {
         open={modal?.mode === "delete"}
         employee={modal?.employee}
         onConfirm={handleDelete}
-        onClose={() => setModal(null)}
-      />
-      <EmployeeLeaveModal
-        open={modal?.mode === "leave"}
-        employees={employees}
-        onSave={handleLeave}
         onClose={() => setModal(null)}
       />
       <EmployeeArchiveModal

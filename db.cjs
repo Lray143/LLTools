@@ -454,7 +454,31 @@ const updateUserTheme = (id, color, mode) => {
 }
 
 
-const getEmployees         = () => queryAll("SELECT * FROM employees WHERE status != 'Archived' ORDER BY name")
+const getEmployees = () => queryAll(`
+  SELECT
+    e.*,
+    (SELECT lr.leave_type
+       FROM leave_requests lr
+      WHERE lr.employee_no = e.employee_no
+        AND lr.status      = 'Approved'
+        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date
+      LIMIT 1) AS auto_leave_type,
+    (SELECT lr.start_date
+       FROM leave_requests lr
+      WHERE lr.employee_no = e.employee_no
+        AND lr.status      = 'Approved'
+        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date
+      LIMIT 1) AS auto_leave_start,
+    (SELECT lr.end_date
+       FROM leave_requests lr
+      WHERE lr.employee_no = e.employee_no
+        AND lr.status      = 'Approved'
+        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date
+      LIMIT 1) AS auto_leave_end
+  FROM employees e
+  WHERE e.status != 'Archived'
+  ORDER BY e.name
+`)
 const getArchivedEmployees = () => queryAll("SELECT * FROM employees WHERE status = 'Archived' ORDER BY name")
 
 const upsertEmployee = (emp) => {
