@@ -325,6 +325,50 @@ const initDb = async () => {
   } catch (_) {}
   try { db.run(`ALTER TABLE leave_requests ADD COLUMN reviewed_by TEXT DEFAULT NULL`) } catch (_) {}
 
+  // ── REPORTS MIGRATION ──────────────────────────────────────────
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS reports (
+      id                  TEXT PRIMARY KEY,
+      report_no           TEXT UNIQUE,
+      employee_id         TEXT,
+      employee_no         TEXT,
+      employee_name       TEXT,
+      report_type         TEXT,
+      subject             TEXT,
+      description         TEXT,
+      priority            TEXT,
+      branch              TEXT,
+      status              TEXT DEFAULT 'Pending',
+      assigned_to         TEXT DEFAULT NULL,
+      attachment_paths    TEXT DEFAULT '[]',
+      report_details_json TEXT DEFAULT NULL,
+      is_archived         INTEGER DEFAULT 0,
+      created_at          TEXT DEFAULT (datetime('now')),
+      updated_at          TEXT DEFAULT (datetime('now'))
+    )`)
+  } catch (_) {}
+  try { db.run(`ALTER TABLE reports ADD COLUMN is_archived INTEGER DEFAULT 0`) } catch (_) {}
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS report_comments (
+      id         TEXT PRIMARY KEY,
+      report_id  TEXT,
+      user_id    TEXT,
+      username   TEXT,
+      comment    TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`)
+  } catch (_) {}
+  try {
+    db.run(`CREATE TABLE IF NOT EXISTS report_status_logs (
+      id         TEXT PRIMARY KEY,
+      report_id  TEXT,
+      old_status TEXT,
+      new_status TEXT,
+      changed_by TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`)
+  } catch (_) {}
+
   // ── SEED USERS ────────────────────────────────────────────────
   const seedUsers = [
     { username: 'admin@doublel.com',     password: 'admin123',     role: 'admin'     },
@@ -870,6 +914,142 @@ const reviewLeaveRequest = (id, status, note, reviewedBy) => {
   save()
 }
 
+// ── REPORTS ───────────────────────────────────────────────────────
+const mapReport = (r) => ({
+  id:               r.id,
+  reportNo:         r.report_no         ?? '',
+  employeeId:       r.employee_id       ?? null,
+  employeeNo:       r.employee_no       ?? '',
+  employeeName:     r.employee_name     ?? '',
+  reportType:       r.report_type       ?? '',
+  subject:          r.subject           ?? '',
+  description:      r.description       ?? '',
+  priority:         r.priority          ?? 'Medium',
+  branch:           r.branch            ?? '',
+  status:           r.status            ?? 'Pending',
+  assignedTo:       r.assigned_to       ?? null,
+  attachmentPaths:  (() => { try { return JSON.parse(r.attachment_paths ?? '[]') } catch { return [] } })(),
+  reportDetailsJson: (() => { try { return JSON.parse(r.report_details_json ?? 'null') } catch { return null } })(),
+  isArchived:       Boolean(r.is_archived),
+  createdAt:        r.created_at        ?? '',
+  updatedAt:        r.updated_at        ?? '',
+})
+
+const createReport = (report) => {
+  // Auto-generate report_no: RPT-001, RPT-002, ...
+  const last = queryOne(`SELECT report_no FROM reports ORDER BY created_at DESC LIMIT 1`)
+  let nextNum = 1
+  if (last?.report_no) {
+    const match = last.report_no.match(/RPT-(\d+)/)
+    if (match) nextNum = parseInt(match[1], 10) + 1
+  }
+  const reportNo = `RPT-${String(nextNum).padStart(3, '0')}`
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+
+  run(`
+    INSERT INTO reports
+      (id, report_no, employee_id, employee_no, employee_name,
+       report_type, subject, description, priority, branch,
+       status, assigned_to, attachment_paths, report_details_json,
+       created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NULL, ?, ?, ?, ?)
+  `, [
+    report.id, reportNo,
+    report.employeeId ?? null, report.employeeNo ?? null, report.employeeName ?? null,
+    report.reportType, report.subject ?? null, report.description ?? null,
+    report.priority ?? 'Medium', report.branch ?? null,
+    JSON.stringify(report.attachmentPaths ?? []),
+    report.reportDetailsJson ? JSON.stringify(report.reportDetailsJson) : null,
+    now, now,
+  ])
+
+  // Log initial status
+  run(`INSERT INTO report_status_logs (id, report_id, old_status, new_status, changed_by, created_at)
+       VALUES (?, ?, '', 'Pending', ?, ?)`,
+    [crypto.randomUUID(), report.id, report.employeeName ?? report.employeeNo ?? 'System', now])
+
+  return { reportNo }
+}
+
+const getReports = (archived = false) =>
+  queryAll(`SELECT * FROM reports WHERE is_archived = ? ORDER BY created_at DESC`, [archived ? 1 : 0]).map(mapReport)
+
+const getMyReports = (employeeNo, archived = false) =>
+  queryAll(`SELECT * FROM reports WHERE employee_no = ? AND is_archived = ? ORDER BY created_at DESC`, [employeeNo, archived ? 1 : 0]).map(mapReport)
+
+const getReportById = (id) => {
+  const row = queryOne(`SELECT * FROM reports WHERE id = ?`, [id])
+  return row ? mapReport(row) : null
+}
+
+const updateReportStatus = (id, status, changedBy) => {
+  const current = queryOne(`SELECT status FROM reports WHERE id = ?`, [id])
+  const oldStatus = current?.status ?? 'Pending'
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+
+  run(`UPDATE reports SET status = ?, updated_at = ? WHERE id = ?`, [status, now, id])
+  run(`INSERT INTO report_status_logs (id, report_id, old_status, new_status, changed_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    [crypto.randomUUID(), id, oldStatus, status, changedBy ?? 'System', now])
+}
+
+const assignReport = (id, assignedTo, changedBy) => {
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  run(`UPDATE reports SET assigned_to = ?, updated_at = ? WHERE id = ?`, [assignedTo, now, id])
+}
+
+const addReportComment = (comment) => {
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  run(`INSERT INTO report_comments (id, report_id, user_id, username, comment, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    [comment.id, comment.reportId, comment.userId ?? null, comment.username ?? '', comment.comment ?? '', now])
+}
+
+const getReportComments = (reportId) =>
+  queryAll(`SELECT * FROM report_comments WHERE report_id = ? ORDER BY created_at ASC`, [reportId]).map(c => ({
+    id:        c.id,
+    reportId:  c.report_id,
+    userId:    c.user_id    ?? null,
+    username:  c.username   ?? '',
+    comment:   c.comment    ?? '',
+    createdAt: c.created_at ?? '',
+  }))
+
+const getReportStatusLogs = (reportId) =>
+  queryAll(`SELECT * FROM report_status_logs WHERE report_id = ? ORDER BY created_at ASC`, [reportId]).map(l => ({
+    id:        l.id,
+    reportId:  l.report_id,
+    oldStatus: l.old_status ?? '',
+    newStatus: l.new_status ?? '',
+    changedBy: l.changed_by ?? '',
+    createdAt: l.created_at ?? '',
+  }))
+
+const updateReport = (report) => {
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  run(`
+    UPDATE reports
+    SET report_type = ?, subject = ?, description = ?, priority = ?,
+        attachment_paths = ?, report_details_json = ?, updated_at = ?
+    WHERE id = ?
+  `, [
+    report.reportType, report.subject ?? null, report.description ?? null, report.priority ?? 'Medium',
+    JSON.stringify(report.attachmentPaths ?? []),
+    report.reportDetailsJson ? JSON.stringify(report.reportDetailsJson) : null,
+    now, report.id
+  ])
+  save()
+}
+
+const archiveReport = (id) => { run(`UPDATE reports SET is_archived = 1 WHERE id = ?`, [id]); save() }
+const unarchiveReport = (id) => { run(`UPDATE reports SET is_archived = 0 WHERE id = ?`, [id]); save() }
+const permanentDeleteReport = (id) => {
+  run(`DELETE FROM reports WHERE id = ?`, [id])
+  run(`DELETE FROM report_comments WHERE report_id = ?`, [id])
+  run(`DELETE FROM report_status_logs WHERE report_id = ?`, [id])
+  save()
+}
+
 module.exports = {
   initDb, loginUser, queryAll, queryOne, run,
   getEmployees, getArchivedEmployees,
@@ -886,4 +1066,8 @@ module.exports = {
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
+  createReport, getReports, getMyReports, getReportById,
+  updateReportStatus, assignReport, addReportComment,
+  getReportComments, getReportStatusLogs,
+  updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
 }

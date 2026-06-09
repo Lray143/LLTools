@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Archive, Search, RotateCcw, Trash2, X } from "lucide-react"
+import { Archive, Search, RotateCcw, Trash2, X, ChevronDown } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import {
@@ -11,15 +11,32 @@ import {
 } from "../../../components/ui/dialog"
 import { getColor, getInitials } from "../employeeConstants"
 
+const SORT_OPTIONS = [
+  { value: 'az',   label: 'A → Z' },
+  { value: 'za',   label: 'Z → A' },
+  { value: 'dept', label: 'By Department' },
+  { value: 'id',   label: 'By Employee ID' },
+]
+
 export function EmployeeArchiveModal({ open, archived, onUnarchive, onPermanentDelete, onClose }) {
   const [search, setSearch] = useState("")
+  const [sortBy,   setSortBy]   = useState('az')
+  const [sortOpen, setSortOpen] = useState(false)
   const [confirmDeleteEmp, setConfirmDeleteEmp] = useState(null)
 
-  const filtered = archived.filter(emp =>
-    emp.name.toLowerCase().includes(search.toLowerCase()) ||
-    emp.dept.toLowerCase().includes(search.toLowerCase()) ||
-    (emp.employee_no ?? "").toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = [...archived]
+    .filter(emp =>
+      emp.name.toLowerCase().includes(search.toLowerCase()) ||
+      emp.dept.toLowerCase().includes(search.toLowerCase()) ||
+      (emp.employee_no ?? "").toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === 'az')   return a.name.localeCompare(b.name)
+      if (sortBy === 'za')   return b.name.localeCompare(a.name)
+      if (sortBy === 'dept') return (a.dept || '').localeCompare(b.dept || '') || a.name.localeCompare(b.name)
+      if (sortBy === 'id')   return (a.employee_no || '').localeCompare(b.employee_no || '')
+      return 0
+    })
 
   function handleConfirmPermanent() {
     if (confirmDeleteEmp) {
@@ -57,9 +74,9 @@ export function EmployeeArchiveModal({ open, archived, onUnarchive, onPermanentD
             </Button>
           </div>
 
-          {/* Search — always visible */}
-          <div className="px-6 py-3 border-b border-gray-200">
-            <div className="relative">
+          {/* Search + Sort — always visible */}
+          <div className="px-6 py-3 border-b border-gray-200 flex gap-2">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
               <Input
                 placeholder="Search by name, department, or ID..."
@@ -67,6 +84,30 @@ export function EmployeeArchiveModal({ open, archived, onUnarchive, onPermanentD
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
+            </div>
+            {/* Sort dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setSortOpen(o => !o)}
+                className="h-9 flex items-center gap-1.5 px-3 rounded-md border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                {SORT_OPTIONS.find(o => o.value === sortBy)?.label}
+                <ChevronDown size={12} style={{ transform: sortOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }} />
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
+                  {SORT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setSortBy(opt.value); setSortOpen(false) }}
+                      className="block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
+                      style={{ color: sortBy === opt.value ? '#f97316' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 // src/modules/products/components/ArchivedProductsDrawer.jsx
 import { useState, useMemo } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { Archive, Search, RotateCcw, Trash2, X, AlertCircle } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Input } from '../../../components/ui/input'
@@ -11,20 +12,40 @@ import {
   DialogFooter,
 } from '../../../components/ui/dialog'
 
+const SORT_OPTIONS = [
+  { value: 'newest',  label: 'Newest first' },
+  { value: 'oldest',  label: 'Oldest first' },
+  { value: 'az',      label: 'A → Z' },
+  { value: 'za',      label: 'Z → A' },
+  { value: 'group',   label: 'By Group' },
+]
+
 export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPermanentDelete, onClose }) {
   const [search,             setSearch]             = useState('')
+  const [sortBy,             setSortBy]             = useState('newest')
+  const [sortOpen,           setSortOpen]           = useState(false)
   const [confirmDeleteRow,   setConfirmDeleteRow]   = useState(null)
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return rows
-    const t = search.toLowerCase()
-    return rows.filter((r) =>
-      r.description?.toLowerCase().includes(t) ||
-      r.caseBarcode?.toLowerCase().includes(t)  ||
-      r.itemBarcode?.toLowerCase().includes(t)  ||
-      r.groupName?.toLowerCase().includes(t)
-    )
-  }, [rows, search])
+    let result = rows
+    if (search.trim()) {
+      const t = search.toLowerCase()
+      result = result.filter((r) =>
+        r.description?.toLowerCase().includes(t) ||
+        r.caseBarcode?.toLowerCase().includes(t)  ||
+        r.itemBarcode?.toLowerCase().includes(t)  ||
+        r.groupName?.toLowerCase().includes(t)
+      )
+    }
+    return [...result].sort((a, b) => {
+      if (sortBy === 'newest') return (b.archivedAt || b.id || 0) > (a.archivedAt || a.id || 0) ? 1 : -1
+      if (sortBy === 'oldest') return (a.archivedAt || a.id || 0) > (b.archivedAt || b.id || 0) ? 1 : -1
+      if (sortBy === 'az')     return (a.description || '').localeCompare(b.description || '')
+      if (sortBy === 'za')     return (b.description || '').localeCompare(a.description || '')
+      if (sortBy === 'group')  return (a.groupName || '').localeCompare(b.groupName || '')
+      return 0
+    })
+  }, [rows, search, sortBy])
 
   const grouped = useMemo(() => {
     const map = {}
@@ -70,9 +91,9 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
             </Button>
           </div>
 
-          {/* Search */}
-          <div className="px-6 py-3 border-b border-gray-200">
-            <div className="relative">
+          {/* Search + Sort */}
+          <div className="px-6 py-3 border-b border-gray-200 flex gap-2">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
               <Input
                 placeholder="Search by description, barcode, or group..."
@@ -80,6 +101,30 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
+            </div>
+            {/* Sort dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setSortOpen(o => !o)}
+                className="h-9 flex items-center gap-1.5 px-3 rounded-md border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                {SORT_OPTIONS.find(o => o.value === sortBy)?.label}
+                <ChevronDown size={12} style={{ transform: sortOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }} />
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
+                  {SORT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setSortBy(opt.value); setSortOpen(false) }}
+                      className="block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
+                      style={{ color: sortBy === opt.value ? '#f97316' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

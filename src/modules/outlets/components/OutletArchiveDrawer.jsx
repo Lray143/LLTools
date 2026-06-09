@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, RotateCcw, Trash2, Archive, Search, Tag } from 'lucide-react'
+import { X, RotateCcw, Trash2, Archive, Search, Tag, ChevronDown } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import { Input }  from '../../../components/ui/input'
 import {
@@ -7,14 +7,31 @@ import {
 } from '../../../components/ui/dialog'
 import { getOutletColor } from '../outletConstants'
 
+const SORT_OPTIONS = [
+  { value: 'az',     label: 'A → Z' },
+  { value: 'za',     label: 'Z → A' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+]
+
 export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, onClose }) {
   const [search,           setSearch]           = useState('')
+  const [sortBy,           setSortBy]           = useState('az')
+  const [sortOpen,         setSortOpen]         = useState(false)
   const [confirmDeleteOut, setConfirmDeleteOut] = useState(null)
 
-  const filtered = outlets.filter(o =>
-    o.name.toLowerCase().includes(search.toLowerCase()) ||
-    (o.address ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = [...outlets]
+    .filter(o =>
+      o.name.toLowerCase().includes(search.toLowerCase()) ||
+      (o.address ?? '').toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (sortBy === 'az')     return a.name.localeCompare(b.name)
+      if (sortBy === 'za')     return b.name.localeCompare(a.name)
+      if (sortBy === 'newest') return (b.archivedAt || b.id || 0) > (a.archivedAt || a.id || 0) ? 1 : -1
+      if (sortBy === 'oldest') return (a.archivedAt || a.id || 0) > (b.archivedAt || b.id || 0) ? 1 : -1
+      return 0
+    })
 
   function handleConfirmPermanent() {
     if (confirmDeleteOut) {
@@ -50,9 +67,9 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
             </Button>
           </div>
 
-          {/* Search */}
-          <div className="px-6 py-3 border-b border-gray-200">
-            <div className="relative">
+          {/* Search + Sort */}
+          <div className="px-6 py-3 border-b border-gray-200 flex gap-2">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
               <Input
                 placeholder="Search by name or address…"
@@ -60,6 +77,30 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
+            </div>
+            {/* Sort dropdown */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setSortOpen(o => !o)}
+                className="h-9 flex items-center gap-1.5 px-3 rounded-md border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition-colors whitespace-nowrap"
+              >
+                {SORT_OPTIONS.find(o => o.value === sortBy)?.label}
+                <ChevronDown size={12} style={{ transform: sortOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }} />
+              </button>
+              {sortOpen && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[130px]">
+                  {SORT_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => { setSortBy(opt.value); setSortOpen(false) }}
+                      className="block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
+                      style={{ color: sortBy === opt.value ? '#f97316' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

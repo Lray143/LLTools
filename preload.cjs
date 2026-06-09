@@ -68,11 +68,24 @@ window.electronAPI = {
   getMyLeaveRequests:      (employeeId)             => ipcRenderer.invoke('leaves:getMine', employeeId),
   reviewLeaveRequest:      (id, status, note)       => ipcRenderer.invoke('leaves:review', id, status, note),
 
+  // ── Reports ────────────────────────────────────────────────────
+  createReport:          (report)                       => ipcRenderer.invoke('reports:create', report),
+  updateReport:          (report)                       => ipcRenderer.invoke('reports:update', report),
+  getReports:            (archived)                     => ipcRenderer.invoke('reports:getAll', archived),
+  getMyReports:          (employeeNo, archived)         => ipcRenderer.invoke('reports:getMine', employeeNo, archived),
+  getReportById:         (id)                           => ipcRenderer.invoke('reports:getById', id),
+  updateReportStatus:    (id, status, changedBy)        => ipcRenderer.invoke('reports:updateStatus', id, status, changedBy),
+  assignReport:          (id, assignedTo, changedBy)    => ipcRenderer.invoke('reports:assign', id, assignedTo, changedBy),
+  addReportComment:      (comment)                      => ipcRenderer.invoke('reports:addComment', comment),
+  getReportComments:     (reportId)                     => ipcRenderer.invoke('reports:getComments', reportId),
+  getReportStatusLogs:   (reportId)                     => ipcRenderer.invoke('reports:getStatusLogs', reportId),
+  archiveReport:         (id)                           => ipcRenderer.invoke('reports:archive', id),
+  unarchiveReport:       (id)                           => ipcRenderer.invoke('reports:unarchive', id),
+  permanentDeleteReport: (id)                           => ipcRenderer.invoke('reports:permanentDelete', id),
+
   // ── Attachments ─────────────────────────────────────────────────
   saveAttachment:          (data)     => ipcRenderer.invoke('attachments:save', data),
   openAttachment:          (path)     => ipcRenderer.invoke('attachments:open', path),
-
-  // ── Leave Requests ──────────────────────────────────────────────
   submitLeaveRequest:      (req)                   => ipcRenderer.invoke('leaves:submit', req),
   getLeaveRequests:        ()                      => ipcRenderer.invoke('leaves:getAll'),
   getMyLeaveRequests:      (employeeNo)            => ipcRenderer.invoke('leaves:getMine', employeeNo),

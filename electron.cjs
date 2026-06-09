@@ -18,6 +18,10 @@ const {
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
+  createReport, getReports, getMyReports, getReportById,
+  updateReportStatus, assignReport, addReportComment,
+  getReportComments, getReportStatusLogs,
+  updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -108,6 +112,21 @@ ipcMain.handle('leaves:submit',  (_, req)              => submitLeaveRequest(req
 ipcMain.handle('leaves:getAll',  ()                    => getLeaveRequests())
 ipcMain.handle('leaves:getMine', (_, employeeId)       => getMyLeaveRequests(employeeId))
 ipcMain.handle('leaves:review',  (_, id, status, note, reviewedBy) => reviewLeaveRequest(id, status, note, reviewedBy))
+
+// ── REPORTS ───────────────────────────────────────────────────────
+ipcMain.handle('reports:create',        (_, report)                    => createReport(report))
+ipcMain.handle('reports:update',        (_, report)                    => updateReport(report))
+ipcMain.handle('reports:getAll',        (_, archived)                  => getReports(archived))
+ipcMain.handle('reports:getMine',       (_, employeeNo, archived)      => getMyReports(employeeNo, archived))
+ipcMain.handle('reports:getById',       (_, id)                        => getReportById(id))
+ipcMain.handle('reports:updateStatus',  (_, id, status, changedBy)     => updateReportStatus(id, status, changedBy))
+ipcMain.handle('reports:assign',        (_, id, assignedTo, changedBy) => assignReport(id, assignedTo, changedBy))
+ipcMain.handle('reports:addComment',    (_, comment)                   => addReportComment(comment))
+ipcMain.handle('reports:getComments',   (_, reportId)                  => getReportComments(reportId))
+ipcMain.handle('reports:getStatusLogs', (_, reportId)                  => getReportStatusLogs(reportId))
+ipcMain.handle('reports:archive',       (_, id)                        => archiveReport(id))
+ipcMain.handle('reports:unarchive',     (_, id)                        => unarchiveReport(id))
+ipcMain.handle('reports:permanentDelete', (_, id)                      => permanentDeleteReport(id))
 
 // ── ATTACHMENTS ───────────────────────────────────────────────────
 ipcMain.handle('attachments:save', async (_, { name, buffer }) => {

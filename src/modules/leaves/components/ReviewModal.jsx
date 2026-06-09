@@ -1,113 +1,76 @@
 import { useState, useEffect } from 'react'
 import { formatDate, dayCount } from './leaveConstants'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "../../../components/ui/dialog"
+import { Button } from "../../../components/ui/button"
 
 export function ReviewModal({ request, onClose, onReview, loading }) {
   const [note, setNote] = useState('')
   useEffect(() => { if (request) setNote('') }, [request?.id])
-  if (!request) return null
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '24px',
-    }}>
+    <Dialog open={!!request} onOpenChange={val => { if (!val) onClose() }}>
       {/* Landscape modal */}
-      <div style={{
-        background: 'var(--surface)', borderRadius: '20px',
-        width: '820px', maxWidth: '95vw',
-        maxHeight: '90vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden',
-      }}>
+      <DialogContent 
+        className="outline-none focus:outline-none ring-0 focus:ring-0 border-0 p-0 flex flex-col overflow-hidden" 
+        style={{ width: '820px', maxWidth: '95vw', maxHeight: '90vh', background: 'var(--surface)', color: 'var(--text-primary)' }}
+      >
         {/* ── Top bar ── */}
-        <div style={{
-          padding: '20px 28px', borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          flexShrink: 0,
-        }}>
-          <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+        <DialogHeader className="px-7 py-5 border-b flex-shrink-0 flex flex-row items-center justify-between" style={{ borderColor: 'var(--border)' }}>
+          <div className="flex flex-col gap-0.5 mt-2.5">
+            <DialogTitle className="text-base font-bold m-0" style={{ color: 'var(--text-primary)' }}>
               Review Leave Request
-            </h2>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-              {request.emp_name || request.employee_name || request.employee_no}
+            </DialogTitle>
+            <p className="text-xs m-0" style={{ color: 'var(--text-secondary)' }}>
+              {request?.emp_name || request?.employee_name || request?.employee_no}
               {' · '}
-              <span style={{ color: 'var(--theme-500)', fontWeight: 500 }}>{request.leave_type}</span>
+              <span className="font-semibold" style={{ color: 'var(--theme-500)' }}>{request?.leave_type}</span>
             </p>
           </div>
-          <button onClick={onClose} style={{
-            width: '30px', height: '30px', borderRadius: '8px', border: '1px solid #e5e7eb',
-            background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '16px', color: 'var(--text-secondary)', lineHeight: 1,
-          }}>
-            ×
-          </button>
-        </div>
+        </DialogHeader>
 
         {/* ── Two-column body ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', flex: 1, minHeight: 0 }}>
+        <div className="grid grid-cols-2 flex-1 min-h-0">
 
           {/* LEFT — Request details */}
-          <div style={{
-            padding: '24px 28px',
-            borderRight: '1px solid rgba(0,0,0,0.07)',
-            overflowY: 'auto',
-            display: 'flex', flexDirection: 'column', gap: '16px',
-          }}>
+          <div className="p-6 md:p-7 border-r overflow-y-auto flex flex-col gap-5" style={{ borderColor: 'var(--border)' }}>
             {/* Info cards */}
-            <div style={{
-              background: 'var(--surface-hover)', borderRadius: '12px', padding: '16px',
-              display: 'flex', flexDirection: 'column', gap: '10px',
-              fontSize: '13px', color: 'var(--text-primary)',
-            }}>
-              <InfoRow label="Employee">{request.emp_name || request.employee_name || request.employee_no}</InfoRow>
-              <InfoRow label="Employee No">{request.employee_no}</InfoRow>
+            <div className="rounded-xl p-4 flex flex-col gap-3 text-[13px]" style={{ background: 'var(--surface-hover)', color: 'var(--text-primary)' }}>
+              <InfoRow label="Employee">{request?.emp_name || request?.employee_name || request?.employee_no}</InfoRow>
+              <InfoRow label="Employee No">{request?.employee_no}</InfoRow>
               <InfoRow label="Period">
-                {formatDate(request.start_date)} – {formatDate(request.end_date)}
+                {formatDate(request?.start_date)} – {formatDate(request?.end_date)}
               </InfoRow>
               <InfoRow label="Duration">
-                <span style={{ fontWeight: 700, color: 'var(--theme-500)' }}>
-                  {dayCount(request.start_date, request.end_date)} day(s)
+                <span className="font-bold" style={{ color: 'var(--theme-500)' }}>
+                  {dayCount(request?.start_date, request?.end_date)} day(s)
                 </span>
               </InfoRow>
               <InfoRow label="Filed">
-                {request.created_at
+                {request?.created_at
                   ? new Date(request.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
                   : '—'}
               </InfoRow>
             </div>
 
             {/* Reason — scrollable box */}
-            <div>
-              <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '0 0 8px' }}>
+            <div className="flex flex-col">
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Reason
               </p>
-              <div style={{
-                background: 'var(--surface-hover)', borderRadius: '10px', padding: '14px',
-                fontSize: '13px', color: 'var(--text-primary)', lineHeight: '1.6',
-                maxHeight: '220px', overflowY: 'auto',
-                border: '1px solid var(--border)',
-                wordBreak: 'break-word', whiteSpace: 'pre-wrap',
-              }}>
-                {request.reason || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>No reason provided.</span>}
+              <div className="rounded-xl p-4 text-[13px] leading-relaxed max-h-[220px] overflow-y-auto border break-words whitespace-pre-wrap" style={{ background: 'var(--surface-hover)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
+                {request?.reason || <span className="italic" style={{ color: 'var(--text-secondary)' }}>No reason provided.</span>}
               </div>
             </div>
           </div>
 
           {/* RIGHT — Review note + actions */}
-          <div style={{
-            padding: '24px 28px',
-            display: 'flex', flexDirection: 'column', gap: '16px',
-            overflowY: 'auto',
-          }}>
-            <div>
-              <label style={{
-                fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)',
-                display: 'block', marginBottom: '6px',
-              }}>
+          <div className="p-6 md:p-7 flex flex-col gap-4 overflow-y-auto">
+            <div className="flex flex-col gap-1.5 flex-1">
+              <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
                 Review Note
-                <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '6px' }}>
+                <span className="font-normal ml-1.5 opacity-70">
                   (optional — employee will see this)
                 </span>
               </label>
@@ -116,70 +79,50 @@ export function ReviewModal({ request, onClose, onReview, loading }) {
                 onChange={e => setNote(e.target.value)}
                 placeholder="Add a note for the employee explaining your decision..."
                 rows={8}
-                style={{
-                  width: '100%', padding: '12px',
-                  border: '1px solid #e5e7eb', borderRadius: '10px',
-                  fontSize: '13px', color: 'var(--text-primary)', outline: 'none',
-                  resize: 'vertical', boxSizing: 'border-box',
-                  fontFamily: 'inherit', lineHeight: '1.6',
-                }}
+                className="w-full p-3 border rounded-xl text-[13px] outline-none resize-y flex-1 font-sans leading-relaxed"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
               />
             </div>
 
             {/* Decision reminder */}
-            <div style={{
-              background: 'var(--surface-hover)', borderRadius: '10px', padding: '12px 14px',
-              fontSize: '12px', color: '#92400e', lineHeight: '1.5',
-              border: '1px solid var(--theme-200)',
-            }}>
+            <div className="rounded-xl p-3.5 text-xs leading-relaxed border shrink-0" style={{ background: 'var(--surface-hover)', borderColor: 'var(--theme-200)', color: 'var(--theme-600)' }}>
               <strong>Heads up:</strong> This action will update the request status immediately and the employee will be notified on their next login.
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '10px', marginTop: 'auto', paddingTop: '8px' }}>
-              <button onClick={onClose} style={{
-                flex: 1, padding: '11px', borderRadius: '10px',
-                border: '1px solid #e5e7eb', background: 'var(--surface)',
-                color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500, cursor: 'pointer',
-              }}>
+            <div className="flex gap-2.5 mt-2 shrink-0">
+              <Button onClick={onClose} variant="outline" className="flex-1 h-11 rounded-xl text-[13px] font-medium" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onReview('Denied', note)}
                 disabled={loading}
-                style={{
-                  flex: 1, padding: '11px', borderRadius: '10px', border: 'none',
-                  background: 'var(--surface-hover)', color: '#dc2626',
-                  fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                }}
+                variant="outline"
+                className="flex-1 h-11 rounded-xl border-red-200 bg-red-50 text-red-600 text-[13px] font-semibold hover:bg-red-100 hover:text-red-700"
               >
                 ✗ Deny
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onReview('Approved', note)}
                 disabled={loading}
-                style={{
-                  flex: 1, padding: '11px', borderRadius: '10px', border: 'none',
-                  background: 'var(--theme-500)', color: '#fff',
-                  fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(249,115,22,0.3)',
-                }}
+                className="flex-1 h-11 rounded-xl border-0 text-[13px] font-semibold"
+                style={{ background: 'var(--theme-500)', color: '#fff' }}
               >
                 ✓ Approve
-              </button>
+              </Button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
 function InfoRow({ label, children }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-      <span style={{ color: 'var(--text-secondary)', flexShrink: 0, fontSize: '12px' }}>{label}</span>
-      <span style={{ fontWeight: 500, textAlign: 'right', fontSize: '13px' }}>{children}</span>
+    <div className="flex justify-between items-start gap-3">
+      <span className="shrink-0 text-xs" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+      <span className="font-semibold text-right text-[13px]">{children}</span>
     </div>
   )
 }

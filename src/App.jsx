@@ -26,7 +26,6 @@ const STATIC_PAGES = {
   products:     <Products />,
   outlets:      <Outlets />,
   calculations: <Calculations />,
-  reports:      <Reports />,
 }
 
 function App() {
@@ -65,6 +64,7 @@ function App() {
   function renderPage() {
     // Pages that need currentUser get it as a prop
     if (activePage === 'leaves')    return <LeaveRequests currentUser={currentUser} />
+    if (activePage === 'reports')   return <Reports currentUser={currentUser} />
     if (activePage === 'settings')  return <Settings currentUser={currentUser} />
     return STATIC_PAGES[activePage] ?? null
   }

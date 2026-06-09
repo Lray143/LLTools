@@ -39,18 +39,3 @@ export function truncate(str, max = 55) {
   return str.length > max ? str.slice(0, max).trimEnd() + '…' : str
 }
 
-export const thStyle = {
-  textAlign    : 'left',
-  padding      : '11px 16px',
-  fontSize     : '11px',
-  color        : '#a09278',
-  fontWeight   : 600,
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  whiteSpace   : 'nowrap',
-}
-
-export const tdStyle = {
-  padding      : '13px 16px',
-  verticalAlign: 'middle',
-}
