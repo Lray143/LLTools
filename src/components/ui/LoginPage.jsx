@@ -29,7 +29,7 @@ function LoginPage({ onLogin }) {
 
   return (
     <div
-      className="flex h-screen items-center justify-center"
+      className="login-wrapper flex h-screen items-center justify-center"
       style={{
         background: "radial-gradient(ellipse at 40% 30%, #4a2c0a 0%, #1c0e02 55%, #0d0700 100%)",
       }}

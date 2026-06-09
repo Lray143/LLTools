@@ -17,7 +17,7 @@ import Settings       from './modules/settings/Settings'
 import LeaveRequests  from './modules/leaves/LeaveRequests'
 
 import { getAllowedModules } from './lib/permissions'
-import { getSavedTheme, applyThemeToDocument, getSavedMode, applyModeToDocument, saveTheme, saveMode } from './lib/theme'
+import { getSavedTheme, applyThemeToDocument, saveTheme } from './lib/theme'
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
@@ -25,7 +25,6 @@ function App() {
 
   useEffect(() => {
     applyThemeToDocument(getSavedTheme())
-    applyModeToDocument(getSavedMode())
   }, [])
 
   const handleLogin = (user) => {
@@ -33,10 +32,6 @@ function App() {
     if (user.themeColor) {
       saveTheme(user.themeColor)
       applyThemeToDocument(user.themeColor)
-    }
-    if (user.themeMode) {
-      saveMode(user.themeMode)
-      applyModeToDocument(user.themeMode)
     }
     setActivePage('dashboard')
   }

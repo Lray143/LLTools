@@ -229,8 +229,8 @@ export default function ProductsTable({ search = '', onSearchChange }) {
 
       {/* ── Bulk-action bar ── */}
       {editMode && someSelected && !isOutletMode && (
-        <div className="mx-8 mt-3 flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-4 py-2">
-          <span className="text-sm text-orange-700 font-medium">
+        <div className="mx-8 mt-3 flex items-center justify-between rounded-lg px-4 py-2" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-bg) 10%, var(--surface))', border: '1px solid color-mix(in srgb, var(--accent-bg) 30%, var(--border))' }}>
+          <span className="text-sm font-medium" style={{ color: 'var(--accent-bg)' }}>
             {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
           </span>
           <div className="flex items-center gap-2">
@@ -242,7 +242,10 @@ export default function ProductsTable({ search = '', onSearchChange }) {
             </button>
             <button
               onClick={handleBulkArchive}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-orange-500 border-none rounded-md px-3 py-1.5 cursor-pointer hover:bg-orange-600 transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-white border-none rounded-md px-3 py-1.5 cursor-pointer transition-colors"
+              style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--accent-hover)'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--accent-bg)'}
             >
               <Archive size={12} />
               Archive selected
@@ -266,7 +269,8 @@ export default function ProductsTable({ search = '', onSearchChange }) {
                       type="checkbox"
                       checked={allSelected}
                       onChange={handleToggleAll}
-                      className="cursor-pointer accent-orange-500"
+                      className="cursor-pointer"
+                      style={{ accentColor: 'var(--accent-bg)' }}
                     />
                   )}
                 </th>
@@ -280,7 +284,7 @@ export default function ProductsTable({ search = '', onSearchChange }) {
                   >
                     {col.label}
                     {col.label === 'Price / Piece' && isOutletMode && (
-                      <span className="ml-1 text-orange-400 font-normal normal-case tracking-normal">
+                      <span className="ml-1 font-normal normal-case tracking-normal" style={{ color: 'var(--accent-bg)', opacity: 0.8 }}>
                         (outlet)
                       </span>
                     )}

@@ -37,7 +37,7 @@ export default function GroupHeaderRow({
   }
 
   return (
-    <tr className="bg-orange-50/80 border-y border-orange-100">
+    <tr className="border-y" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-bg) 10%, var(--surface))', borderColor: 'color-mix(in srgb, var(--accent-bg) 20%, var(--border))' }}>
       <td colSpan={8} className="px-3 py-2.5">
         <div className="flex items-center gap-2">
 
@@ -45,7 +45,8 @@ export default function GroupHeaderRow({
           <button
             onClick={() => onToggleCollapse(group.id)}
             title={collapsed ? 'Expand' : 'Collapse'}
-            className="text-orange-400 hover:text-orange-600 transition-colors"
+            className="transition-colors"
+            style={{ color: 'var(--accent-bg)', opacity: 0.8 }}
           >
             {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
           </button>
@@ -60,7 +61,8 @@ export default function GroupHeaderRow({
                 onChange={(e) => setDraftName(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onBlur={commitRename}
-                className="text-sm font-bold text-orange-700 bg-white border border-orange-400 rounded px-2 py-0.5 outline-none w-48 tracking-wider"
+                className="text-sm font-bold bg-white rounded px-2 py-0.5 outline-none w-48 tracking-wider"
+                style={{ color: 'var(--accent-bg)', border: '1px solid var(--accent-bg)' }}
               />
               <button onClick={commitRename} className="border-none bg-transparent cursor-pointer text-green-600 hover:text-green-700">
                 <Check size={14} />
@@ -70,9 +72,9 @@ export default function GroupHeaderRow({
               </button>
             </div>
           ) : (
-            <span className="text-sm font-bold tracking-wider text-orange-700 flex-1 flex items-center">
+            <span className="text-sm font-bold tracking-wider flex-1 flex items-center" style={{ color: 'var(--accent-bg)' }}>
               {group.name}
-              <span className="ml-2 text-xs font-normal text-orange-400">
+              <span className="ml-2 text-xs font-normal" style={{ color: 'var(--accent-bg)', opacity: 0.7 }}>
                 ({group.rows.length} item{group.rows.length !== 1 ? 's' : ''})
               </span>
             </span>
@@ -84,14 +86,20 @@ export default function GroupHeaderRow({
               {!editing && (
                 <button
                   onClick={() => setEditing(true)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-transparent text-orange-500 text-xs font-medium cursor-pointer transition-colors hover:bg-orange-200"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-transparent text-xs font-medium cursor-pointer transition-colors"
+                  style={{ color: 'var(--accent-bg)' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-bg) 15%, transparent)'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <Pencil size={12} /> Rename
                 </button>
               )}
               <button
                 onClick={() => onAddRow(group.id)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-transparent text-orange-500 text-xs font-medium cursor-pointer transition-colors hover:bg-orange-200"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-transparent text-xs font-medium cursor-pointer transition-colors"
+                style={{ color: 'var(--accent-bg)' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--accent-bg) 15%, transparent)'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <Plus size={12} /> Add Row
               </button>
