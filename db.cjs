@@ -372,14 +372,25 @@ const initDb = async () => {
   // ── SEED USERS ────────────────────────────────────────────────
   const seedUsers = [
     { username: 'admin@doublel.com',     password: 'admin123',     role: 'admin'     },
-    { username: 'hr@doublel.com',        password: 'hr123',        role: 'hr'        },
-    { username: 'clinic@doublel.com',    password: 'clinic123',    role: 'clinic'    },
-    { username: 'inventory@doublel.com', password: 'inventory123', role: 'inventory' },
   ]
   for (const u of seedUsers) {
     db.run('INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)',
       [u.username, bcrypt.hashSync(u.password, 10), u.role])
   }
+  
+  // Clean up legacy hardcoded accounts
+  db.run("DELETE FROM users WHERE username IN ('hr@doublel.com', 'clinic@doublel.com', 'inventory@doublel.com')")
+
+  // Fix employees who were wrongly assigned the 'hr' role due to having no department
+  try {
+    db.run(`
+      UPDATE users 
+      SET role = 'employee' 
+      WHERE role = 'hr' 
+        AND employee_id IS NOT NULL 
+        AND employee_id IN (SELECT id FROM employees WHERE department IS NULL OR department = '')
+    `)
+  } catch (_) {}
 
   // ── SEED PRODUCTS ─────────────────────────────────────────────
   const groupCount = queryOne('SELECT COUNT(*) as n FROM product_groups')
@@ -404,10 +415,28 @@ const initDb = async () => {
 
 // ── AUTH ──────────────────────────────────────────────────────────
 const loginUser = (username, password) => {
-  const user = queryOne('SELECT * FROM users WHERE username = ?', [username])
+  const user = queryOne(`
+    SELECT u.*, e.department, e.name AS employee_name, e.position AS employee_position
+    FROM users u
+    LEFT JOIN employees e ON e.id = u.employee_id
+    WHERE u.username = ?
+  `, [username])
   if (!user) return { success: false, message: 'User not found.' }
   if (!bcrypt.compareSync(password, user.password_hash)) return { success: false, message: 'Incorrect password.' }
-  return { success: true, user: { id: user.id, username: user.username, role: user.role, employeeId: user.employee_id ?? null, themeColor: user.theme_color ?? null, themeMode: user.theme_mode ?? 'light' } }
+  return {
+    success: true,
+    user: {
+      id           : user.id,
+      username     : user.username,
+      role         : user.role,
+      employeeId   : user.employee_id   ?? null,
+      department   : user.department    ?? null,
+      employeeName : user.employee_name ?? null,
+      position     : user.employee_position ?? null,
+      themeColor   : user.theme_color   ?? null,
+      themeMode    : user.theme_mode    ?? 'light',
+    },
+  }
 }
 
 // ── EMPLOYEE ACCOUNTS ─────────────────────────────────────────────
@@ -569,6 +598,14 @@ const getAttendanceByDate = (date) => queryAll(`
   FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
   WHERE a.date = ? ORDER BY e.name
 `, [date])
+
+const getMyAttendance = (employeeId) => queryAll(`
+  SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
+         a.total_hours, a.status, a.extra_taps,
+         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
+  FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
+  WHERE a.employee_id = ? ORDER BY a.date DESC
+`, [employeeId])
 
 const importAttendance = (records) => {
   let newEmployees = 0, newRecords = 0, skippedRecords = 0
@@ -1054,7 +1091,7 @@ module.exports = {
   initDb, loginUser, queryAll, queryOne, run,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
-  getAttendance, getAttendanceByDate, importAttendance,
+  getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
   getProductGroups, getArchivedProducts,
   upsertProductGroup, deleteProductGroup,
   upsertProduct, archiveProduct, restoreProduct, permanentDeleteProduct,

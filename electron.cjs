@@ -6,7 +6,7 @@ const {
   initDb, loginUser,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
-  getAttendance, getAttendanceByDate, importAttendance,
+  getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
   getProductGroups, getArchivedProducts,
   upsertProductGroup, deleteProductGroup,
   upsertProduct, archiveProduct, restoreProduct, permanentDeleteProduct,
@@ -60,6 +60,7 @@ ipcMain.handle('employees:permDelete',  (_, id)  => permanentDeleteEmployee(id))
 // ── ATTENDANCE ────────────────────────────────────────────────────
 ipcMain.handle('attendance:getAll',    ()           => getAttendance())
 ipcMain.handle('attendance:getByDate', (_, date)    => getAttendanceByDate(date))
+ipcMain.handle('attendance:getMine',   (_, empId)   => getMyAttendance(empId))
 ipcMain.handle('attendance:import',    (_, records) => importAttendance(records))
 
 // ── PRODUCTS ──────────────────────────────────────────────────────

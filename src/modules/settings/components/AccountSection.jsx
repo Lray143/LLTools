@@ -10,7 +10,8 @@ const ROLE_LABELS = {
 
 export function AccountSection({ currentUser }) {
   const roleLabel = ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? '—'
-  const initials  = currentUser?.username?.slice(0, 2).toUpperCase() ?? '??'
+  const displayName = currentUser?.employeeName || currentUser?.username || '—'
+  const initials  = displayName.slice(0, 2).toUpperCase()
 
   return (
     <div>
@@ -49,10 +50,10 @@ export function AccountSection({ currentUser }) {
         </div>
         <div>
           <p style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
-            {currentUser?.username ?? '—'}
+            {displayName}
           </p>
           <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-            {roleLabel}
+            {currentUser?.department ?? roleLabel}
           </p>
         </div>
         <div style={{
@@ -70,19 +71,24 @@ export function AccountSection({ currentUser }) {
         </div>
       </div>
 
-      <SettingRow label="Username" description="Your login identifier. Contact admin to change.">
-        <InfoChip value={currentUser?.username ?? '—'} />
+      <SettingRow label="Employee Name" description="Your registered full name.">
+        <InfoChip value={currentUser?.employeeName ?? '—'} />
       </SettingRow>
 
-      <SettingRow label="Role" description="Your access level in LLTools.">
-        <InfoChip value={roleLabel} highlight />
+      <SettingRow label="Employee ID" description="Your unique company identification number.">
+        <InfoChip value={currentUser?.username ?? '—'} highlight />
       </SettingRow>
 
-      <SettingRow label="Employee ID" description="Assigned by your administrator.">
-        <InfoChip value={
-          currentUser?.employeeId ??
-          (currentUser?.id != null ? String(currentUser.id).slice(0, 8).toUpperCase() : '—')
-        } />
+      <SettingRow label="Department" description="Your designated department.">
+        <InfoChip value={currentUser?.department ?? '—'} />
+      </SettingRow>
+
+      <SettingRow label="Position" description="Your current job title.">
+        <InfoChip value={currentUser?.position ?? '—'} />
+      </SettingRow>
+
+      <SettingRow label="System Role" description="Your technical access level in LLTools.">
+        <InfoChip value={roleLabel} />
       </SettingRow>
     </div>
   )

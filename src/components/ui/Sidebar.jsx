@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
-  SoapDispenserDroplet, Pin, PinOff, CalendarClock
+  SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck
 } from 'lucide-react'
 
 const ROLE_LABELS = {
@@ -17,6 +17,7 @@ const ALL_NAV_ITEMS = [
   { id: 'dashboard',    label: 'Dashboard',       icon: LayoutDashboard      },
   { id: 'employees',    label: 'Employees',       icon: Users                },
   { id: 'biometrics',   label: 'Biometrics',      icon: Fingerprint          },
+  { id: 'my-attendance',label: 'My Attendance',   icon: CalendarCheck        },
   { id: 'clinic',       label: 'Clinic Log',      icon: ClipboardList        },
   { id: 'products',     label: 'Products',        icon: SoapDispenserDroplet },
   { id: 'outlets',      label: 'Outlets',         icon: Store                },
@@ -52,8 +53,10 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
 
   const navItems = ALL_NAV_ITEMS.filter(item => allowedModules.includes(item.id))
 
-  const initials  = currentUser?.username?.slice(0, 2).toUpperCase() ?? '??'
-  const roleLabel = ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? ''
+  const displayName = currentUser?.employeeName || currentUser?.username || '??'
+  const initials  = displayName.slice(0, 2).toUpperCase()
+  // Show department for employee accounts; fall back to role label for system accounts
+  const roleLabel = currentUser?.department ?? ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? ''
 
   function handlePinToggle() {
     const next = !isPinned
@@ -213,11 +216,11 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
 
           {/* Name + role */}
           <div className={`
-            flex-1 transition-all duration-200 overflow-hidden whitespace-nowrap
+            flex-1 transition-all duration-200 overflow-hidden min-w-0
             ${isExpanded ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'}
           `}>
-            <p className="text-sm font-medium leading-none mb-1 text-gray-100">{currentUser?.username}</p>
-            <p className="text-xs leading-none text-gray-400">{roleLabel}</p>
+            <p className="text-sm font-medium leading-none mb-1 text-gray-100 truncate">{displayName}</p>
+            <p className="text-xs leading-none text-gray-400 truncate">{roleLabel}</p>
           </div>
 
           {/* Logout */}

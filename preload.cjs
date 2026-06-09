@@ -15,6 +15,7 @@ window.electronAPI = {
   // ── Attendance ──────────────────────────────────────────────────
   getAttendance:           ()        => ipcRenderer.invoke('attendance:getAll'),
   getAttendanceByDate:     (date)    => ipcRenderer.invoke('attendance:getByDate', date),
+  getMyAttendance:         (employeeId) => ipcRenderer.invoke('attendance:getMine', employeeId),
   importAttendance:        (recs)    => ipcRenderer.invoke('attendance:import', recs),
 
   // ── Products ────────────────────────────────────────────────────

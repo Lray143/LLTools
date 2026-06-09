@@ -213,7 +213,8 @@ function Employees() {
   const filtered = employees
     .map(e => ({ ...e, liveStatus: getLiveStatus(e) }))
     .filter(e => {
-      const matchSearch = e.name.toLowerCase().includes(search.toLowerCase())
+      const matchSearch = e.name.toLowerCase().includes(search.toLowerCase()) ||
+                          (e.employee_no && e.employee_no.toLowerCase().includes(search.toLowerCase()))
       const matchDept = dept === "all" || e.dept === dept
       const matchStatus = statusFilter === "all" ||
         e.liveStatus === statusFilter ||
