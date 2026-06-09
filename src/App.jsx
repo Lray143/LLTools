@@ -29,10 +29,15 @@ function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user)
-    if (user.themeColor) {
-      saveTheme(user.themeColor)
-      applyThemeToDocument(user.themeColor)
+    
+    let targetTheme = user.themeColor
+    if (!targetTheme || targetTheme.startsWith('#')) {
+      targetTheme = 'original-light'
     }
+    
+    saveTheme(targetTheme)
+    applyThemeToDocument(targetTheme)
+    
     setActivePage('dashboard')
   }
 

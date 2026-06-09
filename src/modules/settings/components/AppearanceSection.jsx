@@ -9,10 +9,13 @@ export function AppearanceSection({ currentUser }) {
   const [themeId, setThemeId]     = useState(() => getSavedTheme())
   const [saveState, setSaveState] = useState('idle') // 'idle' | 'saving' | 'saved'
 
-  // Apply theme live when user changes it
+  // Apply theme live when user changes it so they can preview it
   useEffect(() => {
-    saveTheme(themeId)
     applyThemeToDocument(themeId)
+    // Cleanup: if they navigate away without saving, revert to what was actually saved
+    return () => {
+      applyThemeToDocument(getSavedTheme())
+    }
   }, [themeId])
 
   const handleSave = async () => {
@@ -23,6 +26,10 @@ export function AppearanceSection({ currentUser }) {
         // If the backend requires a 3rd argument for mode, we'll just send 'default'.
         await window.electronAPI.updateUserTheme(currentUser.id, themeId, 'default')
       }
+      
+      // Officially save it to localStorage now that they clicked save
+      saveTheme(themeId)
+      
       setSaveState('saved')
       setTimeout(() => setSaveState('idle'), 2000)
     } catch {
