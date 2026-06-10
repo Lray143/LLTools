@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, shell } = require('electron')
 const path = require('path')
+const { uploadFileToR2 } = require('./r2.cjs')
 const fs = require('fs')
 const crypto = require('crypto')
 const {
@@ -45,6 +46,15 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist/index.html'))
   }
+
+  // Open external links in default browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url)
+      return { action: 'deny' }
+    }
+    return { action: 'allow' }
+  })
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────
@@ -134,6 +144,30 @@ ipcMain.handle('reports:archive',       (_, id)                        => archiv
 ipcMain.handle('reports:unarchive',     (_, id)                        => unarchiveReport(id))
 ipcMain.handle('reports:permanentDelete', (_, id)                      => permanentDeleteReport(id))
 
+// ── CHATS ─────────────────────────────────────────────────────────
+ipcMain.handle('chat:getMessages', async (_, dept) => {
+  const db = await import('./db.cjs')
+  return await db.getDepartmentChats(dept)
+})
+ipcMain.handle('chat:sendMessage', async (_, msgData) => {
+  const db = await import('./db.cjs')
+  await db.sendDepartmentChat(msgData)
+  await db.syncCloud() // Push immediately
+})
+ipcMain.handle('chat:getDMs', async (_, roomId) => {
+  const db = await import('./db.cjs')
+  return await db.getDirectMessages(roomId)
+})
+ipcMain.handle('chat:sendDM', async (_, msgData) => {
+  const db = await import('./db.cjs')
+  await db.sendDirectMessage(msgData)
+  await db.syncCloud() // Push immediately
+})
+ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeType) => {
+  const buffer = Buffer.from(arrayBuffer)
+  return await uploadFileToR2(buffer, fileName, mimeType)
+})
+
 // ── ATTACHMENTS ───────────────────────────────────────────────────
 ipcMain.handle('attachments:save', async (_, { name, buffer }) => {
   const uploadsDir = path.join(app.getPath('userData'), 'uploads')
@@ -162,8 +196,7 @@ app.whenReady().then(async () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('db:synced')
     }
-    console.log('[DB] Background sync completed')
-  }, 10_000)
+  }, 2_000)
 })
 
 app.on('window-all-closed', () => {

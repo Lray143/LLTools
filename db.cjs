@@ -283,7 +283,27 @@ const initDb = async () => {
       changed_by TEXT,
       created_at TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS department_chats (
+      id           TEXT PRIMARY KEY,
+      department   TEXT NOT NULL,
+      sender_id    TEXT NOT NULL,
+      sender_name  TEXT NOT NULL,
+      message      TEXT,
+      file_url     TEXT,
+      created_at   TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS direct_messages (
+      id           TEXT PRIMARY KEY,
+      room_id      TEXT NOT NULL,
+      sender_id    TEXT NOT NULL,
+      sender_name  TEXT NOT NULL,
+      message      TEXT,
+      file_url     TEXT,
+      created_at   TEXT DEFAULT (datetime('now'))
+    );
     CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date);
+    CREATE INDEX IF NOT EXISTS idx_chat_dept ON department_chats(department);
+    CREATE INDEX IF NOT EXISTS idx_dm_room ON direct_messages(room_id);
   `)
 
   // ── Seed admin user ────────────────────────────────────────────────────────
@@ -896,6 +916,57 @@ const permanentDeleteReport = async (id) => {
   await run(`DELETE FROM report_status_logs WHERE report_id=?`, [id])
 }
 
+// ── DEPARTMENT CHATS ─────────────────────────────────────────────────────────
+const getDepartmentChats = async (department) => {
+  const rows = await queryAll(`
+    SELECT * FROM department_chats 
+    WHERE department = ? 
+    ORDER BY created_at ASC 
+    LIMIT 200
+  `, [department])
+  return rows.map(r => ({
+    id:          r.id,
+    department:  r.department,
+    senderId:    r.sender_id,
+    senderName:  r.sender_name,
+    message:     r.message,
+    fileUrl:     r.file_url,
+    createdAt:   r.created_at,
+  }))
+}
+
+const sendDepartmentChat = async ({ id, department, senderId, senderName, message, fileUrl }) => {
+  await run(`
+    INSERT INTO department_chats (id, department, sender_id, sender_name, message, file_url)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [id, department, senderId, senderName, message || null, fileUrl || null])
+}
+
+const getDirectMessages = async (roomId) => {
+  const rows = await queryAll(`
+    SELECT * FROM direct_messages 
+    WHERE room_id = ? 
+    ORDER BY created_at ASC 
+    LIMIT 200
+  `, [roomId])
+  return rows.map(r => ({
+    id:          r.id,
+    roomId:      r.room_id,
+    senderId:    r.sender_id,
+    senderName:  r.sender_name,
+    message:     r.message,
+    fileUrl:     r.file_url,
+    createdAt:   r.created_at,
+  }))
+}
+
+const sendDirectMessage = async ({ id, roomId, senderId, senderName, message, fileUrl }) => {
+  await run(`
+    INSERT INTO direct_messages (id, room_id, sender_id, sender_name, message, file_url)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [id, roomId, senderId, senderName, message || null, fileUrl || null])
+}
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
   initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud,
@@ -917,4 +988,6 @@ module.exports = {
   updateReportStatus, assignReport, addReportComment,
   getReportComments, getReportStatusLogs,
   updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
+  getDepartmentChats, sendDepartmentChat,
+  getDirectMessages, sendDirectMessage,
 }

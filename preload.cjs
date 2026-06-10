@@ -19,6 +19,25 @@ window.electronAPI = {
   getMyAttendance:         (employeeId) => ipcRenderer.invoke('attendance:getMine', employeeId),
   importAttendance:        (recs)    => ipcRenderer.invoke('attendance:import', recs),
 
+  // ── Reports ─────────────────────────────────────────────────────
+  getReports:              ()         => ipcRenderer.invoke('reports:getAll'),
+  createReport:            (r)        => ipcRenderer.invoke('reports:create', r),
+  updateReport:            (r)        => ipcRenderer.invoke('reports:update', r),
+  deleteReport:            (id)       => ipcRenderer.invoke('reports:delete', id),
+  getReportComments:       (id)       => ipcRenderer.invoke('reports:getComments', id),
+  addReportComment:        (id, user_id, username, text) => ipcRenderer.invoke('reports:addComment', id, user_id, username, text),
+  getReportStatusLogs:     (id)       => ipcRenderer.invoke('reports:getStatusLogs', id),
+  archiveReport:           (id)       => ipcRenderer.invoke('reports:archive', id),
+  unarchiveReport:         (id)       => ipcRenderer.invoke('reports:unarchive', id),
+  permanentDeleteReport:   (id)       => ipcRenderer.invoke('reports:permanentDelete', id),
+
+  // ── Chat ────────────────────────────────────────────────────────
+  getChatMessages:         (dept)     => ipcRenderer.invoke('chat:getMessages', dept),
+  sendChatMessage:         (msg)      => ipcRenderer.invoke('chat:sendMessage', msg),
+  getDirectMessages:       (roomId)   => ipcRenderer.invoke('chat:getDMs', roomId),
+  sendDirectMessage:       (msg)      => ipcRenderer.invoke('chat:sendDM', msg),
+  uploadAttachment:        (path, name, type) => ipcRenderer.invoke('chat:uploadAttachment', path, name, type),
+
   // ── Products ────────────────────────────────────────────────────
   getProductGroups:        ()        => ipcRenderer.invoke('products:getAll'),
   getArchivedProducts:     ()        => ipcRenderer.invoke('products:getArchived'),

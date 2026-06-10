@@ -15,6 +15,7 @@ import Calculations   from './modules/calculations/Calculations'
 import Reports        from './modules/reports/Reports'
 import Settings       from './modules/settings/Settings'
 import LeaveRequests  from './modules/leaves/LeaveRequests'
+import Chat           from './modules/chat/Chat'
 
 import { getAllowedModules } from './lib/permissions'
 import { getSavedTheme, applyThemeToDocument, saveTheme } from './lib/theme'
@@ -99,6 +100,7 @@ function App() {
     if (activePage === 'leaves')     return <LeaveRequests currentUser={currentUser} refreshKey={refreshKey} />
     if (activePage === 'reports')    return <Reports currentUser={currentUser} refreshKey={refreshKey} />
     if (activePage === 'settings')   return <Settings currentUser={currentUser} />
+    if (activePage === 'chat')       return <Chat currentUser={currentUser} refreshKey={refreshKey} />
 
     // Static pages
     const STATIC_PAGES = {

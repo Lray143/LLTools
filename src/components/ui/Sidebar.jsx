@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
-  SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck
+  SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck, MessageSquare
 } from 'lucide-react'
 
 const ROLE_LABELS = {
@@ -26,6 +26,7 @@ const ALL_NAV_ITEMS = [
   { id: 'leaves',       label: 'Leave Requests',  icon: CalendarClock        },
 ]
 
+const CHAT_ITEM     = { id: 'chat',     label: 'Department Chat', icon: MessageSquare }
 const SETTINGS_ITEM = { id: 'settings', label: 'Settings', icon: Settings }
 
 function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange }) {
@@ -183,6 +184,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
           `}>
             System
           </p>
+          {allowedModules.includes('chat') && <NavButton item={CHAT_ITEM} />}
           <NavButton item={SETTINGS_ITEM} />
         </div>
 

@@ -19,44 +19,43 @@
 export const DEPT_MODULES = {
   'HR': [
     'dashboard', 'employees', 'biometrics', 'my-attendance',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Admin': [
     'dashboard', 'employees', 'biometrics', 'my-attendance', 'clinic',
     'products', 'outlets', 'calculations',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Accounting': [
     'dashboard', 'my-attendance', 'calculations',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Finance': [
     'dashboard', 'my-attendance', 'calculations', 'products',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Sales': [
     'dashboard', 'my-attendance', 'outlets',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Marketing': [
     'dashboard', 'my-attendance', 'outlets',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Warehouse': [
     'dashboard', 'my-attendance', 'products',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Production': [
     'dashboard', 'my-attendance', 'products', 'calculations',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'IT': [
-    'dashboard', 'employees', 'my-attendance', 'clinic',
-    'products', 'outlets', 'calculations',
-    'reports', 'leaves', 'settings',
+    'dashboard', 'my-attendance',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   'Intern': [
-    'dashboard', 'my-attendance', 'reports', 'leaves', 'settings',
+    'dashboard', 'my-attendance', 'reports', 'leaves', 'chat', 'settings',
   ],
 }
 
@@ -70,21 +69,21 @@ const ROLE_MODULES = {
   admin: [
     'dashboard', 'employees', 'biometrics', 'my-attendance', 'clinic',
     'products', 'outlets', 'calculations',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   hr: [
     'dashboard', 'employees', 'biometrics', 'my-attendance',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   clinic: [
-    'dashboard', 'my-attendance', 'clinic', 'reports', 'leaves', 'settings',
+    'dashboard', 'my-attendance', 'clinic', 'reports', 'leaves', 'chat', 'settings',
   ],
   inventory: [
     'dashboard', 'my-attendance', 'products', 'calculations',
-    'reports', 'leaves', 'settings',
+    'reports', 'leaves', 'chat', 'settings',
   ],
   outlets: [
-    'dashboard', 'my-attendance', 'outlets', 'reports', 'leaves', 'settings',
+    'dashboard', 'my-attendance', 'outlets', 'reports', 'leaves', 'chat', 'settings',
   ],
 }
 
