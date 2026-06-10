@@ -25,9 +25,10 @@ const {
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
+let mainWindow = null
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     icon: path.join(__dirname, 'public/Logo.png'),
@@ -37,12 +38,12 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
     }
   })
-  win.removeMenu()
+  mainWindow.removeMenu()
   if (isDev) {
-    win.loadURL('http://localhost:5173')
-    win.webContents.openDevTools()
+    mainWindow.loadURL('http://localhost:5173')
+    mainWindow.webContents.openDevTools()
   } else {
-    win.loadFile(path.join(__dirname, 'dist/index.html'))
+    mainWindow.loadFile(path.join(__dirname, 'dist/index.html'))
   }
 }
 
@@ -153,6 +154,10 @@ app.whenReady().then(async () => {
   // computers stay in sync without needing to restart the app.
   setInterval(async () => {
     await syncCloud()
+    // Notify the renderer so all open modules can refresh their data
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('db:synced')
+    }
     console.log('[DB] Background sync completed')
   }, 10_000)
 })

@@ -35,7 +35,7 @@ const matchesSearch = (row, term) => {
   )
 }
 
-export default function ProductsTable({ search = '', onSearchChange }) {
+export default function ProductsTable({ search = '', onSearchChange, refreshKey = 0 }) {
   const [groups,         setGroups]         = useState([])
   const [loading,        setLoading]        = useState(true)
   const [collapsed,      setCollapsed]      = useState({})
@@ -55,13 +55,13 @@ export default function ProductsTable({ search = '', onSearchChange }) {
       .then((data) => setGroups(data?.length ? data : INITIAL_GROUPS))
       .catch(() => setGroups(INITIAL_GROUPS))
       .finally(() => setLoading(false))
-  }, [])
+  }, [refreshKey])
 
   useEffect(() => {
     window.electronAPI.getOutlets()
       .then((data) => setOutlets(data ?? []))
       .catch(() => setOutlets([]))
-  }, [])
+  }, [refreshKey])
 
   useEffect(() => {
     if (!selectedOutletId) { setOutletPrices({}); return }

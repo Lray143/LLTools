@@ -89,7 +89,7 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
   )
 }
 
-export default function Reports({ currentUser }) {
+export default function Reports({ currentUser, refreshKey = 0 }) {
   const isAdmin = ADMIN_ROLES.includes(currentUser?.role)
 
   const [adminTab,      setAdminTab]      = useState(isAdmin ? 'all' : 'mine')
@@ -150,7 +150,7 @@ export default function Reports({ currentUser }) {
     }
   }, [loadMine, loadAll, loadEmployees, isAdmin])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, refreshKey])
 
   // ── Submit ────────────────────────────────────────────────────────
   async function handleSubmit(form) {

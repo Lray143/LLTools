@@ -148,7 +148,7 @@ function buildEmployeeMap(employees) {
   return map
 }
 
-function Biometrics() {
+function Biometrics({ refreshKey = 0 }) {
 
   const [records,     setRecords]     = useState([])
   const [employeeMap, setEmployeeMap] = useState({})
@@ -184,7 +184,7 @@ function Biometrics() {
       if (latest) setSelectedDate(isoToDate(latest))
     }
     load()
-  }, [])
+  }, [refreshKey])
 
   // Build the list of years that actually have records, for the year picker.
   const availableYears = [...new Set(

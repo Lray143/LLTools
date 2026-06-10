@@ -90,7 +90,7 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
   )
 }
 
-export default function LeaveRequests({ currentUser }) {
+export default function LeaveRequests({ currentUser, refreshKey = 0 }) {
   const isHR = HR_ROLES.includes(currentUser?.role)
 
   // HR defaults to 'all' (Manage All); employees only ever see 'mine'
@@ -132,7 +132,7 @@ export default function LeaveRequests({ currentUser }) {
     }
   }, [loadMine, loadAll, isHR])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, refreshKey])
 
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(form) {
