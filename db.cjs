@@ -489,35 +489,72 @@ const getMyAttendance = async (employeeId) => queryAll(`
 
 const importAttendance = async (records) => {
   let newEmployees = 0, newRecords = 0, skippedRecords = 0
+
+  // 1. Fetch all existing employees into memory to avoid per-record queries
+  const allEmps = await queryAll('SELECT id, employee_no FROM employees')
+  const empMap = new Map() // employee_no -> id
+  for (const e of allEmps) empMap.set(e.employee_no, e.id)
+
+  // 2. Fetch all attendance composite keys into a Set to avoid per-record queries
+  const allAtt = await queryAll('SELECT employee_id, date FROM attendance')
+  const attSet = new Set()
+  for (const a of allAtt) attSet.add(`${a.employee_id}|${a.date}`)
+
+  const batchQueries = []
+  const missingAccounts = [] // Store info to create user accounts after batch
+
   for (const rec of records) {
-    let emp = await queryOne('SELECT id FROM employees WHERE employee_no = ?', [rec.employee_no])
-    if (!emp) {
-      const newId = crypto.randomUUID()
-      await run(
-        `INSERT OR IGNORE INTO employees
-           (id, employee_no, name, status, shift_start, shift_end, day_offs, sync_status)
-         VALUES (?, ?, ?, 'Active', '07:00', '17:30', 'Saturday,Sunday', 'pending')`,
-        [newId, rec.employee_no, rec.employee_no]
-      )
-      emp = { id: newId }
+    let empId = empMap.get(rec.employee_no)
+    
+    if (!empId) {
+      empId = crypto.randomUUID()
+      empMap.set(rec.employee_no, empId)
+      batchQueries.push({
+        sql: `INSERT INTO employees (id, employee_no, name, status, shift_start, shift_end, day_offs, sync_status) VALUES (?, ?, ?, 'Active', '07:00', '17:30', 'Saturday,Sunday', 'pending')`,
+        args: [empId, rec.employee_no, rec.employee_no]
+      })
+      missingAccounts.push({ id: empId, no: rec.employee_no })
       newEmployees++
-      await createEmployeeAccount(newId, rec.employee_no, '')
     }
-    const existing = await queryOne('SELECT id FROM attendance WHERE employee_id=? AND date=?', [emp.id, rec.date])
-    if (existing) { skippedRecords++; continue }
-    await run(
-      `INSERT INTO attendance
-         (id, employee_id, date, shift_in, lunch_out, lunch_in, shift_out,
-          total_hours, status, extra_taps, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      [crypto.randomUUID(), emp.id, rec.date,
-       rec.shift_in ?? null, rec.lunch_out ?? null, rec.lunch_in ?? null, rec.shift_out ?? null,
-       rec.total_hours ?? null, rec.status ?? 'Absent',
-       rec.extraTaps?.length > 0 ? JSON.stringify(rec.extraTaps) : null]
-    )
+
+    const key = `${empId}|${rec.date}`
+    if (attSet.has(key)) {
+      skippedRecords++
+      continue
+    }
+
+    attSet.add(key)
+    batchQueries.push({
+      sql: `INSERT INTO attendance
+              (id, employee_id, date, shift_in, lunch_out, lunch_in, shift_out,
+               total_hours, status, extra_taps, sync_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      args: [
+        crypto.randomUUID(), empId, rec.date,
+        rec.shift_in ?? null, rec.lunch_out ?? null, rec.lunch_in ?? null, rec.shift_out ?? null,
+        rec.total_hours ?? null, rec.status ?? 'Absent',
+        rec.extraTaps?.length > 0 ? JSON.stringify(rec.extraTaps) : null
+      ]
+    })
     newRecords++
   }
-  await syncCloud()
+
+  // 3. Execute all inserts in chunks to prevent blocking the main process
+  const CHUNK_SIZE = 50
+  for (let i = 0; i < batchQueries.length; i += CHUNK_SIZE) {
+    const chunk = batchQueries.slice(i, i + CHUNK_SIZE)
+    await client.batch(chunk)
+    // Yield to let the main process handle OS window events (prevents "Not Responding")
+    await new Promise(r => setTimeout(r, 10))
+  }
+
+  // 4. Create dummy user accounts for any newly discovered employees
+  for (const acc of missingAccounts) {
+    await createEmployeeAccount(acc.id, acc.no, '')
+  }
+
+  // NOTE: We no longer force syncCloud() here because it blocks the main thread
+  // on massive imports. The 10-second background interval will sync this automatically!
   return { newEmployees, newRecords, skippedRecords }
 }
 

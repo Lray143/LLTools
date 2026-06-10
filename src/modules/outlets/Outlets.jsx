@@ -28,8 +28,8 @@ export default function Outlets({ refreshKey = 0 }) {
   const [showArchive,  setShowArchive]  = useState(false)
   const [ordersTarget, setOrdersTarget] = useState(null)   // outlet obj | null
 
-  const load = async () => {
-    setLoading(true)
+  const load = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true)
     const [active, archived] = await Promise.all([
       window.electronAPI.getOutlets(),
       window.electronAPI.getArchivedOutlets(),
@@ -39,7 +39,7 @@ export default function Outlets({ refreshKey = 0 }) {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [refreshKey])
+  useEffect(() => { load(refreshKey === 0) }, [refreshKey])
 
   const handleSave = async (payload) => {
     await window.electronAPI.upsertOutlet(payload)

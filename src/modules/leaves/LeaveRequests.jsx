@@ -118,8 +118,8 @@ export default function LeaveRequests({ currentUser, refreshKey = 0 }) {
     setAllRequests(rows ?? [])
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true)
     try {
       await loadMine()
       if (isHR) await loadAll()
@@ -132,7 +132,7 @@ export default function LeaveRequests({ currentUser, refreshKey = 0 }) {
     }
   }, [loadMine, loadAll, isHR])
 
-  useEffect(() => { load() }, [load, refreshKey])
+  useEffect(() => { load(refreshKey === 0) }, [load, refreshKey])
 
   // ── Submit ────────────────────────────────────────────────────────────────
   async function handleSubmit(form) {

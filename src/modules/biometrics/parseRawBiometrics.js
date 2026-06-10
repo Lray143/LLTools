@@ -1,7 +1,7 @@
 // employeeMap shape:
 // { [employee_no]: { shiftStart, shiftEnd, dayOffs, daySchedule } }
 // daySchedule: { Monday: { start, end } | null, ... }
-export function parseRawBiometrics(text, employeeMap = {}) {
+export async function parseRawBiometrics(text, employeeMap = {}) {
 
   const MIN_VALID_EMP_ID  = 100
   const DEFAULT_START     = "07:00"
@@ -28,10 +28,17 @@ export function parseRawBiometrics(text, employeeMap = {}) {
 
   const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
 
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  // Yield to avoid freezing the UI for massive files
+  await new Promise(r => setTimeout(r, 10))
+
+  const lines = text.split('\n')
   const punchMap = {}
 
-  for (const line of lines) {
+  let processedCount = 0
+  for (const rawLine of lines) {
+    const line = rawLine.trim()
+    if (!line) continue
+
     const cols = line.split(/\s+/)
     if (cols.length < 5) continue
 
@@ -55,6 +62,12 @@ export function parseRawBiometrics(text, employeeMap = {}) {
 
     if      (punchType === '0') punchMap[mapKey].ins.push(dt)
     else if (punchType === '1') punchMap[mapKey].outs.push(dt)
+
+    processedCount++
+    if (processedCount % 5000 === 0) {
+      // Yield every 5000 lines
+      await new Promise(r => setTimeout(r, 0))
+    }
   }
 
   const fmt = (d) => d
@@ -70,8 +83,16 @@ export function parseRawBiometrics(text, employeeMap = {}) {
   }
 
   const parsed = []
+  
+  const entries = Object.values(punchMap)
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
+    
+    // Yield every 100 entries to keep the UI smooth
+    if (i > 0 && i % 100 === 0) {
+      await new Promise(r => setTimeout(r, 0))
+    }
 
-  for (const entry of Object.values(punchMap)) {
     entry.ins.sort((a, b)  => a - b)
     entry.outs.sort((a, b) => a - b)
 
@@ -142,11 +163,11 @@ export function parseRawBiometrics(text, employeeMap = {}) {
 
     // ── Extra taps ────────────────────────────────────────────
     const rawExtras = []
-    entry.ins.forEach((d, i) => {
-      if (!insUsed.has(i)) rawExtras.push({ dt: d, time: fmt(d), type: 'IN' })
+    entry.ins.forEach((d, idx) => {
+      if (!insUsed.has(idx)) rawExtras.push({ dt: d, time: fmt(d), type: 'IN' })
     })
-    entry.outs.forEach((d, i) => {
-      if (!outsUsed.has(i)) rawExtras.push({ dt: d, time: fmt(d), type: 'OUT' })
+    entry.outs.forEach((d, idx) => {
+      if (!outsUsed.has(idx)) rawExtras.push({ dt: d, time: fmt(d), type: 'OUT' })
     })
     rawExtras.sort((a, b) => a.dt - b.dt)
     const extraTaps = rawExtras.length > 0
@@ -215,6 +236,9 @@ export function parseRawBiometrics(text, employeeMap = {}) {
       schedEnd   : shiftEndStr,
     })
   }
+
+  // Yield before sorting just in case
+  await new Promise(r => setTimeout(r, 0))
 
   parsed.sort((a, b) =>
     a.date.localeCompare(b.date) || a.employee_no.localeCompare(b.employee_no)

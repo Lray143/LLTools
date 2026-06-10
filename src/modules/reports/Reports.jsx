@@ -132,8 +132,8 @@ export default function Reports({ currentUser, refreshKey = 0 }) {
     } catch (_) {}
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true)
     try {
       await loadMine()
       if (isAdmin) {
@@ -150,7 +150,7 @@ export default function Reports({ currentUser, refreshKey = 0 }) {
     }
   }, [loadMine, loadAll, loadEmployees, isAdmin])
 
-  useEffect(() => { load() }, [load, refreshKey])
+  useEffect(() => { load(refreshKey === 0) }, [load, refreshKey])
 
   // ── Submit ────────────────────────────────────────────────────────
   async function handleSubmit(form) {
