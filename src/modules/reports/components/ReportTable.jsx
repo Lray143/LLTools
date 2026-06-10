@@ -32,13 +32,13 @@ export function ReportTable({ rows, isAdmin, onRowClick, onNewReport }) {
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y" style={{ divideColor: 'var(--border)' }}>
+        <tbody>
           {rows.map(r => (
             <tr
               key={r.id}
               onClick={() => onRowClick(r)}
               className="cursor-pointer transition-colors group"
-              style={{ background: 'var(--surface)' }}
+              style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
               onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
             >

@@ -5,8 +5,9 @@ import { Plus, Search, User, Users, ChevronDown, Check, Archive } from 'lucide-r
 import { ReportModal }          from './components/ReportModal'
 import { ReportDetailsDrawer }  from './components/ReportDetailsDrawer'
 import { ReportTable }          from './components/ReportTable'
-import { REPORT_TYPES, REPORT_STATUSES, PRIORITIES, ADMIN_ROLES, STATUS_CONFIG } from './components/reportConstants'
+import { REPORT_TYPES, REPORT_STATUSES, PRIORITIES, STATUS_CONFIG } from './components/reportConstants'
 import { Button }               from '../../components/ui/button'
+import { canManageReports }     from '../../lib/permissions'
 
 // ── CustomSelect (matches Employees & LeaveRequests pattern) ─────
 function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
@@ -90,7 +91,7 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
 }
 
 export default function Reports({ currentUser }) {
-  const isAdmin = ADMIN_ROLES.includes(currentUser?.role)
+  const isAdmin = canManageReports(currentUser)
 
   const [adminTab,      setAdminTab]      = useState(isAdmin ? 'all' : 'mine')
   const [myReports,     setMyReports]     = useState([])

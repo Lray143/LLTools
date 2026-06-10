@@ -6,8 +6,9 @@ import {
   Archive, Trash2, Edit, RefreshCw
 } from 'lucide-react'
 import { ReportStatusBadge, PriorityBadge } from './ReportStatusBadge'
-import { formatDateTime, relativeTime, REPORT_STATUSES, ADMIN_ROLES } from './reportConstants'
+import { formatDateTime, relativeTime, REPORT_STATUSES } from './reportConstants'
 import { Button } from '../../../components/ui/button'
+import { canManageReports } from '../../../lib/permissions'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../../components/ui/select"
@@ -30,7 +31,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
   const [submitting, setSubmitting] = useState(false)
   const [assignTo, setAssignTo] = useState(report?.assignedTo ?? '')
 
-  const isAdmin = ADMIN_ROLES.includes(currentUser?.role)
+  const isAdmin = canManageReports(currentUser)
 
   const loadDetails = useCallback(async () => {
     if (!report?.id) return
