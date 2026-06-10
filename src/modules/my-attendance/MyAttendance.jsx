@@ -147,7 +147,7 @@ function buildEmployeeMap(employees) {
   return map
 }
 
-function MyAttendance({ currentUser, refreshKey = 0 }) {
+function MyAttendance({ currentUser, refreshKey = 0, onNavigate }) {
 
   const [records,     setRecords]     = useState([])
   const [employeeMap, setEmployeeMap] = useState({})
@@ -258,7 +258,7 @@ function MyAttendance({ currentUser, refreshKey = 0 }) {
       `}</style>
 
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <MyAttendanceHeader />
+        <MyAttendanceHeader currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
       </div>
 
       <div className="px-8 py-6 flex flex-col gap-6 flex-1 min-h-0">

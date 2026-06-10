@@ -96,21 +96,21 @@ function App() {
     }
 
     // Pages that need currentUser get it as a prop
-    if (activePage === 'my-attendance') return <MyAttendance currentUser={currentUser} refreshKey={refreshKey} />
-    if (activePage === 'leaves')     return <LeaveRequests currentUser={currentUser} refreshKey={refreshKey} />
-    if (activePage === 'reports')    return <Reports currentUser={currentUser} refreshKey={refreshKey} />
+    if (activePage === 'my-attendance') return <MyAttendance currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
+    if (activePage === 'leaves')     return <LeaveRequests currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
+    if (activePage === 'reports')    return <Reports currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
     if (activePage === 'settings')   return <Settings currentUser={currentUser} />
     if (activePage === 'chat')       return <Chat currentUser={currentUser} refreshKey={refreshKey} />
 
     // Static pages
     const STATIC_PAGES = {
-      dashboard:    <Dashboard   refreshKey={refreshKey} />,
-      employees:    <Employees   refreshKey={refreshKey} />,
-      biometrics:   <Biometrics  refreshKey={refreshKey} />,
-      clinic:       <ClinicLog   refreshKey={refreshKey} />,
-      products:     <Products    refreshKey={refreshKey} />,
-      outlets:      <Outlets     refreshKey={refreshKey} />,
-      calculations: <Calculations />,
+      dashboard:    <Dashboard   refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
+      employees:    <Employees   refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
+      biometrics:   <Biometrics  refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
+      clinic:       <ClinicLog   refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
+      products:     <Products    refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
+      outlets:      <Outlets     refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
+      calculations: <Calculations currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />,
     }
     return STATIC_PAGES[activePage] ?? null
   }
@@ -123,6 +123,7 @@ function App() {
         onLogout={handleLogout}
         allowedModules={allowedModules}
         currentUser={currentUser}
+        refreshKey={refreshKey}
       />
       <main className="flex-1 overflow-auto">
         {renderPage()}

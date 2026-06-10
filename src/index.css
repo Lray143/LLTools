@@ -194,15 +194,4 @@
 }
 
 /* ── Prevent Themes from Affecting the Login Page ──────────────────────────── */
-.login-wrapper input,
-.login-wrapper input:focus,
-.dark .login-wrapper input,
-.dark .login-wrapper input:focus {
-  background-color: rgba(255,255,255,0.06) !important;
-  color: #f0e0c0 !important;
-}
-
-.login-wrapper input::placeholder,
-.dark .login-wrapper input::placeholder {
-  color: rgba(200,160,90,0.5) !important;
-}
+/* Login inputs are fully self-contained with inline styles; no overrides needed. */

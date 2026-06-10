@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react"
-import { Bell, Plus, Search, User, Archive, ChevronDown, Check } from "lucide-react"
+import { Plus, Search, User, Archive, ChevronDown, Check } from "lucide-react"
 import { v4 as uuidv4 } from 'uuid'
+import NotificationBell from '../../components/ui/NotificationBell'
 
 import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS, DEFAULT_DAY_SCHEDULE, DAYS_OF_WEEK } from "./employeeConstants"
 import { EmployeeCardGrid } from "./components/EmployeeCardGrid"
@@ -151,7 +152,7 @@ function toDb(emp) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-function Employees({ refreshKey = 0 }) {
+function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   const [employees, setEmployees] = useState([])
   const [archived, setArchived] = useState([])
   const [loading, setLoading] = useState(true)
@@ -250,9 +251,7 @@ function Employees({ refreshKey = 0 }) {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
-            <Bell className="w-4 h-4" />
-          </button>
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
           <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />
           </button>

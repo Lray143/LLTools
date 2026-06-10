@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react"
-import { Bell, Search, User } from "lucide-react"
+import { Search, User } from "lucide-react"
+import NotificationBell from '../../components/ui/NotificationBell'
 import NewEntryForm from "./components/NewEntryForm"
 import VisitsTable from "./components/VisitsTable"
 import VisitModal from "./components/VisitModal"
@@ -104,7 +105,7 @@ function to12(timeStr = "") {
   return `${hour12}:${m} ${ampm}`
 }
 
-export default function ClinicLog({ refreshKey = 0 }) {
+export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
   const todayISO = new Date().toISOString().split("T")[0]
   const nowTime = new Date().toTimeString().slice(0, 5)
 
@@ -364,9 +365,7 @@ export default function ClinicLog({ refreshKey = 0 }) {
               style={{ width: '14rem', height: '34px', fontSize: '13px' }}
             />
           </div>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
-            <Bell className="w-4 h-4" />
-          </button>
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
           <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />
           </button>

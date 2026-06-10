@@ -1,6 +1,7 @@
 // src/modules/outlets/Outlets.jsx
 import { useState, useEffect, useMemo } from 'react'
-import { Search, Bell, User } from 'lucide-react'
+import { Search, User } from 'lucide-react'
+import NotificationBell from '../../components/ui/NotificationBell'
 
 import OutletToolbar       from './components/OutletToolbar'
 import OutletCardGrid      from './components/OutletCardGrid'
@@ -11,7 +12,7 @@ import OutletDeleteModal   from './components/OutletDeleteModal'
 import OutletArchiveDrawer from './components/OutletArchiveDrawer'
 import OutletOrdersDrawer  from './components/OutletOrdersDrawer'
 
-export default function Outlets({ refreshKey = 0 }) {
+export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
   const [outlets,         setOutlets]         = useState([])
   const [archivedOutlets, setArchivedOutlets] = useState([])
   const [loading,         setLoading]         = useState(true)
@@ -105,9 +106,7 @@ export default function Outlets({ refreshKey = 0 }) {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
-            <Bell className="w-4 h-4" />
-          </button>
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
           <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />
           </button>

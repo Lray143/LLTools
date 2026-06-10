@@ -28,7 +28,7 @@ const matchesSearch = (row, term) => {
   )
 }
 
-export default function CalculationsTable() {
+export default function CalculationsTable({ currentUser, refreshKey = 0, onNavigate }) {
   // ── Product data ─────────────────────────────────────────────────
   const [groups,  setGroups]  = useState([])
   const [loading, setLoading] = useState(true)
@@ -159,6 +159,9 @@ export default function CalculationsTable() {
         totalGroups={totalGroups}
         hasQty={hasQty}
         onClearAll={handleClearAll}
+        currentUser={currentUser}
+        refreshKey={refreshKey}
+        onNavigate={onNavigate}
       />
 
       {/* ── MONTHLY SUMMARY MODE ──────────────────────────────────── */}

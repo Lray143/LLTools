@@ -29,7 +29,7 @@ const ALL_NAV_ITEMS = [
 const CHAT_ITEM     = { id: 'chat',     label: 'Department Chat', icon: MessageSquare }
 const SETTINGS_ITEM = { id: 'settings', label: 'Settings', icon: Settings }
 
-function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange }) {
+function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange, refreshKey = 0 }) {
   const [isPinned, setIsPinned]   = useState(true)
   const [isHovered, setIsHovered] = useState(false)
 

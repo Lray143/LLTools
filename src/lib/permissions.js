@@ -14,7 +14,16 @@
 // included for every department:
 //   - biometrics: all employees can view their own attendance
 //   - reports/leaves/settings: standard self-service access
+//
+// REPORTS MODULE RBAC:
+//   - All employees can VIEW reports (submit + track their own)
+//   - Only Admin/HR (by role OR department) can approve, change
+//     status, assign, archive, and delete reports.
 // ─────────────────────────────────────────────────────────────
+
+// Roles/departments that have full report management access
+export const REPORT_MANAGER_ROLES       = ['admin', 'hr']
+export const REPORT_MANAGER_DEPARTMENTS = ['Admin', 'HR']
 
 export const DEPT_MODULES = {
   'HR': [
@@ -99,4 +108,18 @@ export const getAllowedModules = (user) => {
 
 export const canAccess = (user, module) => {
   return getAllowedModules(user).includes(module)
+}
+
+// ─────────────────────────────────────────────────────────────
+// REPORT MANAGEMENT PERMISSION
+// Returns true for:
+//   - System accounts with role 'admin' or 'hr'
+//   - Employee accounts whose department is 'Admin' or 'HR'
+// All other users can only view & submit their own reports.
+// ─────────────────────────────────────────────────────────────
+export const canManageReports = (user) => {
+  if (!user) return false
+  if (REPORT_MANAGER_ROLES.includes(user.role))             return true
+  if (REPORT_MANAGER_DEPARTMENTS.includes(user.department)) return true
+  return false
 }
