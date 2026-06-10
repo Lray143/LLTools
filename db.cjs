@@ -301,9 +301,27 @@ const initDb = async () => {
       file_url     TEXT,
       created_at   TEXT DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS chat_read_receipts (
+      user_id      TEXT NOT NULL,
+      room_id      TEXT NOT NULL,
+      last_read_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, room_id)
+    );
     CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date);
     CREATE INDEX IF NOT EXISTS idx_chat_dept ON department_chats(department);
     CREATE INDEX IF NOT EXISTS idx_dm_room ON direct_messages(room_id);
+    
+    -- Performance Indexes for Background Polling --
+    CREATE INDEX IF NOT EXISTS idx_employees_name ON employees(name);
+    CREATE INDEX IF NOT EXISTS idx_employees_status ON employees(status);
+    CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+    CREATE INDEX IF NOT EXISTS idx_leave_emp_no ON leave_requests(employee_no);
+    CREATE INDEX IF NOT EXISTS idx_leave_created ON leave_requests(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_reports_created ON reports(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_reports_emp_no ON reports(employee_no);
+    CREATE INDEX IF NOT EXISTS idx_clinic_date_time ON clinic_logs(date DESC, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_outlets_name ON outlets(name);
+    CREATE INDEX IF NOT EXISTS idx_products_sort ON products(group_id, sort_order, created_at);
   `)
 
   // ── Seed admin user ────────────────────────────────────────────────────────
@@ -353,12 +371,13 @@ const initDb = async () => {
 // ── AUTH ───────────────────────────────────────────────────────────────────────
 const loginUser = async (username, password) => {
   const user = await queryOne(`
-    SELECT u.*, e.department, e.name AS employee_name, e.position AS employee_position
+    SELECT u.*, e.status AS employee_status, e.department, e.name AS employee_name, e.position AS employee_position
     FROM users u
     LEFT JOIN employees e ON e.id = u.employee_id
     WHERE u.username = ?
   `, [username])
   if (!user) return { success: false, message: 'User not found.' }
+  if (user.employee_status === 'Archived') return { success: false, message: 'This account has been deactivated.' }
   if (!bcrypt.compareSync(password, user.password_hash)) return { success: false, message: 'Incorrect password.' }
   return {
     success: true,
@@ -502,7 +521,10 @@ const upsertEmployee = async (emp) => {
 
 const archiveEmployee         = async (id) => run("UPDATE employees SET status='Archived', sync_status='pending' WHERE id=?", [id])
 const unarchiveEmployee       = async (id) => run("UPDATE employees SET status='Active',   sync_status='pending' WHERE id=?", [id])
-const permanentDeleteEmployee = async (id) => run("DELETE FROM employees WHERE id=?", [id])
+const permanentDeleteEmployee = async (id) => {
+  await run("DELETE FROM users WHERE employee_id=?", [id])
+  return run("DELETE FROM employees WHERE id=?", [id])
+}
 
 // ── ATTENDANCE ────────────────────────────────────────────────────────────────
 const getAttendance = async () => queryAll(`
@@ -967,6 +989,66 @@ const sendDirectMessage = async ({ id, roomId, senderId, senderName, message, fi
   `, [id, roomId, senderId, senderName, message || null, fileUrl || null])
 }
 
+const markChatAsRead = async (userId, roomId) => {
+  await run(`
+    INSERT INTO chat_read_receipts (user_id, room_id, last_read_at)
+    VALUES (?, ?, datetime('now'))
+    ON CONFLICT(user_id, room_id) DO UPDATE SET last_read_at = datetime('now')
+  `, [userId, roomId])
+}
+
+const getChatSidebarData = async (userId) => {
+  // Get latest message timestamp per department
+  const depts = await queryAll(`
+    SELECT department as room_id, MAX(created_at) as last_msg_at
+    FROM department_chats
+    GROUP BY department
+  `)
+
+  // Get latest message timestamp per DM room involving the user
+  // DM room format is DM_id1_id2
+  const dms = await queryAll(`
+    SELECT room_id, MAX(created_at) as last_msg_at
+    FROM direct_messages
+    WHERE room_id LIKE ? OR room_id LIKE ?
+    GROUP BY room_id
+  `, [`%_${userId}_%`, `%_${userId}`]) 
+
+  // Wait, room_id is DM_id1_id2. A simpler LIKE check covers it:
+  // e.g. LIKE '%DM_%' 
+  // For safety, we can just fetch all DM rooms that contain the user's ID
+  const allDms = await queryAll(`
+    SELECT room_id, MAX(created_at) as last_msg_at
+    FROM direct_messages
+    WHERE room_id LIKE ? OR room_id LIKE ?
+    GROUP BY room_id
+  `, [`DM_${userId}_%`, `DM_%_${userId}`])
+
+  // Get the user's read receipts
+  const receipts = await queryAll(`
+    SELECT room_id, last_read_at 
+    FROM chat_read_receipts 
+    WHERE user_id = ?
+  `, [userId])
+
+  const receiptMap = receipts.reduce((acc, r) => {
+    acc[r.room_id] = r.last_read_at
+    return acc
+  }, {})
+
+  return {
+    departments: depts.map(d => ({
+      roomId: d.room_id,
+      lastMsgAt: d.last_msg_at,
+      unread: !receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id]
+    })),
+    dms: allDms.map(d => ({
+      roomId: d.room_id,
+      lastMsgAt: d.last_msg_at,
+      unread: !receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id]
+    }))
+  }
+}
 // ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
   initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud,
@@ -988,6 +1070,6 @@ module.exports = {
   updateReportStatus, assignReport, addReportComment,
   getReportComments, getReportStatusLogs,
   updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
-  getDepartmentChats, sendDepartmentChat,
-  getDirectMessages, sendDirectMessage,
+  getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
+  markChatAsRead, getChatSidebarData
 }

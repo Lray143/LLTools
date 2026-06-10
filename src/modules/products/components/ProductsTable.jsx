@@ -52,7 +52,10 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
 
   useEffect(() => {
     window.electronAPI.getProductGroups()
-      .then((data) => setGroups(data?.length ? data : INITIAL_GROUPS))
+      .then((data) => {
+        const newGroups = data?.length ? data : INITIAL_GROUPS
+        setGroups(prev => JSON.stringify(prev) === JSON.stringify(newGroups) ? prev : newGroups)
+      })
       .catch(() => setGroups(INITIAL_GROUPS))
       .finally(() => setLoading(false))
   }, [refreshKey])

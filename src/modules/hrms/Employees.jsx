@@ -167,8 +167,13 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
       window.electronAPI.getEmployees(),
       window.electronAPI.getArchivedEmployees(),
     ])
-    setEmployees(active.map(fromDb))
-    setArchived(arch.map(fromDb))
+    
+    const newActive = active.map(fromDb)
+    const newArchived = arch.map(fromDb)
+    
+    setEmployees(prev => JSON.stringify(prev) === JSON.stringify(newActive) ? prev : newActive)
+    setArchived(prev => JSON.stringify(prev) === JSON.stringify(newArchived) ? prev : newArchived)
+    
     setLoading(false)
   }, [])
 

@@ -35,8 +35,13 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
       window.electronAPI.getOutlets(),
       window.electronAPI.getArchivedOutlets(),
     ])
-    setOutlets(active    ?? [])
-    setArchivedOutlets(archived ?? [])
+    
+    const newActive = active ?? []
+    const newArchived = archived ?? []
+    
+    setOutlets(prev => JSON.stringify(prev) === JSON.stringify(newActive) ? prev : newActive)
+    setArchivedOutlets(prev => JSON.stringify(prev) === JSON.stringify(newArchived) ? prev : newArchived)
+    
     setLoading(false)
   }
 

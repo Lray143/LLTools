@@ -141,7 +141,12 @@ export function AppearanceSection({ currentUser }) {
       </SettingRow>
 
       {/* ── Save Button ──────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '32px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginTop: '32px', gap: '12px' }}>
+        {themeId !== getSavedTheme() && (
+          <span style={{ color: 'var(--accent-bg)', fontSize: '14px', fontWeight: 500 }}>
+            You are previewing a theme. Click Save below to keep it!
+          </span>
+        )}
         <button
           onClick={handleSave}
           disabled={saveState === 'saving'}

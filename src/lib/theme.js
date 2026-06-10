@@ -139,8 +139,28 @@ export const THEMES = [
       accentBg: '#0ea5e9',
       accentText: '#ffffff',
       accentHover: '#0284c7',
-      sidebarBg: '#082f49',
+      sidebarBg: '#0369a1',
       sidebarActive: '#38bdf8'
+    }
+  },
+  {
+    id: 'discord',
+    name: 'Discord Dark',
+    type: 'dark',
+    colors: {
+      pageBg: '#313338',
+      pageBgAlt: '#2b2d31',
+      surface: '#383a40',
+      surfaceHover: '#404249',
+      border: '#1e1f22',
+      borderStrong: '#2b2d31',
+      textPrimary: '#dbdee1',
+      textSecondary: '#949ba4',
+      accentBg: '#5865f2',
+      accentText: '#ffffff',
+      accentHover: '#4752c4',
+      sidebarBg: '#1e1f22',
+      sidebarActive: '#5865f2'
     }
   },
   {
@@ -202,6 +222,46 @@ export const THEMES = [
       sidebarBg: '#171439',
       sidebarActive: '#8b5cf6'
     }
+  },
+  {
+    id: 'vercel',
+    name: 'Vercel Geist',
+    type: 'light',
+    colors: {
+      pageBg: '#fafafa',
+      pageBgAlt: '#f5f5f5',
+      surface: '#ffffff',
+      surfaceHover: '#fafafa',
+      border: '#eaeaea',
+      borderStrong: '#999999',
+      textPrimary: '#000000',
+      textSecondary: '#666666',
+      accentBg: '#000000',
+      accentText: '#ffffff',
+      accentHover: '#333333',
+      sidebarBg: '#ffffff',
+      sidebarActive: '#000000'
+    }
+  },
+  {
+    id: 'cyberpunk',
+    name: 'Midnight Purple',
+    type: 'dark',
+    colors: {
+      pageBg: '#0f0913',
+      pageBgAlt: '#0a050d',
+      surface: '#1d122b',
+      surfaceHover: '#2a1a3e',
+      border: '#3c2358',
+      borderStrong: '#5e368c',
+      textPrimary: '#e2d4f0',
+      textSecondary: '#a58ec2',
+      accentBg: '#9d4edd',
+      accentText: '#ffffff',
+      accentHover: '#b15eff',
+      sidebarBg: '#0a050d',
+      sidebarActive: '#c77dff'
+    }
   }
 ]
 
@@ -230,8 +290,13 @@ export function saveTheme(themeId) {
 // ── Apply theme to document ──────────────────────────────────────────────────
 
 export function applyThemeToDocument(themeId) {
-  const theme = THEMES.find(t => t.id === themeId) || THEMES[0]
   const root = document.documentElement
+  
+  // Performance optimization: prevent full DOM style recalculations if the theme is already active
+  if (root.dataset.activeTheme === themeId) return
+  root.dataset.activeTheme = themeId
+
+  const theme = THEMES.find(t => t.id === themeId) || THEMES[0]
 
   // Set CSS custom properties
   root.style.setProperty('--page-bg',        theme.colors.pageBg)

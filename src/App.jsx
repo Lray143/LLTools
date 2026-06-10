@@ -31,11 +31,11 @@ function App() {
     applyThemeToDocument(getSavedTheme())
   }, [])
 
-  // Use a ref so the effect closure always has the latest user ID without re-binding
-  const currentUserIdRef = useRef(currentUser?.id)
+  // Use a ref so the effect closure always has the latest user without re-binding
+  const currentUserRef = useRef(currentUser)
   useEffect(() => {
-    currentUserIdRef.current = currentUser?.id
-  }, [currentUser?.id])
+    currentUserRef.current = currentUser
+  }, [currentUser])
 
   // Listen for cloud sync events from the main process
   useEffect(() => {
@@ -43,13 +43,20 @@ function App() {
     const cleanup = window.electronAPI.onDbSynced(async () => {
       setRefreshKey(k => k + 1)
       
-      const uid = currentUserIdRef.current
-      if (uid) {
+      const current = currentUserRef.current
+      if (current?.id) {
         try {
-          const freshUser = await window.electronAPI.refreshUser(uid)
+          const freshUser = await window.electronAPI.refreshUser(current.id)
           if (freshUser) {
-            setCurrentUser(freshUser)
-            applyThemeToDocument(freshUser.themeColor || 'original-light')
+            // ONLY update state if the data actually changed, otherwise we cause
+            // massive re-render cascades every 2 seconds!
+            if (JSON.stringify(freshUser) !== JSON.stringify(current)) {
+              setCurrentUser(freshUser)
+              if (freshUser.themeColor !== current.themeColor) {
+                applyThemeToDocument(freshUser.themeColor || 'original-light')
+                saveTheme(freshUser.themeColor || 'original-light')
+              }
+            }
           }
         } catch (e) {
           console.error('Failed to auto-refresh session:', e)

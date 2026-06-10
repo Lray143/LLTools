@@ -114,23 +114,27 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
   // ── Data loading ────────────────────────────────────────────────
   const loadMine = useCallback(async () => {
     const rows = await window.electronAPI.getMyReports(currentUser.username, false)
-    setMyReports(rows ?? [])
+    const newRows = rows ?? []
+    setMyReports(prev => JSON.stringify(prev) === JSON.stringify(newRows) ? prev : newRows)
   }, [currentUser?.username])
 
   const loadAll = useCallback(async () => {
     const rows = await window.electronAPI.getReports(false)
-    setAllReports(rows ?? [])
+    const newRows = rows ?? []
+    setAllReports(prev => JSON.stringify(prev) === JSON.stringify(newRows) ? prev : newRows)
   }, [])
 
   const loadArchived = useCallback(async () => {
     const rows = await window.electronAPI.getReports(true)
-    setArchivedReports(rows ?? [])
+    const newRows = rows ?? []
+    setArchivedReports(prev => JSON.stringify(prev) === JSON.stringify(newRows) ? prev : newRows)
   }, [])
 
   const loadEmployees = useCallback(async () => {
     try {
       const rows = await window.electronAPI.getEmployees()
-      setEmployees(rows ?? [])
+      const newRows = rows ?? []
+      setEmployees(prev => JSON.stringify(prev) === JSON.stringify(newRows) ? prev : newRows)
     } catch (_) {}
   }, [])
 

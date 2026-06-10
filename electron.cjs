@@ -152,7 +152,7 @@ ipcMain.handle('chat:getMessages', async (_, dept) => {
 ipcMain.handle('chat:sendMessage', async (_, msgData) => {
   const db = await import('./db.cjs')
   await db.sendDepartmentChat(msgData)
-  await db.syncCloud() // Push immediately
+  // Background worker handles the sync
 })
 ipcMain.handle('chat:getDMs', async (_, roomId) => {
   const db = await import('./db.cjs')
@@ -161,7 +161,18 @@ ipcMain.handle('chat:getDMs', async (_, roomId) => {
 ipcMain.handle('chat:sendDM', async (_, msgData) => {
   const db = await import('./db.cjs')
   await db.sendDirectMessage(msgData)
-  await db.syncCloud() // Push immediately
+  // Background worker handles the sync
+})
+ipcMain.handle('chat:markAsRead', async (_, userId, roomId) => {
+  const db = await import('./db.cjs')
+  await db.markChatAsRead(userId, roomId)
+  // We DO NOT force db.syncCloud() here because it locks the database
+  // and prevents getChatMessages from loading instantly when switching channels.
+  // The background 2-second interval sync will pick this up automatically.
+})
+ipcMain.handle('chat:getSidebarData', async (_, userId) => {
+  const db = await import('./db.cjs')
+  return await db.getChatSidebarData(userId)
 })
 ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeType) => {
   const buffer = Buffer.from(arrayBuffer)
@@ -187,16 +198,19 @@ app.whenReady().then(async () => {
   await initDb()
   createWindow()
 
-  // ── Background sync every 30 seconds ──────────────────────────
-  // Pulls latest cloud data into the local embedded replica so all
-  // computers stay in sync without needing to restart the app.
-  setInterval(async () => {
-    await syncCloud()
-    // Notify the renderer so all open modules can refresh their data
-    if (mainWindow && !mainWindow.isDestroyed()) {
+  // ── Background sync in a dedicated worker thread ──────────────
+  // This completely offloads the heavy DB sync operations from the main
+  // thread, meaning the UI and typing will never lag!
+  const { Worker } = require('worker_threads')
+  const syncWorker = new Worker(path.join(__dirname, 'sync-worker.cjs'), {
+    workerData: { dbPath: path.join(app.getPath('userData'), 'lltools-turso.db') }
+  })
+  
+  syncWorker.on('message', (msg) => {
+    if (msg === 'synced' && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('db:synced')
     }
-  }, 2_000)
+  })
 })
 
 app.on('window-all-closed', () => {

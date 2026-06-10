@@ -154,7 +154,8 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
   const loadEmployees = useCallback(async () => {
     try {
       const rows = await window.electronAPI.getEmployees()
-      setEmployees(rows.map(empFromDb))
+      const newEmps = rows.map(empFromDb)
+      setEmployees(prev => JSON.stringify(prev) === JSON.stringify(newEmps) ? prev : newEmps)
     } catch (err) {
       console.error("[ClinicLog] getEmployees failed:", err)
     }
@@ -175,7 +176,8 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
         window.electronAPI.getClinicLogs(),
         fetchMaps(),
       ])
-      setVisits(rows.map(r => dbToVisit(r, maps)))
+      const newVisits = rows.map(r => dbToVisit(r, maps))
+      setVisits(prev => JSON.stringify(prev) === JSON.stringify(newVisits) ? prev : newVisits)
     } catch (err) {
       console.error("[ClinicLog] getClinicLogs failed:", err)
     } finally {
@@ -189,7 +191,8 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
         window.electronAPI.getArchivedClinicLogs(),
         fetchMaps(),
       ])
-      setArchived(rows.map(r => dbToVisit(r, maps)))
+      const newArch = rows.map(r => dbToVisit(r, maps))
+      setArchived(prev => JSON.stringify(prev) === JSON.stringify(newArch) ? prev : newArch)
     } catch (err) {
       console.error("[ClinicLog] getArchivedClinicLogs failed:", err)
     }

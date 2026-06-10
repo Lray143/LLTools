@@ -32,11 +32,13 @@ window.electronAPI = {
   permanentDeleteReport:   (id)       => ipcRenderer.invoke('reports:permanentDelete', id),
 
   // ── Chat ────────────────────────────────────────────────────────
-  getChatMessages:         (dept)     => ipcRenderer.invoke('chat:getMessages', dept),
-  sendChatMessage:         (msg)      => ipcRenderer.invoke('chat:sendMessage', msg),
-  getDirectMessages:       (roomId)   => ipcRenderer.invoke('chat:getDMs', roomId),
-  sendDirectMessage:       (msg)      => ipcRenderer.invoke('chat:sendDM', msg),
-  uploadAttachment:        (path, name, type) => ipcRenderer.invoke('chat:uploadAttachment', path, name, type),
+  getChatMessages: (dept) => ipcRenderer.invoke('chat:getMessages', dept),
+  sendChatMessage: (msg) => ipcRenderer.invoke('chat:sendMessage', msg),
+  getDirectMessages: (roomId) => ipcRenderer.invoke('chat:getDMs', roomId),
+  sendDirectMessage: (msg) => ipcRenderer.invoke('chat:sendDM', msg),
+  markChatAsRead: (userId, roomId) => ipcRenderer.invoke('chat:markAsRead', userId, roomId),
+  getChatSidebarData: (userId) => ipcRenderer.invoke('chat:getSidebarData', userId),
+  uploadAttachment: (buffer, name, type) => ipcRenderer.invoke('chat:uploadAttachment', buffer, name, type),
 
   // ── Products ────────────────────────────────────────────────────
   getProductGroups:        ()        => ipcRenderer.invoke('products:getAll'),

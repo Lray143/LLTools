@@ -111,12 +111,14 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
   // ── Data loading ──────────────────────────────────────────────────────────
   const loadMine = useCallback(async () => {
     const rows = await window.electronAPI.getMyLeaveRequests(currentUser.username)
-    setMyRequests(rows ?? [])
+    const newRows = rows ?? []
+    setMyRequests(prev => JSON.stringify(prev) === JSON.stringify(newRows) ? prev : newRows)
   }, [currentUser?.username])
 
   const loadAll = useCallback(async () => {
     const rows = await window.electronAPI.getLeaveRequests()
-    setAllRequests(rows ?? [])
+    const newRows = rows ?? []
+    setAllRequests(prev => JSON.stringify(prev) === JSON.stringify(newRows) ? prev : newRows)
   }, [])
 
   const load = useCallback(async (showSpinner = true) => {
