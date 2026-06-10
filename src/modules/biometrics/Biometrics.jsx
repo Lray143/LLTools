@@ -148,7 +148,7 @@ function buildEmployeeMap(employees) {
   return map
 }
 
-function Biometrics({ refreshKey = 0 }) {
+function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
 
   const [records,     setRecords]     = useState([])
   const [employeeMap, setEmployeeMap] = useState({})
@@ -336,7 +336,7 @@ function Biometrics({ refreshKey = 0 }) {
       `}</style>
 
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <BiometricHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        <BiometricHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
       </div>
 
       <div className="px-8 py-6 flex flex-col gap-6 flex-1 min-h-0">

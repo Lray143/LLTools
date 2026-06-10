@@ -1,9 +1,10 @@
 // src/modules/products/Products.jsx
 import { useState } from 'react'
-import { Search, Bell, User } from 'lucide-react'
+import { Search, User } from 'lucide-react'
+import NotificationBell from '../../components/ui/NotificationBell'
 import ProductsTable from './components/ProductsTable'
 
-export default function Products({ refreshKey = 0 }) {
+export default function Products({ refreshKey = 0, currentUser, onNavigate }) {
   const [search, setSearch] = useState('')
 
   return (
@@ -22,9 +23,7 @@ export default function Products({ refreshKey = 0 }) {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <button className="flex items-center justify-center rounded-lg transition-colors" style={{ width: '34px', height: '34px', color: 'var(--text-secondary)' }}>
-            <Bell className="w-4 h-4" />
-          </button>
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
           <button className="flex items-center justify-center rounded-lg transition-colors" style={{ width: '34px', height: '34px', color: 'var(--text-secondary)' }}>
             <User className="w-4 h-4" />
           </button>

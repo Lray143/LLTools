@@ -1,6 +1,7 @@
 // src/modules/calculations/components/CalculationsToolbar.jsx
 import { useState, useRef, useEffect } from 'react'
-import { Search, Bell, User, Store, RotateCcw, BarChart2, Table2, ChevronDown, Check } from 'lucide-react'
+import { Search, User, Store, RotateCcw, BarChart2, Table2, ChevronDown, Check } from 'lucide-react'
+import NotificationBell from '../../../components/ui/NotificationBell'
 
 // ── Shared inline styles (matches Employees / Outlets) ──────────────
 const displayPill = {
@@ -101,6 +102,9 @@ export default function CalculationsToolbar({
   totalGroups,
   hasQty,
   onClearAll,
+  currentUser,
+  refreshKey,
+  onNavigate,
 }) {
   const isSummary = mode === 'summary'
 
@@ -127,9 +131,7 @@ export default function CalculationsToolbar({
               onChange={e => onSearchChange(e.target.value)}
             />
           </div>
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
-            <Bell className="w-4 h-4" />
-          </button>
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
           <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />
           </button>

@@ -8,6 +8,7 @@ import { ViewDetailsModal }  from './components/ViewDetailsModal'
 import { LeaveTable }        from './components/LeaveTable'
 import { HR_ROLES }          from './components/leaveConstants'
 import { Button }            from '../../components/ui/button'
+import NotificationBell      from '../../components/ui/NotificationBell'
 
 // ── CustomSelect (matches BiometricFilterBar and Employees) ──────────────────
 function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
@@ -90,7 +91,7 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
   )
 }
 
-export default function LeaveRequests({ currentUser, refreshKey = 0 }) {
+export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate }) {
   const isHR = HR_ROLES.includes(currentUser?.role)
 
   // HR defaults to 'all' (Manage All); employees only ever see 'mine'
@@ -268,6 +269,7 @@ export default function LeaveRequests({ currentUser, refreshKey = 0 }) {
             <Plus size={14} />
             New Request
           </Button>
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
       </div>
 

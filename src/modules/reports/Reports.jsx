@@ -8,6 +8,7 @@ import { ReportTable }          from './components/ReportTable'
 import { REPORT_TYPES, REPORT_STATUSES, PRIORITIES, STATUS_CONFIG } from './components/reportConstants'
 import { Button }               from '../../components/ui/button'
 import { canManageReports }     from '../../lib/permissions'
+import NotificationBell         from '../../components/ui/NotificationBell'
 
 // ── CustomSelect (matches Employees & LeaveRequests pattern) ─────
 function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
@@ -90,13 +91,8 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
   )
 }
 
-<<<<<<< HEAD
-export default function Reports({ currentUser }) {
+export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
   const isAdmin = canManageReports(currentUser)
-=======
-export default function Reports({ currentUser, refreshKey = 0 }) {
-  const isAdmin = ADMIN_ROLES.includes(currentUser?.role)
->>>>>>> 310c467bacc344dde6ea7cc3a241829475ee6bf2
 
   const [adminTab,      setAdminTab]      = useState(isAdmin ? 'all' : 'mine')
   const [myReports,     setMyReports]     = useState([])
@@ -310,6 +306,7 @@ export default function Reports({ currentUser, refreshKey = 0 }) {
             <Plus size={14} />
             New Report
           </Button>
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
       </div>
 
