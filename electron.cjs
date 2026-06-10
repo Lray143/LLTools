@@ -3,7 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const crypto = require('crypto')
 const {
-  initDb, loginUser,
+  initDb, loginUser, syncCloud,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
@@ -147,6 +147,14 @@ ipcMain.handle('attachments:open', async (_, filepath) => {
 app.whenReady().then(async () => {
   await initDb()
   createWindow()
+
+  // ── Background sync every 30 seconds ──────────────────────────
+  // Pulls latest cloud data into the local embedded replica so all
+  // computers stay in sync without needing to restart the app.
+  setInterval(async () => {
+    await syncCloud()
+    console.log('[DB] Background sync completed')
+  }, 10_000)
 })
 
 app.on('window-all-closed', () => {
