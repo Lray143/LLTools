@@ -352,7 +352,29 @@ const loginUser = async (username, password) => {
       position     : user.employee_position  ?? null,
       themeColor   : user.theme_color        ?? null,
       themeMode    : user.theme_mode         ?? 'light',
+      themeMode    : user.theme_mode         ?? 'light',
     },
+  }
+}
+
+const refreshUser = async (id) => {
+  const user = await queryOne(`
+    SELECT u.*, e.department, e.name AS employee_name, e.position AS employee_position
+    FROM users u
+    LEFT JOIN employees e ON e.id = u.employee_id
+    WHERE u.id = ?
+  `, [id])
+  if (!user) return null
+  return {
+    id           : user.id,
+    username     : user.username,
+    role         : user.role,
+    employeeId   : user.employee_id        ?? null,
+    department   : user.department         ?? null,
+    employeeName : user.employee_name      ?? null,
+    position     : user.employee_position  ?? null,
+    themeColor   : user.theme_color        ?? null,
+    themeMode    : user.theme_mode         ?? 'light',
   }
 }
 
@@ -876,7 +898,7 @@ const permanentDeleteReport = async (id) => {
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
-  initDb, loginUser, queryAll, queryOne, run, syncCloud,
+  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 import LoginPage   from './components/ui/LoginPage'
@@ -30,11 +30,30 @@ function App() {
     applyThemeToDocument(getSavedTheme())
   }, [])
 
+  // Use a ref so the effect closure always has the latest user ID without re-binding
+  const currentUserIdRef = useRef(currentUser?.id)
+  useEffect(() => {
+    currentUserIdRef.current = currentUser?.id
+  }, [currentUser?.id])
+
   // Listen for cloud sync events from the main process
   useEffect(() => {
     if (!window.electronAPI?.onDbSynced) return
-    const cleanup = window.electronAPI.onDbSynced(() => {
+    const cleanup = window.electronAPI.onDbSynced(async () => {
       setRefreshKey(k => k + 1)
+      
+      const uid = currentUserIdRef.current
+      if (uid) {
+        try {
+          const freshUser = await window.electronAPI.refreshUser(uid)
+          if (freshUser) {
+            setCurrentUser(freshUser)
+            applyThemeToDocument(freshUser.themeColor || 'original-light')
+          }
+        } catch (e) {
+          console.error('Failed to auto-refresh session:', e)
+        }
+      }
     })
     return cleanup
   }, [])

@@ -49,6 +49,10 @@ function createWindow() {
 
 // ── AUTH ──────────────────────────────────────────────────────────
 ipcMain.handle('auth:login', (_, creds) => loginUser(creds.username, creds.password))
+ipcMain.handle('auth:refresh', async (_, id) => {
+  const db = await import('./db.cjs')
+  return await db.refreshUser(id)
+})
 
 // ── EMPLOYEES ─────────────────────────────────────────────────────
 ipcMain.handle('employees:getAll',      ()       => getEmployees())

@@ -2,7 +2,8 @@ const { ipcRenderer } = require('electron')
 
 window.electronAPI = {
   // ── Auth ────────────────────────────────────────────────────────
-  login:                   (creds)   => ipcRenderer.invoke('auth:login', creds),
+  login:                   (creds)              => ipcRenderer.invoke('auth:login', creds),
+  refreshUser:             (id)                 => ipcRenderer.invoke('auth:refresh', id),
 
   // ── Employees ───────────────────────────────────────────────────
   getEmployees:            ()        => ipcRenderer.invoke('employees:getAll'),
