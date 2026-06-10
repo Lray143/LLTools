@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Search, Bell, User } from 'lucide-react'
 import ProductsTable from './components/ProductsTable'
 
-export default function Products() {
+export default function Products({ refreshKey = 0 }) {
   const [search, setSearch] = useState('')
 
   return (
@@ -30,7 +30,7 @@ export default function Products() {
           </button>
         </div>
       </div>
-      <ProductsTable search={search} onSearchChange={setSearch} />
+      <ProductsTable search={search} onSearchChange={setSearch} refreshKey={refreshKey} />
     </div>
   )
 }

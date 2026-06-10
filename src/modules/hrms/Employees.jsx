@@ -151,7 +151,7 @@ function toDb(emp) {
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
-function Employees() {
+function Employees({ refreshKey = 0 }) {
   const [employees, setEmployees] = useState([])
   const [archived, setArchived] = useState([])
   const [loading, setLoading] = useState(true)
@@ -171,7 +171,7 @@ function Employees() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { loadEmployees() }, [loadEmployees])
+  useEffect(() => { loadEmployees() }, [loadEmployees, refreshKey])
 
   function nextEmployeeNo() {
     const all = [...employees, ...archived]

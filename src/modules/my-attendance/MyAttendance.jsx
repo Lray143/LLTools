@@ -147,7 +147,7 @@ function buildEmployeeMap(employees) {
   return map
 }
 
-function MyAttendance({ currentUser }) {
+function MyAttendance({ currentUser, refreshKey = 0 }) {
 
   const [records,     setRecords]     = useState([])
   const [employeeMap, setEmployeeMap] = useState({})
@@ -176,7 +176,7 @@ function MyAttendance({ currentUser }) {
       if (latest) setSelectedDate(isoToDate(latest))
     }
     load()
-  }, [])
+  }, [currentUser?.employeeId, refreshKey])
 
   // Build the list of years that actually have records, for the year picker.
   const availableYears = [...new Set(

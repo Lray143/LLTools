@@ -11,7 +11,7 @@ import OutletDeleteModal   from './components/OutletDeleteModal'
 import OutletArchiveDrawer from './components/OutletArchiveDrawer'
 import OutletOrdersDrawer  from './components/OutletOrdersDrawer'
 
-export default function Outlets() {
+export default function Outlets({ refreshKey = 0 }) {
   const [outlets,         setOutlets]         = useState([])
   const [archivedOutlets, setArchivedOutlets] = useState([])
   const [loading,         setLoading]         = useState(true)
@@ -28,8 +28,8 @@ export default function Outlets() {
   const [showArchive,  setShowArchive]  = useState(false)
   const [ordersTarget, setOrdersTarget] = useState(null)   // outlet obj | null
 
-  const load = async () => {
-    setLoading(true)
+  const load = async (showSpinner = true) => {
+    if (showSpinner) setLoading(true)
     const [active, archived] = await Promise.all([
       window.electronAPI.getOutlets(),
       window.electronAPI.getArchivedOutlets(),
@@ -39,7 +39,7 @@ export default function Outlets() {
     setLoading(false)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(refreshKey === 0) }, [refreshKey])
 
   const handleSave = async (payload) => {
     await window.electronAPI.upsertOutlet(payload)

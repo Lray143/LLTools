@@ -90,8 +90,13 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
   )
 }
 
+<<<<<<< HEAD
 export default function Reports({ currentUser }) {
   const isAdmin = canManageReports(currentUser)
+=======
+export default function Reports({ currentUser, refreshKey = 0 }) {
+  const isAdmin = ADMIN_ROLES.includes(currentUser?.role)
+>>>>>>> 310c467bacc344dde6ea7cc3a241829475ee6bf2
 
   const [adminTab,      setAdminTab]      = useState(isAdmin ? 'all' : 'mine')
   const [myReports,     setMyReports]     = useState([])
@@ -133,8 +138,8 @@ export default function Reports({ currentUser }) {
     } catch (_) {}
   }, [])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (showSpinner = true) => {
+    if (showSpinner) setLoading(true)
     try {
       await loadMine()
       if (isAdmin) {
@@ -151,7 +156,7 @@ export default function Reports({ currentUser }) {
     }
   }, [loadMine, loadAll, loadEmployees, isAdmin])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(refreshKey === 0) }, [load, refreshKey])
 
   // ── Submit ────────────────────────────────────────────────────────
   async function handleSubmit(form) {

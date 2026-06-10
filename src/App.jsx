@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './App.css'
 
 import LoginPage   from './components/ui/LoginPage'
@@ -22,9 +22,40 @@ import { getSavedTheme, applyThemeToDocument, saveTheme } from './lib/theme'
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [activePage,  setActivePage]  = useState('dashboard')
+  // Increments every time a cloud sync completes — modules use this as a
+  // useEffect dependency so they automatically re-fetch fresh data.
+  const [refreshKey,  setRefreshKey]  = useState(0)
 
   useEffect(() => {
     applyThemeToDocument(getSavedTheme())
+  }, [])
+
+  // Use a ref so the effect closure always has the latest user ID without re-binding
+  const currentUserIdRef = useRef(currentUser?.id)
+  useEffect(() => {
+    currentUserIdRef.current = currentUser?.id
+  }, [currentUser?.id])
+
+  // Listen for cloud sync events from the main process
+  useEffect(() => {
+    if (!window.electronAPI?.onDbSynced) return
+    const cleanup = window.electronAPI.onDbSynced(async () => {
+      setRefreshKey(k => k + 1)
+      
+      const uid = currentUserIdRef.current
+      if (uid) {
+        try {
+          const freshUser = await window.electronAPI.refreshUser(uid)
+          if (freshUser) {
+            setCurrentUser(freshUser)
+            applyThemeToDocument(freshUser.themeColor || 'original-light')
+          }
+        } catch (e) {
+          console.error('Failed to auto-refresh session:', e)
+        }
+      }
+    })
+    return cleanup
   }, [])
 
   const handleLogin = (user) => {
@@ -64,19 +95,19 @@ function App() {
     }
 
     // Pages that need currentUser get it as a prop
-    if (activePage === 'my-attendance') return <MyAttendance currentUser={currentUser} />
-    if (activePage === 'leaves')     return <LeaveRequests currentUser={currentUser} />
-    if (activePage === 'reports')    return <Reports currentUser={currentUser} />
+    if (activePage === 'my-attendance') return <MyAttendance currentUser={currentUser} refreshKey={refreshKey} />
+    if (activePage === 'leaves')     return <LeaveRequests currentUser={currentUser} refreshKey={refreshKey} />
+    if (activePage === 'reports')    return <Reports currentUser={currentUser} refreshKey={refreshKey} />
     if (activePage === 'settings')   return <Settings currentUser={currentUser} />
 
-    // Static pages (no user context needed)
+    // Static pages
     const STATIC_PAGES = {
-      dashboard:    <Dashboard />,
-      employees:    <Employees />,
-      biometrics:   <Biometrics />,
-      clinic:       <ClinicLog />,
-      products:     <Products />,
-      outlets:      <Outlets />,
+      dashboard:    <Dashboard   refreshKey={refreshKey} />,
+      employees:    <Employees   refreshKey={refreshKey} />,
+      biometrics:   <Biometrics  refreshKey={refreshKey} />,
+      clinic:       <ClinicLog   refreshKey={refreshKey} />,
+      products:     <Products    refreshKey={refreshKey} />,
+      outlets:      <Outlets     refreshKey={refreshKey} />,
       calculations: <Calculations />,
     }
     return STATIC_PAGES[activePage] ?? null
@@ -98,4 +129,4 @@ function App() {
   )
 }
 
-export default App
+export default App

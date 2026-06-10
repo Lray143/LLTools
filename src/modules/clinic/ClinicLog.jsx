@@ -104,7 +104,7 @@ function to12(timeStr = "") {
   return `${hour12}:${m} ${ampm}`
 }
 
-export default function ClinicLog() {
+export default function ClinicLog({ refreshKey = 0 }) {
   const todayISO = new Date().toISOString().split("T")[0]
   const nowTime = new Date().toTimeString().slice(0, 5)
 
@@ -198,7 +198,7 @@ export default function ClinicLog() {
     loadVisits()
     loadArchived()
     loadEmployees()
-  }, [loadVisits, loadArchived, loadEmployees])
+  }, [loadVisits, loadArchived, loadEmployees, refreshKey])
 
   async function handleSave() {
     if (!form.employee.trim()) return

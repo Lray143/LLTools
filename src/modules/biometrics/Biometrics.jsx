@@ -148,7 +148,7 @@ function buildEmployeeMap(employees) {
   return map
 }
 
-function Biometrics() {
+function Biometrics({ refreshKey = 0 }) {
 
   const [records,     setRecords]     = useState([])
   const [employeeMap, setEmployeeMap] = useState({})
@@ -164,6 +164,8 @@ function Biometrics() {
 
   const [importError,   setImportError]   = useState('')
   const [importSuccess, setImportSuccess] = useState('')
+
+  const [isImporting,   setIsImporting]   = useState(false)
 
   const fileInputRef = useRef(null)
 
@@ -184,7 +186,7 @@ function Biometrics() {
       if (latest) setSelectedDate(isoToDate(latest))
     }
     load()
-  }, [])
+  }, [refreshKey])
 
   // Build the list of years that actually have records, for the year picker.
   const availableYears = [...new Set(
@@ -232,6 +234,7 @@ function Biometrics() {
   async function handleFileImport(e) {
     const file = e.target.files?.[0]
     if (!file) return
+    setIsImporting(true)
     setImportError('')
     setImportSuccess('')
 
@@ -244,10 +247,14 @@ function Biometrics() {
     const reader = new FileReader()
     reader.onload = async (evt) => {
       try {
+        // Yield to let React paint the "Importing..." button
+        await new Promise(r => setTimeout(r, 50))
+        
         // parseRawBiometrics returns records that already include an extraTaps array.
-        const parsed = parseRawBiometrics(evt.target.result, freshEmpMap)
+        const parsed = await parseRawBiometrics(evt.target.result, freshEmpMap)
         if (parsed.length === 0) {
           setImportError('No records could be read. Check the file matches the expected device format.')
+          setIsImporting(false)
           return
         }
 
@@ -271,9 +278,14 @@ function Biometrics() {
         )
       } catch (err) {
         setImportError(`Import error: ${err.message}`)
+      } finally {
+        setIsImporting(false)
       }
     }
-    reader.onerror = () => setImportError('Could not read the file.')
+    reader.onerror = () => {
+      setImportError('Could not read the file.')
+      setIsImporting(false)
+    }
     reader.readAsText(file)
     e.target.value = ''
   }
@@ -340,6 +352,7 @@ function Biometrics() {
           selectedDept={selectedDept}           setSelectedDept={setSelectedDept}
           departments={DEPARTMENTS}
           availableYears={availableYears}
+          isImporting={isImporting}
           onImportClick={() => {
             setImportError('')
             setImportSuccess('')

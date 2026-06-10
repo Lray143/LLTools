@@ -2,7 +2,8 @@ const { ipcRenderer } = require('electron')
 
 window.electronAPI = {
   // ── Auth ────────────────────────────────────────────────────────
-  login:                   (creds)   => ipcRenderer.invoke('auth:login', creds),
+  login:                   (creds)              => ipcRenderer.invoke('auth:login', creds),
+  refreshUser:             (id)                 => ipcRenderer.invoke('auth:refresh', id),
 
   // ── Employees ───────────────────────────────────────────────────
   getEmployees:            ()        => ipcRenderer.invoke('employees:getAll'),
@@ -91,4 +92,12 @@ window.electronAPI = {
   getLeaveRequests:        ()                      => ipcRenderer.invoke('leaves:getAll'),
   getMyLeaveRequests:      (employeeNo)            => ipcRenderer.invoke('leaves:getMine', employeeNo),
   reviewLeaveRequest:      (id, status, note, reviewedBy) => ipcRenderer.invoke('leaves:review', id, status, note, reviewedBy),
+
+  // ── Cloud Sync Events ───────────────────────────────────────────
+  // Called every 10 seconds after a cloud sync completes.
+  // Returns a cleanup function — call it when the component unmounts.
+  onDbSynced: (callback) => {
+    ipcRenderer.on('db:synced', callback)
+    return () => ipcRenderer.removeListener('db:synced', callback)
+  },
 }

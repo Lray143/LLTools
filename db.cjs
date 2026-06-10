@@ -1,27 +1,43 @@
-const initSqlJs = require('sql.js')
-const fs        = require('fs')
+require('dotenv').config()
+const { createClient } = require('@libsql/client')
 const path      = require('path')
 const { app }   = require('electron')
 const bcrypt    = require('bcryptjs')
 
-const DB_PATH = path.join(app.getPath('userData'), 'lltools.db')
-let db = null
+// ── Turso Client (Embedded Replica) ───────────────────────────────────────────
+// Reads/writes happen on a local SQLite file (instant, works offline).
+// The SDK silently syncs that local file with Turso Cloud in the background.
+const LOCAL_DB_PATH = path.join(app.getPath('userData'), 'lltools-turso.db')
 
-const save = () => {
-  const data = db.export()
-  fs.writeFileSync(DB_PATH, Buffer.from(data))
-}
-const queryAll = (sql, params = []) => {
-  const stmt = db.prepare(sql)
-  if (params.length) stmt.bind(params)
-  const rows = []
-  while (stmt.step()) rows.push(stmt.getAsObject())
-  stmt.free()
-  return rows
-}
-const queryOne = (sql, params = []) => queryAll(sql, params)[0] ?? null
-const run = (sql, params = []) => { db.run(sql, params); save() }
+const client = createClient({
+  url:       `file:${LOCAL_DB_PATH}`,
+  syncUrl:   process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+})
 
+// ── Helper wrappers ───────────────────────────────────────────────────────────
+// These mirror the old sql.js API so the rest of the code stays readable.
+
+const queryAll = async (sql, params = []) => {
+  const result = await client.execute({ sql, args: params })
+  return result.rows.map(r => Object.fromEntries(Object.entries(r)))
+}
+
+const queryOne = async (sql, params = []) => {
+  const rows = await queryAll(sql, params)
+  return rows[0] ?? null
+}
+
+const run = async (sql, params = []) => {
+  await client.execute({ sql, args: params })
+}
+
+// Sync local replica with cloud (call this on startup and periodically)
+const syncCloud = async () => {
+  try { await client.sync() } catch (e) { console.warn('[DB] Sync skipped:', e.message) }
+}
+
+// ── Seed data ──────────────────────────────────────────────────────────────
 const SEED_PRODUCT_GROUPS = [
   {
     id: 'g-astringents', name: 'ASTRINGENTS', sortOrder: 0,
@@ -86,22 +102,19 @@ const SEED_PRODUCT_GROUPS = [
   },
 ]
 
+// ── DB Init ────────────────────────────────────────────────────────────────────
 const initDb = async () => {
-  const SQL = await initSqlJs({
-    locateFile: () => path.join(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm')
-  })
+  // Pull latest data from cloud before we do anything
+  await syncCloud()
 
-  db = fs.existsSync(DB_PATH)
-    ? new SQL.Database(fs.readFileSync(DB_PATH))
-    : new SQL.Database()
-
-  db.run(`
+  // Create all tables
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       username      TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role          TEXT NOT NULL DEFAULT 'hr',
-      employee_id   TEXT DEFAULT NULL REFERENCES employees(id) ON DELETE SET NULL,
+      employee_id   TEXT DEFAULT NULL,
       theme_color   TEXT DEFAULT NULL,
       theme_mode    TEXT DEFAULT 'light',
       created_at    TEXT DEFAULT (datetime('now')),
@@ -122,13 +135,14 @@ const initDb = async () => {
       shift_start   TEXT DEFAULT '07:00',
       shift_end     TEXT DEFAULT '17:30',
       day_offs      TEXT DEFAULT 'Saturday,Sunday',
+      day_schedule  TEXT DEFAULT NULL,
       created_at    TEXT DEFAULT (datetime('now')),
       synced_at     TEXT DEFAULT NULL,
       sync_status   TEXT DEFAULT 'pending'
     );
     CREATE TABLE IF NOT EXISTS attendance (
       id            TEXT PRIMARY KEY,
-      employee_id   TEXT REFERENCES employees(id),
+      employee_id   TEXT,
       date          TEXT NOT NULL,
       shift_in      TEXT,
       lunch_out     TEXT,
@@ -143,19 +157,19 @@ const initDb = async () => {
     );
     CREATE TABLE IF NOT EXISTS clinic_logs (
       id            TEXT PRIMARY KEY,
-      employee_id   TEXT REFERENCES employees(id),
-      full_name     TEXT NOT NULL,
+      employee_id   TEXT,
+      full_name     TEXT NOT NULL DEFAULT '',
       employee_code TEXT,
-      date          TEXT NOT NULL,
-      time          TEXT NOT NULL,
+      date          TEXT NOT NULL DEFAULT '',
+      time          TEXT NOT NULL DEFAULT '',
       complaint     TEXT,
       disposition   TEXT,
       bp            TEXT,
-      temp          REAL,
-      pulse         INTEGER,
-      spo2          INTEGER,
+      temp          TEXT,
+      pulse         TEXT,
+      spo2          TEXT,
       gender        TEXT,
-      age           INTEGER,
+      age           TEXT,
       treatment     TEXT,
       attachments   TEXT DEFAULT '[]',
       status        TEXT DEFAULT 'Active',
@@ -174,7 +188,7 @@ const initDb = async () => {
     );
     CREATE TABLE IF NOT EXISTS products (
       id            TEXT PRIMARY KEY,
-      group_id      TEXT REFERENCES product_groups(id),
+      group_id      TEXT,
       case_barcode  TEXT,
       item_barcode  TEXT,
       description   TEXT,
@@ -201,8 +215,8 @@ const initDb = async () => {
       sync_status TEXT DEFAULT 'pending'
     );
     CREATE TABLE IF NOT EXISTS outlet_product_prices (
-      outlet_id   TEXT NOT NULL REFERENCES outlets(id) ON DELETE CASCADE,
-      product_id  TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      outlet_id   TEXT NOT NULL,
+      product_id  TEXT NOT NULL,
       price       REAL NOT NULL,
       updated_at  TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (outlet_id, product_id)
@@ -220,95 +234,7 @@ const initDb = async () => {
     );
     CREATE TABLE IF NOT EXISTS leave_requests (
       id            TEXT PRIMARY KEY,
-      employee_id   TEXT REFERENCES employees(id) ON DELETE CASCADE,
-      employee_no   TEXT,
-      employee_name TEXT,
-      leave_type    TEXT NOT NULL,
-      start_date    TEXT NOT NULL,
-      end_date      TEXT NOT NULL,
-      reason        TEXT,
-      status        TEXT DEFAULT 'Pending',
-      review_note   TEXT DEFAULT NULL,
-      reviewed_at   TEXT DEFAULT NULL,
-      created_at    TEXT DEFAULT (datetime('now')),
-      sync_status   TEXT DEFAULT 'pending'
-    );
-  `)
-
-  try { db.run(`CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date)`) } catch (_) {}
-
-  // ── MIGRATIONS ────────────────────────────────────────────────
-  try { db.run(`ALTER TABLE products      ADD COLUMN price  REAL`) }              catch (_) {}
-  try { db.run(`ALTER TABLE products      ADD COLUMN status TEXT DEFAULT 'Active'`) } catch (_) {}
-  try { db.run(`ALTER TABLE product_groups ADD COLUMN status TEXT DEFAULT 'Active'`) } catch (_) {}
-  try { db.run(`UPDATE products       SET price  = new_srp  WHERE price  IS NULL AND new_srp IS NOT NULL`) } catch (_) {}
-  try { db.run(`UPDATE products       SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
-  try { db.run(`UPDATE product_groups SET status = 'Active' WHERE status IS NULL`) } catch (_) {}
-  // ── USERS MIGRATIONS ────────────────────────────────────────────
-  try { db.run(`ALTER TABLE users ADD COLUMN employee_id TEXT DEFAULT NULL`) } catch (_) {}
-  try { db.run(`ALTER TABLE users ADD COLUMN theme_color TEXT DEFAULT NULL`) } catch (_) {}
-  try { db.run(`ALTER TABLE users ADD COLUMN theme_mode TEXT DEFAULT 'light'`) } catch (_) {}
-  // ── EMPLOYEE SCHEDULE MIGRATION ─────────────────────────────────
-  try { db.run(`ALTER TABLE employees ADD COLUMN day_schedule TEXT DEFAULT NULL`) } catch (_) {}
-
-  // ── CLINIC LOGS MIGRATIONS (for existing DBs with old schema) ─
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN full_name     TEXT NOT NULL DEFAULT ''`)  } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN employee_code TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN time          TEXT NOT NULL DEFAULT ''`)  } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN complaint     TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN disposition   TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN bp            TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN temp          TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN treatment     TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN pulse         TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN spo2          TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN gender        TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN age           TEXT`)                       } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN attachments   TEXT DEFAULT '[]'`)          } catch (_) {}
-  try { db.run(`UPDATE clinic_logs SET attachments = '[]' WHERE attachments IS NULL`) }       catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN status        TEXT DEFAULT 'Active'`)      } catch (_) {}
-  try { db.run(`ALTER TABLE clinic_logs ADD COLUMN created_at    TEXT DEFAULT (datetime('now'))`) } catch (_) {}
-  try { db.run(`UPDATE clinic_logs SET status = 'Active' WHERE status IS NULL`) }             catch (_) {}
-  // ── OUTLETS MIGRATIONS (for existing DBs missing the outlets table) ─
-  try { db.run(`ALTER TABLE outlets ADD COLUMN code      TEXT`) }                             catch (_) {}
-  try { db.run(`ALTER TABLE outlets ADD COLUMN address   TEXT`) }                             catch (_) {}
-  try { db.run(`ALTER TABLE outlets ADD COLUMN region    TEXT`) }                             catch (_) {}
-  try { db.run(`ALTER TABLE outlets ADD COLUMN status    TEXT DEFAULT 'Active'`) }            catch (_) {}
-  try { db.run(`ALTER TABLE outlets ADD COLUMN discounts TEXT DEFAULT '[]'`) }                catch (_) {}
-  try { db.run(`ALTER TABLE outlets ADD COLUMN archived  INTEGER DEFAULT 0`) }                catch (_) {}
-  try { db.run(`UPDATE outlets SET discounts = '[]' WHERE discounts IS NULL`) }               catch (_) {}
-  try { db.run(`UPDATE outlets SET archived  = 0    WHERE archived  IS NULL`) }               catch (_) {}
-  // ── OUTLET PRODUCT PRICES MIGRATION ─────────────────────────
-  try {
-    db.run(`CREATE TABLE IF NOT EXISTS outlet_product_prices (
-      outlet_id   TEXT NOT NULL,
-      product_id  TEXT NOT NULL,
-      price       REAL NOT NULL,
-      updated_at  TEXT DEFAULT (datetime('now')),
-      PRIMARY KEY (outlet_id, product_id)
-    )`)
-  } catch (_) {}
-
-  // ── SAVED ORDERS MIGRATION ────────────────────────────────────
-  try {
-    db.run(`CREATE TABLE IF NOT EXISTS saved_orders (
-      id             TEXT PRIMARY KEY,
-      series_number  TEXT NOT NULL,
-      outlet_id      TEXT,
-      outlet_name    TEXT,
-      groups_json    TEXT NOT NULL DEFAULT '[]',
-      subtotal       REAL NOT NULL DEFAULT 0,
-      discounts_json TEXT NOT NULL DEFAULT '[]',
-      grand_total    REAL NOT NULL DEFAULT 0,
-      created_at     TEXT DEFAULT (datetime('now'))
-    )`)
-  } catch (_) {}
-
-  // ── LEAVE REQUESTS MIGRATION ─────────────────────────────────────
-  try {
-    db.run(`CREATE TABLE IF NOT EXISTS leave_requests (
-      id            TEXT PRIMARY KEY,
-      employee_id   TEXT REFERENCES employees(id) ON DELETE CASCADE,
+      employee_id   TEXT,
       employee_no   TEXT,
       employee_name TEXT,
       leave_type    TEXT NOT NULL,
@@ -321,13 +247,8 @@ const initDb = async () => {
       reviewed_by   TEXT DEFAULT NULL,
       created_at    TEXT DEFAULT (datetime('now')),
       sync_status   TEXT DEFAULT 'pending'
-    )`)
-  } catch (_) {}
-  try { db.run(`ALTER TABLE leave_requests ADD COLUMN reviewed_by TEXT DEFAULT NULL`) } catch (_) {}
-
-  // ── REPORTS MIGRATION ──────────────────────────────────────────
-  try {
-    db.run(`CREATE TABLE IF NOT EXISTS reports (
+    );
+    CREATE TABLE IF NOT EXISTS reports (
       id                  TEXT PRIMARY KEY,
       report_no           TEXT UNIQUE,
       employee_id         TEXT,
@@ -345,77 +266,73 @@ const initDb = async () => {
       is_archived         INTEGER DEFAULT 0,
       created_at          TEXT DEFAULT (datetime('now')),
       updated_at          TEXT DEFAULT (datetime('now'))
-    )`)
-  } catch (_) {}
-  try { db.run(`ALTER TABLE reports ADD COLUMN is_archived INTEGER DEFAULT 0`) } catch (_) {}
-  try {
-    db.run(`CREATE TABLE IF NOT EXISTS report_comments (
+    );
+    CREATE TABLE IF NOT EXISTS report_comments (
       id         TEXT PRIMARY KEY,
       report_id  TEXT,
       user_id    TEXT,
       username   TEXT,
       comment    TEXT,
       created_at TEXT DEFAULT (datetime('now'))
-    )`)
-  } catch (_) {}
-  try {
-    db.run(`CREATE TABLE IF NOT EXISTS report_status_logs (
+    );
+    CREATE TABLE IF NOT EXISTS report_status_logs (
       id         TEXT PRIMARY KEY,
       report_id  TEXT,
       old_status TEXT,
       new_status TEXT,
       changed_by TEXT,
       created_at TEXT DEFAULT (datetime('now'))
-    )`)
-  } catch (_) {}
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date);
+  `)
 
-  // ── SEED USERS ────────────────────────────────────────────────
-  const seedUsers = [
-    { username: 'admin@doublel.com',     password: 'admin123',     role: 'admin'     },
-  ]
-  for (const u of seedUsers) {
-    db.run('INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)',
-      [u.username, bcrypt.hashSync(u.password, 10), u.role])
-  }
-  
-  // Clean up legacy hardcoded accounts
-  db.run("DELETE FROM users WHERE username IN ('hr@doublel.com', 'clinic@doublel.com', 'inventory@doublel.com')")
+  // ── Seed admin user ────────────────────────────────────────────────────────
+  const adminHash = bcrypt.hashSync('admin123', 10)
+  await run(
+    `INSERT OR IGNORE INTO users (username, password_hash, role) VALUES (?, ?, ?)`,
+    ['admin@doublel.com', adminHash, 'admin']
+  )
 
-  // Fix employees who were wrongly assigned the 'hr' role due to having no department
-  try {
-    db.run(`
-      UPDATE users 
-      SET role = 'employee' 
-      WHERE role = 'hr' 
-        AND employee_id IS NOT NULL 
-        AND employee_id IN (SELECT id FROM employees WHERE department IS NULL OR department = '')
-    `)
-  } catch (_) {}
+  // Remove legacy hardcoded accounts
+  await run(`DELETE FROM users WHERE username IN ('hr@doublel.com', 'clinic@doublel.com', 'inventory@doublel.com')`)
 
-  // ── SEED PRODUCTS ─────────────────────────────────────────────
-  const groupCount = queryOne('SELECT COUNT(*) as n FROM product_groups')
+  // Fix employees wrongly assigned 'hr' role
+  await run(`
+    UPDATE users SET role = 'employee'
+    WHERE role = 'hr'
+      AND employee_id IS NOT NULL
+      AND employee_id IN (SELECT id FROM employees WHERE department IS NULL OR department = '')
+  `)
+
+  // ── Seed products (only if empty) ─────────────────────────────────────────
+  const groupCount = await queryOne('SELECT COUNT(*) as n FROM product_groups')
   if (!groupCount || groupCount.n === 0) {
     for (const group of SEED_PRODUCT_GROUPS) {
-      db.run('INSERT OR IGNORE INTO product_groups (id, name, sort_order, status) VALUES (?, ?, ?, ?)',
-        [group.id, group.name, group.sortOrder, 'Active'])
+      await run(
+        'INSERT OR IGNORE INTO product_groups (id, name, sort_order, status) VALUES (?, ?, ?, ?)',
+        [group.id, group.name, group.sortOrder, 'Active']
+      )
       for (let i = 0; i < group.rows.length; i++) {
         const p = group.rows[i]
-        db.run(`INSERT OR IGNORE INTO products
-                  (id, group_id, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)`,
+        await run(
+          `INSERT OR IGNORE INTO products
+            (id, group_id, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)`,
           [p.id, group.id, p.caseBarcode ?? null, p.itemBarcode ?? null,
-           p.description ?? null, p.qty ?? null, p.size ?? null, p.price ?? null, i])
+           p.description ?? null, p.qty ?? null, p.size ?? null, p.price ?? null, i]
+        )
       }
     }
   }
 
-  save()
-  console.log('[DB] Ready →', DB_PATH)
+  // Push seed data up to cloud
+  await syncCloud()
+  console.log('[DB] Ready (Turso Embedded Replica) →', LOCAL_DB_PATH)
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────
-const loginUser = (username, password) => {
-  const user = queryOne(`
+// ── AUTH ───────────────────────────────────────────────────────────────────────
+const loginUser = async (username, password) => {
+  const user = await queryOne(`
     SELECT u.*, e.department, e.name AS employee_name, e.position AS employee_position
     FROM users u
     LEFT JOIN employees e ON e.id = u.employee_id
@@ -429,20 +346,39 @@ const loginUser = (username, password) => {
       id           : user.id,
       username     : user.username,
       role         : user.role,
-      employeeId   : user.employee_id   ?? null,
-      department   : user.department    ?? null,
-      employeeName : user.employee_name ?? null,
-      position     : user.employee_position ?? null,
-      themeColor   : user.theme_color   ?? null,
-      themeMode    : user.theme_mode    ?? 'light',
+      employeeId   : user.employee_id        ?? null,
+      department   : user.department         ?? null,
+      employeeName : user.employee_name      ?? null,
+      position     : user.employee_position  ?? null,
+      themeColor   : user.theme_color        ?? null,
+      themeMode    : user.theme_mode         ?? 'light',
+      themeMode    : user.theme_mode         ?? 'light',
     },
   }
 }
 
-// ── EMPLOYEE ACCOUNTS ─────────────────────────────────────────────
+const refreshUser = async (id) => {
+  const user = await queryOne(`
+    SELECT u.*, e.department, e.name AS employee_name, e.position AS employee_position
+    FROM users u
+    LEFT JOIN employees e ON e.id = u.employee_id
+    WHERE u.id = ?
+  `, [id])
+  if (!user) return null
+  return {
+    id           : user.id,
+    username     : user.username,
+    role         : user.role,
+    employeeId   : user.employee_id        ?? null,
+    department   : user.department         ?? null,
+    employeeName : user.employee_name      ?? null,
+    position     : user.employee_position  ?? null,
+    themeColor   : user.theme_color        ?? null,
+    themeMode    : user.theme_mode         ?? 'light',
+  }
+}
 
-// Maps a department name to the closest app role.
-// Adjust this table to match your org's access needs.
+// ── EMPLOYEE ACCOUNTS ──────────────────────────────────────────────────────────
 const DEPT_ROLE_MAP = {
   'HR'         : 'hr',
   'Admin'      : 'hr',
@@ -455,49 +391,37 @@ const DEPT_ROLE_MAP = {
   'Production' : 'inventory',
   'IT'         : 'admin',
 }
-
 function deptToRole(dept) {
   return DEPT_ROLE_MAP[dept] ?? 'hr'
 }
 
-// Creates (or updates) a user account tied to an employee.
-// username = employee_no, password = employee_no (hashed).
-// If an account already exists for this employee_id, it updates
-// the username/role but does NOT reset the password — so a user
-// who changed their password won't lose it when their record is edited.
-const createEmployeeAccount = (employeeId, employeeNo, dept) => {
+const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
   const role     = deptToRole(dept)
-  const existing = queryOne('SELECT id FROM users WHERE employee_id = ?', [employeeId])
-
+  const existing = await queryOne('SELECT id FROM users WHERE employee_id = ?', [employeeId])
   if (existing) {
-    // Update username and role (e.g. dept changed), keep existing password_hash
-    db.run(
-      `UPDATE users SET username = ?, role = ?, sync_status = 'pending'
-       WHERE employee_id = ?`,
+    await run(
+      `UPDATE users SET username = ?, role = ?, sync_status = 'pending' WHERE employee_id = ?`,
       [employeeNo, role, employeeId]
     )
   } else {
-    // Brand-new account — default password is the employee number
     const hash = bcrypt.hashSync(employeeNo, 10)
-    db.run(
-      `INSERT OR IGNORE INTO users (username, password_hash, role, employee_id)
-       VALUES (?, ?, ?, ?)`,
+    await run(
+      `INSERT OR IGNORE INTO users (username, password_hash, role, employee_id) VALUES (?, ?, ?, ?)`,
       [employeeNo, hash, role, employeeId]
     )
   }
-  save()
 }
 
-// ── USER MANAGEMENT (for Settings / admin panel) ──────────────────
-
-const getUsers = () =>
-  queryAll(`
+// ── USER MANAGEMENT ────────────────────────────────────────────────────────────
+const getUsers = async () => {
+  const rows = await queryAll(`
     SELECT u.id, u.username, u.role, u.employee_id, u.created_at,
            e.name AS employee_name, e.department
     FROM users u
     LEFT JOIN employees e ON e.id = u.employee_id
     ORDER BY u.created_at
-  `).map(u => ({
+  `)
+  return rows.map(u => ({
     id:           u.id,
     username:     u.username,
     role:         u.role,
@@ -506,56 +430,35 @@ const getUsers = () =>
     department:   u.department    ?? null,
     createdAt:    u.created_at    ?? '',
   }))
-
-// Admin can change role or reset password for any user
-const updateUserRole = (id, role) => {
-  run(`UPDATE users SET role = ?, sync_status = 'pending' WHERE id = ?`, [role, id])
 }
 
-const resetUserPassword = (id, newPassword) => {
-  const hash = bcrypt.hashSync(newPassword, 10)
-  run(`UPDATE users SET password_hash = ?, sync_status = 'pending' WHERE id = ?`, [hash, id])
-}
+const updateUserRole      = async (id, role) => run(`UPDATE users SET role = ?, sync_status = 'pending' WHERE id = ?`, [role, id])
+const resetUserPassword   = async (id, newPassword) => run(`UPDATE users SET password_hash = ?, sync_status = 'pending' WHERE id = ?`, [bcrypt.hashSync(newPassword, 10), id])
+const deleteUserAccount   = async (id) => run(`DELETE FROM users WHERE id = ? AND employee_id IS NOT NULL`, [id])
+const updateUserTheme     = async (id, color, mode) => run(`UPDATE users SET theme_color = ?, theme_mode = ?, sync_status = 'pending' WHERE id = ?`, [color, mode, id])
 
-// Deletes only employee-linked accounts (not the seeded admin accounts)
-const deleteUserAccount = (id) => {
-  run(`DELETE FROM users WHERE id = ? AND employee_id IS NOT NULL`, [id])
-}
-
-const updateUserTheme = (id, color, mode) => {
-  run(`UPDATE users SET theme_color = ?, theme_mode = ?, sync_status = 'pending' WHERE id = ?`, [color, mode, id])
-}
-
-
-const getEmployees = () => queryAll(`
+// ── EMPLOYEES ─────────────────────────────────────────────────────────────────
+const getEmployees = async () => queryAll(`
   SELECT
     e.*,
-    (SELECT lr.leave_type
-       FROM leave_requests lr
-      WHERE lr.employee_no = e.employee_no
-        AND lr.status      = 'Approved'
-        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date
-      LIMIT 1) AS auto_leave_type,
-    (SELECT lr.start_date
-       FROM leave_requests lr
-      WHERE lr.employee_no = e.employee_no
-        AND lr.status      = 'Approved'
-        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date
-      LIMIT 1) AS auto_leave_start,
-    (SELECT lr.end_date
-       FROM leave_requests lr
-      WHERE lr.employee_no = e.employee_no
-        AND lr.status      = 'Approved'
-        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date
-      LIMIT 1) AS auto_leave_end
+    (SELECT lr.leave_type  FROM leave_requests lr
+      WHERE lr.employee_no = e.employee_no AND lr.status = 'Approved'
+        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date LIMIT 1) AS auto_leave_type,
+    (SELECT lr.start_date  FROM leave_requests lr
+      WHERE lr.employee_no = e.employee_no AND lr.status = 'Approved'
+        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date LIMIT 1) AS auto_leave_start,
+    (SELECT lr.end_date    FROM leave_requests lr
+      WHERE lr.employee_no = e.employee_no AND lr.status = 'Approved'
+        AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date LIMIT 1) AS auto_leave_end
   FROM employees e
   WHERE e.status != 'Archived'
   ORDER BY e.name
 `)
-const getArchivedEmployees = () => queryAll("SELECT * FROM employees WHERE status = 'Archived' ORDER BY name")
 
-const upsertEmployee = (emp) => {
-  run(`
+const getArchivedEmployees = async () => queryAll("SELECT * FROM employees WHERE status = 'Archived' ORDER BY name")
+
+const upsertEmployee = async (emp) => {
+  await run(`
     INSERT INTO employees
       (id, employee_no, name, position, department, contact, status,
        leave_type, leave_start, leave_end, shift_start, shift_end, day_offs, day_schedule)
@@ -574,24 +477,23 @@ const upsertEmployee = (emp) => {
       emp.leave_type ?? null, emp.leave_start ?? null, emp.leave_end ?? null,
       emp.shift_start ?? '07:00', emp.shift_end ?? '17:30', emp.day_offs ?? 'Saturday,Sunday',
       emp.day_schedule ?? null])
-
-  // Auto-create or sync the employee's login account
-  createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
+  await createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
 }
 
-const archiveEmployee         = (id) => run("UPDATE employees SET status='Archived', sync_status='pending' WHERE id=?", [id])
-const unarchiveEmployee       = (id) => run("UPDATE employees SET status='Active',   sync_status='pending' WHERE id=?", [id])
-const permanentDeleteEmployee = (id) => run("DELETE FROM employees WHERE id=?", [id])
+const archiveEmployee         = async (id) => run("UPDATE employees SET status='Archived', sync_status='pending' WHERE id=?", [id])
+const unarchiveEmployee       = async (id) => run("UPDATE employees SET status='Active',   sync_status='pending' WHERE id=?", [id])
+const permanentDeleteEmployee = async (id) => run("DELETE FROM employees WHERE id=?", [id])
 
-// ── ATTENDANCE ────────────────────────────────────────────────────
-const getAttendance = () => queryAll(`
+// ── ATTENDANCE ────────────────────────────────────────────────────────────────
+const getAttendance = async () => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
          e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
   FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
   ORDER BY a.date DESC, e.name
 `)
-const getAttendanceByDate = (date) => queryAll(`
+
+const getAttendanceByDate = async (date) => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
          e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
@@ -599,7 +501,7 @@ const getAttendanceByDate = (date) => queryAll(`
   WHERE a.date = ? ORDER BY e.name
 `, [date])
 
-const getMyAttendance = (employeeId) => queryAll(`
+const getMyAttendance = async (employeeId) => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
          e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
@@ -607,38 +509,78 @@ const getMyAttendance = (employeeId) => queryAll(`
   WHERE a.employee_id = ? ORDER BY a.date DESC
 `, [employeeId])
 
-const importAttendance = (records) => {
+const importAttendance = async (records) => {
   let newEmployees = 0, newRecords = 0, skippedRecords = 0
+
+  // 1. Fetch all existing employees into memory to avoid per-record queries
+  const allEmps = await queryAll('SELECT id, employee_no FROM employees')
+  const empMap = new Map() // employee_no -> id
+  for (const e of allEmps) empMap.set(e.employee_no, e.id)
+
+  // 2. Fetch all attendance composite keys into a Set to avoid per-record queries
+  const allAtt = await queryAll('SELECT employee_id, date FROM attendance')
+  const attSet = new Set()
+  for (const a of allAtt) attSet.add(`${a.employee_id}|${a.date}`)
+
+  const batchQueries = []
+  const missingAccounts = [] // Store info to create user accounts after batch
+
   for (const rec of records) {
-    let emp = queryOne('SELECT id FROM employees WHERE employee_no = ?', [rec.employee_no])
-    if (!emp) {
-      const newId = crypto.randomUUID()
-      db.run(`INSERT OR IGNORE INTO employees
-                (id, employee_no, name, status, shift_start, shift_end, day_offs, sync_status)
-              VALUES (?, ?, ?, 'Active', '07:00', '17:30', 'Saturday,Sunday', 'pending')`,
-        [newId, rec.employee_no, rec.employee_no])
-      emp = { id: newId }
+    let empId = empMap.get(rec.employee_no)
+    
+    if (!empId) {
+      empId = crypto.randomUUID()
+      empMap.set(rec.employee_no, empId)
+      batchQueries.push({
+        sql: `INSERT INTO employees (id, employee_no, name, status, shift_start, shift_end, day_offs, sync_status) VALUES (?, ?, ?, 'Active', '07:00', '17:30', 'Saturday,Sunday', 'pending')`,
+        args: [empId, rec.employee_no, rec.employee_no]
+      })
+      missingAccounts.push({ id: empId, no: rec.employee_no })
       newEmployees++
-      // Create default login account for stub employee (username = password = employee_no)
-      createEmployeeAccount(newId, rec.employee_no, '')
     }
-    const existing = queryOne('SELECT id FROM attendance WHERE employee_id=? AND date=?', [emp.id, rec.date])
-    if (existing) { skippedRecords++; continue }
-    db.run(`INSERT INTO attendance
+
+    const key = `${empId}|${rec.date}`
+    if (attSet.has(key)) {
+      skippedRecords++
+      continue
+    }
+
+    attSet.add(key)
+    batchQueries.push({
+      sql: `INSERT INTO attendance
               (id, employee_id, date, shift_in, lunch_out, lunch_in, shift_out,
                total_hours, status, extra_taps, sync_status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      [crypto.randomUUID(), emp.id, rec.date,
-       rec.shift_in ?? null, rec.lunch_out ?? null, rec.lunch_in ?? null, rec.shift_out ?? null,
-       rec.total_hours ?? null, rec.status ?? 'Absent',
-       rec.extraTaps?.length > 0 ? JSON.stringify(rec.extraTaps) : null])
+      args: [
+        crypto.randomUUID(), empId, rec.date,
+        rec.shift_in ?? null, rec.lunch_out ?? null, rec.lunch_in ?? null, rec.shift_out ?? null,
+        rec.total_hours ?? null, rec.status ?? 'Absent',
+        rec.extraTaps?.length > 0 ? JSON.stringify(rec.extraTaps) : null
+      ]
+    })
     newRecords++
   }
-  save()
+
+  // 3. Execute all inserts in chunks to prevent blocking the main process
+  const CHUNK_SIZE = 50
+  for (let i = 0; i < batchQueries.length; i += CHUNK_SIZE) {
+    const chunk = batchQueries.slice(i, i + CHUNK_SIZE)
+    await client.batch(chunk)
+    // Yield to let the main process handle OS window events (prevents "Not Responding")
+    await new Promise(r => setTimeout(r, 10))
+  }
+
+  // 4. Create dummy user accounts for any newly discovered employees
+  for (const acc of missingAccounts) {
+    await createEmployeeAccount(acc.id, acc.no, '')
+  }
+
+  // NOTE: We no longer force syncCloud() here because it blocks the main thread
+  // on massive imports. The 10-second background interval will sync this automatically!
   return { newEmployees, newRecords, skippedRecords }
 }
 
-// ── PRODUCTS ──────────────────────────────────────────────────────
+// ── PRODUCTS ──────────────────────────────────────────────────────────────────
 const mapProduct = (p) => ({
   id:          p.id,
   groupId:     p.group_id,
@@ -651,83 +593,64 @@ const mapProduct = (p) => ({
   status:      p.status       ?? 'Active',
 })
 
-// Only active groups with their active products
-const getProductGroups = () => {
-  const groups = queryAll(`SELECT * FROM product_groups WHERE status = 'Active' ORDER BY sort_order, created_at`)
-  return groups.map((g) => ({
-    id:   g.id,
-    name: g.name,
-    rows: queryAll(
+const getProductGroups = async () => {
+  const groups = await queryAll(`SELECT * FROM product_groups WHERE status = 'Active' ORDER BY sort_order, created_at`)
+  const result = []
+  for (const g of groups) {
+    const rows = await queryAll(
       `SELECT * FROM products WHERE group_id = ? AND status = 'Active' ORDER BY sort_order, created_at`,
       [g.id]
-    ).map(mapProduct),
-  }))
+    )
+    result.push({ id: g.id, name: g.name, rows: rows.map(mapProduct) })
+  }
+  return result
 }
 
-// All archived products — includes group name for display
-const getArchivedProducts = () =>
-  queryAll(`
+const getArchivedProducts = async () => {
+  const rows = await queryAll(`
     SELECT p.*, pg.name AS group_name, pg.status AS group_status
     FROM products p
     LEFT JOIN product_groups pg ON pg.id = p.group_id
     WHERE p.status = 'Archived'
     ORDER BY pg.name, p.description
-  `).map((p) => ({
-    ...mapProduct(p),
-    groupName:   p.group_name   ?? 'Unknown Group',
-    groupStatus: p.group_status ?? 'missing',
-  }))
+  `)
+  return rows.map(p => ({ ...mapProduct(p), groupName: p.group_name ?? 'Unknown Group', groupStatus: p.group_status ?? 'missing' }))
+}
 
-const upsertProductGroup = (group) => run(`
+const upsertProductGroup = async (group) => run(`
   INSERT INTO product_groups (id, name, sort_order, status)
   VALUES (?, ?, ?, 'Active')
-  ON CONFLICT(id) DO UPDATE SET
-    name        = excluded.name,
-    sort_order  = excluded.sort_order,
-    sync_status = 'pending'
+  ON CONFLICT(id) DO UPDATE SET name = excluded.name, sort_order = excluded.sort_order, sync_status = 'pending'
 `, [group.id, group.name, group.sortOrder ?? 0])
 
-const deleteProductGroup = (id) => {
-  db.run(`UPDATE products      SET status='Archived', sync_status='pending' WHERE group_id=? AND status='Active'`, [id])
-  db.run(`UPDATE product_groups SET status='Archived', sync_status='pending' WHERE id=?`, [id])
-  save()
+const deleteProductGroup = async (id) => {
+  await run(`UPDATE products       SET status='Archived', sync_status='pending' WHERE group_id=? AND status='Active'`, [id])
+  await run(`UPDATE product_groups SET status='Archived', sync_status='pending' WHERE id=?`, [id])
 }
 
-const upsertProduct = (p) => run(`
-  INSERT INTO products
-    (id, group_id, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
+const upsertProduct = async (p) => run(`
+  INSERT INTO products (id, group_id, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)
   ON CONFLICT(id) DO UPDATE SET
-    group_id     = excluded.group_id,
-    case_barcode = excluded.case_barcode,
-    item_barcode = excluded.item_barcode,
-    description  = excluded.description,
-    qty          = excluded.qty,
-    size         = excluded.size,
-    price        = excluded.price,
-    sort_order   = excluded.sort_order,
-    sync_status  = 'pending'
-`, [p.id, p.groupId,
-    p.caseBarcode ?? null, p.itemBarcode ?? null, p.description ?? null,
+    group_id=excluded.group_id, case_barcode=excluded.case_barcode, item_barcode=excluded.item_barcode,
+    description=excluded.description, qty=excluded.qty, size=excluded.size, price=excluded.price,
+    sort_order=excluded.sort_order, sync_status='pending'
+`, [p.id, p.groupId, p.caseBarcode ?? null, p.itemBarcode ?? null, p.description ?? null,
     p.qty ?? null, p.size ?? null, p.price ?? null, p.sortOrder ?? 0])
 
-const archiveProduct = (id) =>
-  run(`UPDATE products SET status='Archived', sync_status='pending' WHERE id=?`, [id])
+const archiveProduct = async (id) => run(`UPDATE products SET status='Archived', sync_status='pending' WHERE id=?`, [id])
 
-const restoreProduct = (id) => {
-  const product = queryOne(`SELECT group_id FROM products WHERE id = ?`, [id])
+const restoreProduct = async (id) => {
+  const product = await queryOne(`SELECT group_id FROM products WHERE id = ?`, [id])
   if (product?.group_id) {
-    db.run(`UPDATE product_groups SET status='Active', sync_status='pending'
-            WHERE id = ? AND status = 'Archived'`, [product.group_id])
+    await run(`UPDATE product_groups SET status='Active', sync_status='pending' WHERE id = ? AND status = 'Archived'`, [product.group_id])
   }
-  db.run(`UPDATE products SET status='Active', sync_status='pending' WHERE id=?`, [id])
-  save()
+  await run(`UPDATE products SET status='Active', sync_status='pending' WHERE id=?`, [id])
 }
 
-const permanentDeleteProduct = (id) => run(`DELETE FROM products WHERE id=?`, [id])
+const permanentDeleteProduct = async (id) => run(`DELETE FROM products WHERE id=?`, [id])
 
-
-// ── OUTLETS ───────────────────────────────────────────────────────
+// ── OUTLETS ───────────────────────────────────────────────────────────────────
 const mapOutlet = (o) => ({
   id:        o.id,
   name:      o.name      ?? '',
@@ -738,76 +661,40 @@ const mapOutlet = (o) => ({
   discounts: (() => { try { return JSON.parse(o.discounts ?? '[]') } catch { return [] } })(),
 })
 
-const getOutlets = () =>
-  queryAll(`SELECT * FROM outlets WHERE archived = 0 ORDER BY name`)
-    .map(mapOutlet)
+const getOutlets         = async () => (await queryAll(`SELECT * FROM outlets WHERE archived = 0 ORDER BY name`)).map(mapOutlet)
+const getArchivedOutlets = async () => (await queryAll(`SELECT * FROM outlets WHERE archived = 1 ORDER BY name`)).map(mapOutlet)
 
-const getArchivedOutlets = () =>
-  queryAll(`SELECT * FROM outlets WHERE archived = 1 ORDER BY name`)
-    .map(mapOutlet)
-
-const upsertOutlet = (o) => run(`
+const upsertOutlet = async (o) => run(`
   INSERT INTO outlets (id, name, code, address, region, status, discounts, archived)
   VALUES (?, ?, ?, ?, ?, ?, ?, 0)
   ON CONFLICT(id) DO UPDATE SET
-    name        = excluded.name,
-    code        = excluded.code,
-    address     = excluded.address,
-    region      = excluded.region,
-    status      = excluded.status,
-    discounts   = excluded.discounts,
-    sync_status = 'pending'
-`, [
-  o.id,
-  o.name,
-  o.code    ?? null,
-  o.address ?? null,
-  o.region  ?? null,
-  o.status  ?? 'Active',
-  JSON.stringify(o.discounts ?? []),
-])
+    name=excluded.name, code=excluded.code, address=excluded.address, region=excluded.region,
+    status=excluded.status, discounts=excluded.discounts, sync_status='pending'
+`, [o.id, o.name, o.code ?? null, o.address ?? null, o.region ?? null, o.status ?? 'Active', JSON.stringify(o.discounts ?? [])])
 
-const archiveOutlet = (id) =>
-  run(`UPDATE outlets SET archived = 1, sync_status = 'pending' WHERE id = ?`, [id])
+const archiveOutlet         = async (id) => run(`UPDATE outlets SET archived=1, sync_status='pending' WHERE id=?`, [id])
+const unarchiveOutlet       = async (id) => run(`UPDATE outlets SET archived=0, sync_status='pending' WHERE id=?`, [id])
+const permanentDeleteOutlet = async (id) => run(`DELETE FROM outlets WHERE id=?`, [id])
 
-const unarchiveOutlet = (id) =>
-  run(`UPDATE outlets SET archived = 0, sync_status = 'pending' WHERE id = ?`, [id])
-
-const permanentDeleteOutlet = (id) =>
-  run(`DELETE FROM outlets WHERE id = ?`, [id])
-
-
-// ── OUTLET PRODUCT PRICES ─────────────────────────────────────────
-const getOutletProductPrices = (outletId) => {
-  const rows = queryAll(
-    `SELECT product_id, price FROM outlet_product_prices WHERE outlet_id = ?`,
-    [outletId]
-  )
+// ── OUTLET PRODUCT PRICES ─────────────────────────────────────────────────────
+const getOutletProductPrices = async (outletId) => {
+  const rows = await queryAll(`SELECT product_id, price FROM outlet_product_prices WHERE outlet_id = ?`, [outletId])
   const map = {}
   for (const r of rows) map[r.product_id] = r.price
   return map
 }
 
-const upsertOutletProductPrice = (outletId, productId, price) => {
-  run(
-    `INSERT INTO outlet_product_prices (outlet_id, product_id, price, updated_at)
-     VALUES (?, ?, ?, datetime('now'))
-     ON CONFLICT(outlet_id, product_id) DO UPDATE SET
-       price      = excluded.price,
-       updated_at = excluded.updated_at`,
-    [outletId, productId, price]
-  )
-}
+const upsertOutletProductPrice = async (outletId, productId, price) => run(`
+  INSERT INTO outlet_product_prices (outlet_id, product_id, price, updated_at)
+  VALUES (?, ?, ?, datetime('now'))
+  ON CONFLICT(outlet_id, product_id) DO UPDATE SET price=excluded.price, updated_at=excluded.updated_at
+`, [outletId, productId, price])
 
-const deleteOutletProductPrice = (outletId, productId) => {
-  run(
-    `DELETE FROM outlet_product_prices WHERE outlet_id = ? AND product_id = ?`,
-    [outletId, productId]
-  )
-}
+const deleteOutletProductPrice = async (outletId, productId) => run(
+  `DELETE FROM outlet_product_prices WHERE outlet_id=? AND product_id=?`, [outletId, productId]
+)
 
-
-// ── CLINIC LOGS ───────────────────────────────────────────────────
+// ── CLINIC LOGS ───────────────────────────────────────────────────────────────
 const mapClinicLog = (r) => ({
   id:           r.id,
   employeeId:   r.employee_id   ?? null,
@@ -829,56 +716,30 @@ const mapClinicLog = (r) => ({
   createdAt:    r.created_at    ?? '',
 })
 
-const getClinicLogs = () =>
-  queryAll(`SELECT * FROM clinic_logs WHERE status = 'Active' ORDER BY date DESC, time DESC`)
-    .map(mapClinicLog)
+const getClinicLogs         = async () => (await queryAll(`SELECT * FROM clinic_logs WHERE status = 'Active'   ORDER BY date DESC, time DESC`)).map(mapClinicLog)
+const getArchivedClinicLogs = async () => (await queryAll(`SELECT * FROM clinic_logs WHERE status = 'Archived' ORDER BY date DESC, time DESC`)).map(mapClinicLog)
 
-const getArchivedClinicLogs = () =>
-  queryAll(`SELECT * FROM clinic_logs WHERE status = 'Archived' ORDER BY date DESC, time DESC`)
-    .map(mapClinicLog)
-
-const upsertClinicLog = (log) => run(`
+const upsertClinicLog = async (log) => run(`
   INSERT INTO clinic_logs
     (id, employee_id, full_name, employee_code, date, time,
-     complaint, disposition, bp, temp, treatment,
-     pulse, spo2, gender, age, attachments, status)
+     complaint, disposition, bp, temp, treatment, pulse, spo2, gender, age, attachments, status)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
   ON CONFLICT(id) DO UPDATE SET
-    employee_id   = excluded.employee_id,
-    full_name     = excluded.full_name,
-    employee_code = excluded.employee_code,
-    date          = excluded.date,
-    time          = excluded.time,
-    complaint     = excluded.complaint,
-    disposition   = excluded.disposition,
-    bp            = excluded.bp,
-    temp          = excluded.temp,
-    treatment     = excluded.treatment,
-    pulse         = excluded.pulse,
-    spo2          = excluded.spo2,
-    gender        = excluded.gender,
-    age           = excluded.age,
-    attachments   = excluded.attachments,
-    sync_status   = 'pending'
-`, [
-  log.id, log.employeeId ?? null, log.fullName, log.employeeCode ?? null,
-  log.date, log.time,
-  log.complaint ?? null, log.disposition ?? null,
-  log.bp ?? null, log.temp ?? null, log.treatment ?? null,
-  log.pulse ?? null, log.spo2 ?? null, log.gender ?? null, log.age ?? null,
-  typeof log.attachments === 'string' ? log.attachments : JSON.stringify(log.attachments ?? []),
-])
+    employee_id=excluded.employee_id, full_name=excluded.full_name, employee_code=excluded.employee_code,
+    date=excluded.date, time=excluded.time, complaint=excluded.complaint, disposition=excluded.disposition,
+    bp=excluded.bp, temp=excluded.temp, treatment=excluded.treatment, pulse=excluded.pulse,
+    spo2=excluded.spo2, gender=excluded.gender, age=excluded.age, attachments=excluded.attachments, sync_status='pending'
+`, [log.id, log.employeeId ?? null, log.fullName, log.employeeCode ?? null,
+    log.date, log.time, log.complaint ?? null, log.disposition ?? null,
+    log.bp ?? null, log.temp ?? null, log.treatment ?? null,
+    log.pulse ?? null, log.spo2 ?? null, log.gender ?? null, log.age ?? null,
+    typeof log.attachments === 'string' ? log.attachments : JSON.stringify(log.attachments ?? [])])
 
-const archiveClinicLog = (id) =>
-  run(`UPDATE clinic_logs SET status='Archived', sync_status='pending' WHERE id=?`, [id])
+const archiveClinicLog       = async (id) => run(`UPDATE clinic_logs SET status='Archived', sync_status='pending' WHERE id=?`, [id])
+const unarchiveClinicLog     = async (id) => run(`UPDATE clinic_logs SET status='Active',   sync_status='pending' WHERE id=?`, [id])
+const permanentDeleteClinicLog = async (id) => run(`DELETE FROM clinic_logs WHERE id=?`, [id])
 
-const unarchiveClinicLog = (id) =>
-  run(`UPDATE clinic_logs SET status='Active', sync_status='pending' WHERE id=?`, [id])
-
-const permanentDeleteClinicLog = (id) =>
-  run(`DELETE FROM clinic_logs WHERE id=?`, [id])
-
-// ── SAVED ORDERS ─────────────────────────────────────────────────
+// ── SAVED ORDERS ──────────────────────────────────────────────────────────────
 const mapOrder = (r) => ({
   id:           r.id,
   seriesNumber: r.series_number,
@@ -891,90 +752,70 @@ const mapOrder = (r) => ({
   createdAt:    r.created_at   ?? '',
 })
 
-const saveOrder = (order) => run(`
-  INSERT INTO saved_orders
-    (id, series_number, outlet_id, outlet_name, groups_json, subtotal, discounts_json, grand_total)
+const saveOrder = async (order) => run(`
+  INSERT INTO saved_orders (id, series_number, outlet_id, outlet_name, groups_json, subtotal, discounts_json, grand_total)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`, [
-  order.id,
-  order.seriesNumber,
-  order.outletId    ?? null,
-  order.outletName  ?? null,
-  JSON.stringify(order.groups     ?? []),
-  order.subtotal    ?? 0,
-  JSON.stringify(order.discounts  ?? []),
-  order.grandTotal  ?? 0,
-])
+`, [order.id, order.seriesNumber, order.outletId ?? null, order.outletName ?? null,
+    JSON.stringify(order.groups ?? []), order.subtotal ?? 0, JSON.stringify(order.discounts ?? []), order.grandTotal ?? 0])
 
-const getOrdersByOutlet  = (outletId) =>
-  queryAll(`SELECT * FROM saved_orders WHERE outlet_id = ?    ORDER BY created_at DESC`, [outletId]).map(mapOrder)
+const getOrdersByOutlet  = async (outletId) => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id = ?    ORDER BY created_at DESC`, [outletId])).map(mapOrder)
+const getOrdersByDefault = async ()          => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id IS NULL ORDER BY created_at DESC`)).map(mapOrder)
+const getAllOrders        = async ()          => (await queryAll(`SELECT * FROM saved_orders ORDER BY created_at DESC`)).map(mapOrder)
+const deleteOrder        = async (id)        => run(`DELETE FROM saved_orders WHERE id=?`, [id])
 
-const getOrdersByDefault = () =>
-  queryAll(`SELECT * FROM saved_orders WHERE outlet_id IS NULL ORDER BY created_at DESC`).map(mapOrder)
-
-const getAllOrders = () =>
-  queryAll(`SELECT * FROM saved_orders ORDER BY created_at DESC`).map(mapOrder)
-
-const deleteOrder = (id) => run(`DELETE FROM saved_orders WHERE id = ?`, [id])
-
-
-// ── LEAVE REQUESTS ────────────────────────────────────────────────
-const submitLeaveRequest = (req) => {
-  run(`
-    INSERT INTO leave_requests
-      (id, employee_id, employee_no, employee_name, leave_type, start_date, end_date, reason)
+// ── LEAVE REQUESTS ────────────────────────────────────────────────────────────
+const submitLeaveRequest = async (req) => {
+  await run(`
+    INSERT INTO leave_requests (id, employee_id, employee_no, employee_name, leave_type, start_date, end_date, reason)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `, [req.id, req.employee_id, req.employee_no, req.employee_name,
       req.leave_type, req.start_date, req.end_date, req.reason ?? null])
-  save()
+  await syncCloud()
 }
 
-const getLeaveRequests = () => queryAll(`
+const getLeaveRequests = async () => queryAll(`
   SELECT lr.*, e.name AS emp_name, e.department
   FROM leave_requests lr
   LEFT JOIN employees e ON e.id = lr.employee_id
   ORDER BY lr.created_at DESC
 `)
 
-const getMyLeaveRequests = (employeeNo) => queryAll(`
-  SELECT * FROM leave_requests
-  WHERE employee_no = ?
-  ORDER BY created_at DESC
+const getMyLeaveRequests = async (employeeNo) => queryAll(`
+  SELECT * FROM leave_requests WHERE employee_no = ? ORDER BY created_at DESC
 `, [employeeNo])
 
-const reviewLeaveRequest = (id, status, note, reviewedBy) => {
-  run(`
+const reviewLeaveRequest = async (id, status, note, reviewedBy) => {
+  await run(`
     UPDATE leave_requests
-    SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = datetime('now'), sync_status = 'pending'
-    WHERE id = ?
+    SET status=?, review_note=?, reviewed_by=?, reviewed_at=datetime('now'), sync_status='pending'
+    WHERE id=?
   `, [status, note ?? null, reviewedBy ?? null, id])
-  save()
+  await syncCloud()
 }
 
-// ── REPORTS ───────────────────────────────────────────────────────
+// ── REPORTS ───────────────────────────────────────────────────────────────────
 const mapReport = (r) => ({
   id:               r.id,
-  reportNo:         r.report_no         ?? '',
-  employeeId:       r.employee_id       ?? null,
-  employeeNo:       r.employee_no       ?? '',
-  employeeName:     r.employee_name     ?? '',
-  reportType:       r.report_type       ?? '',
-  subject:          r.subject           ?? '',
-  description:      r.description       ?? '',
-  priority:         r.priority          ?? 'Medium',
-  branch:           r.branch            ?? '',
-  status:           r.status            ?? 'Pending',
-  assignedTo:       r.assigned_to       ?? null,
+  reportNo:         r.report_no           ?? '',
+  employeeId:       r.employee_id         ?? null,
+  employeeNo:       r.employee_no         ?? '',
+  employeeName:     r.employee_name       ?? '',
+  reportType:       r.report_type         ?? '',
+  subject:          r.subject             ?? '',
+  description:      r.description         ?? '',
+  priority:         r.priority            ?? 'Medium',
+  branch:           r.branch              ?? '',
+  status:           r.status              ?? 'Pending',
+  assignedTo:       r.assigned_to         ?? null,
   attachmentPaths:  (() => { try { return JSON.parse(r.attachment_paths ?? '[]') } catch { return [] } })(),
   reportDetailsJson: (() => { try { return JSON.parse(r.report_details_json ?? 'null') } catch { return null } })(),
   isArchived:       Boolean(r.is_archived),
-  createdAt:        r.created_at        ?? '',
-  updatedAt:        r.updated_at        ?? '',
+  createdAt:        r.created_at          ?? '',
+  updatedAt:        r.updated_at          ?? '',
 })
 
-const createReport = (report) => {
-  // Auto-generate report_no: RPT-001, RPT-002, ...
-  const last = queryOne(`SELECT report_no FROM reports ORDER BY created_at DESC LIMIT 1`)
+const createReport = async (report) => {
+  const last = await queryOne(`SELECT report_no FROM reports ORDER BY created_at DESC LIMIT 1`)
   let nextNum = 1
   if (last?.report_no) {
     const match = last.report_no.match(/RPT-(\d+)/)
@@ -982,113 +823,82 @@ const createReport = (report) => {
   }
   const reportNo = `RPT-${String(nextNum).padStart(3, '0')}`
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
-
-  run(`
+  await run(`
     INSERT INTO reports
       (id, report_no, employee_id, employee_no, employee_name,
        report_type, subject, description, priority, branch,
-       status, assigned_to, attachment_paths, report_details_json,
-       created_at, updated_at)
+       status, assigned_to, attachment_paths, report_details_json, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NULL, ?, ?, ?, ?)
-  `, [
-    report.id, reportNo,
-    report.employeeId ?? null, report.employeeNo ?? null, report.employeeName ?? null,
-    report.reportType, report.subject ?? null, report.description ?? null,
-    report.priority ?? 'Medium', report.branch ?? null,
-    JSON.stringify(report.attachmentPaths ?? []),
-    report.reportDetailsJson ? JSON.stringify(report.reportDetailsJson) : null,
-    now, now,
-  ])
-
-  // Log initial status
-  run(`INSERT INTO report_status_logs (id, report_id, old_status, new_status, changed_by, created_at)
-       VALUES (?, ?, '', 'Pending', ?, ?)`,
-    [crypto.randomUUID(), report.id, report.employeeName ?? report.employeeNo ?? 'System', now])
-
+  `, [report.id, reportNo,
+      report.employeeId ?? null, report.employeeNo ?? null, report.employeeName ?? null,
+      report.reportType, report.subject ?? null, report.description ?? null,
+      report.priority ?? 'Medium', report.branch ?? null,
+      JSON.stringify(report.attachmentPaths ?? []),
+      report.reportDetailsJson ? JSON.stringify(report.reportDetailsJson) : null,
+      now, now])
+  await run(
+    `INSERT INTO report_status_logs (id, report_id, old_status, new_status, changed_by, created_at) VALUES (?, ?, '', 'Pending', ?, ?)`,
+    [crypto.randomUUID(), report.id, report.employeeName ?? report.employeeNo ?? 'System', now]
+  )
   return { reportNo }
 }
 
-const getReports = (archived = false) =>
-  queryAll(`SELECT * FROM reports WHERE is_archived = ? ORDER BY created_at DESC`, [archived ? 1 : 0]).map(mapReport)
+const getReports    = async (archived = false) => (await queryAll(`SELECT * FROM reports WHERE is_archived = ? ORDER BY created_at DESC`, [archived ? 1 : 0])).map(mapReport)
+const getMyReports  = async (employeeNo, archived = false) => (await queryAll(`SELECT * FROM reports WHERE employee_no = ? AND is_archived = ? ORDER BY created_at DESC`, [employeeNo, archived ? 1 : 0])).map(mapReport)
+const getReportById = async (id) => { const row = await queryOne(`SELECT * FROM reports WHERE id = ?`, [id]); return row ? mapReport(row) : null }
 
-const getMyReports = (employeeNo, archived = false) =>
-  queryAll(`SELECT * FROM reports WHERE employee_no = ? AND is_archived = ? ORDER BY created_at DESC`, [employeeNo, archived ? 1 : 0]).map(mapReport)
-
-const getReportById = (id) => {
-  const row = queryOne(`SELECT * FROM reports WHERE id = ?`, [id])
-  return row ? mapReport(row) : null
-}
-
-const updateReportStatus = (id, status, changedBy) => {
-  const current = queryOne(`SELECT status FROM reports WHERE id = ?`, [id])
+const updateReportStatus = async (id, status, changedBy) => {
+  const current   = await queryOne(`SELECT status FROM reports WHERE id = ?`, [id])
   const oldStatus = current?.status ?? 'Pending'
-  const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
-
-  run(`UPDATE reports SET status = ?, updated_at = ? WHERE id = ?`, [status, now, id])
-  run(`INSERT INTO report_status_logs (id, report_id, old_status, new_status, changed_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+  const now       = new Date().toISOString().replace('T', ' ').slice(0, 19)
+  await run(`UPDATE reports SET status=?, updated_at=? WHERE id=?`, [status, now, id])
+  await run(`INSERT INTO report_status_logs (id, report_id, old_status, new_status, changed_by, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
     [crypto.randomUUID(), id, oldStatus, status, changedBy ?? 'System', now])
 }
 
-const assignReport = (id, assignedTo, changedBy) => {
+const assignReport = async (id, assignedTo) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
-  run(`UPDATE reports SET assigned_to = ?, updated_at = ? WHERE id = ?`, [assignedTo, now, id])
+  await run(`UPDATE reports SET assigned_to=?, updated_at=? WHERE id=?`, [assignedTo, now, id])
 }
 
-const addReportComment = (comment) => {
+const addReportComment = async (comment) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
-  run(`INSERT INTO report_comments (id, report_id, user_id, username, comment, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+  await run(`INSERT INTO report_comments (id, report_id, user_id, username, comment, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
     [comment.id, comment.reportId, comment.userId ?? null, comment.username ?? '', comment.comment ?? '', now])
 }
 
-const getReportComments = (reportId) =>
-  queryAll(`SELECT * FROM report_comments WHERE report_id = ? ORDER BY created_at ASC`, [reportId]).map(c => ({
-    id:        c.id,
-    reportId:  c.report_id,
-    userId:    c.user_id    ?? null,
-    username:  c.username   ?? '',
-    comment:   c.comment    ?? '',
-    createdAt: c.created_at ?? '',
-  }))
+const getReportComments   = async (reportId) => (await queryAll(`SELECT * FROM report_comments WHERE report_id=? ORDER BY created_at ASC`, [reportId])).map(c => ({
+  id: c.id, reportId: c.report_id, userId: c.user_id ?? null, username: c.username ?? '', comment: c.comment ?? '', createdAt: c.created_at ?? '',
+}))
 
-const getReportStatusLogs = (reportId) =>
-  queryAll(`SELECT * FROM report_status_logs WHERE report_id = ? ORDER BY created_at ASC`, [reportId]).map(l => ({
-    id:        l.id,
-    reportId:  l.report_id,
-    oldStatus: l.old_status ?? '',
-    newStatus: l.new_status ?? '',
-    changedBy: l.changed_by ?? '',
-    createdAt: l.created_at ?? '',
-  }))
+const getReportStatusLogs = async (reportId) => (await queryAll(`SELECT * FROM report_status_logs WHERE report_id=? ORDER BY created_at ASC`, [reportId])).map(l => ({
+  id: l.id, reportId: l.report_id, oldStatus: l.old_status ?? '', newStatus: l.new_status ?? '', changedBy: l.changed_by ?? '', createdAt: l.created_at ?? '',
+}))
 
-const updateReport = (report) => {
+const updateReport = async (report) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
-  run(`
+  await run(`
     UPDATE reports
-    SET report_type = ?, subject = ?, description = ?, priority = ?,
-        attachment_paths = ?, report_details_json = ?, updated_at = ?
-    WHERE id = ?
-  `, [
-    report.reportType, report.subject ?? null, report.description ?? null, report.priority ?? 'Medium',
-    JSON.stringify(report.attachmentPaths ?? []),
-    report.reportDetailsJson ? JSON.stringify(report.reportDetailsJson) : null,
-    now, report.id
-  ])
-  save()
+    SET report_type=?, subject=?, description=?, priority=?,
+        attachment_paths=?, report_details_json=?, updated_at=?
+    WHERE id=?
+  `, [report.reportType, report.subject ?? null, report.description ?? null, report.priority ?? 'Medium',
+      JSON.stringify(report.attachmentPaths ?? []),
+      report.reportDetailsJson ? JSON.stringify(report.reportDetailsJson) : null,
+      now, report.id])
 }
 
-const archiveReport = (id) => { run(`UPDATE reports SET is_archived = 1 WHERE id = ?`, [id]); save() }
-const unarchiveReport = (id) => { run(`UPDATE reports SET is_archived = 0 WHERE id = ?`, [id]); save() }
-const permanentDeleteReport = (id) => {
-  run(`DELETE FROM reports WHERE id = ?`, [id])
-  run(`DELETE FROM report_comments WHERE report_id = ?`, [id])
-  run(`DELETE FROM report_status_logs WHERE report_id = ?`, [id])
-  save()
+const archiveReport         = async (id) => run(`UPDATE reports SET is_archived=1 WHERE id=?`, [id])
+const unarchiveReport       = async (id) => run(`UPDATE reports SET is_archived=0 WHERE id=?`, [id])
+const permanentDeleteReport = async (id) => {
+  await run(`DELETE FROM reports WHERE id=?`, [id])
+  await run(`DELETE FROM report_comments WHERE report_id=?`, [id])
+  await run(`DELETE FROM report_status_logs WHERE report_id=?`, [id])
 }
 
+// ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
-  initDb, loginUser, queryAll, queryOne, run,
+  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
