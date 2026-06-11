@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Send, Paperclip, Smile } from 'lucide-react'
 import EmojiPicker from 'emoji-picker-react'
 
@@ -9,7 +9,15 @@ export default function ChatInput({
   disabled, onTyping,
 }) {
   const fileInputRef = useRef(null)
+  const textareaRef = useRef(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px'
+    }
+  }, [inputMsg])
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -70,6 +78,7 @@ export default function ChatInput({
           style={{ minHeight: '44px' }}
         >
           <textarea
+            ref={textareaRef}
             value={inputMsg}
             onChange={(e) => {
               setInputMsg(e.target.value)
