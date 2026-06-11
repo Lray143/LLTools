@@ -6,7 +6,7 @@ function formatTime(iso) {
   return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeTab, selectedUser, selectedDept }) {
+const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeTab, selectedUser, selectedDept, readReceipts = [] }) {
   const messagesEndRef = useRef(null)
 
   if (activeTab === 'dms' && !selectedUser) {
@@ -30,6 +30,26 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
   }
 
   const mySenderId = currentUser.employeeId || String(currentUser.id)
+
+  const seenByMsgId = {}
+  if (readReceipts && readReceipts.length > 0 && messages.length > 0) {
+    readReceipts.forEach(receipt => {
+      if (String(receipt.userId) === String(mySenderId)) return
+      
+      let lastSeenMsg = null
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (new Date(receipt.lastReadAt) >= new Date(messages[i].createdAt)) {
+          lastSeenMsg = messages[i]
+          break
+        }
+      }
+      
+      if (lastSeenMsg) {
+        if (!seenByMsgId[lastSeenMsg.id]) seenByMsgId[lastSeenMsg.id] = []
+        seenByMsgId[lastSeenMsg.id].push({ name: receipt.userName, time: receipt.lastReadAt })
+      }
+    })
+  }
 
   return (
     <div className="space-y-1">
@@ -74,6 +94,15 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
                   </div>
                 )}
               </div>
+              
+              {seenByMsgId[msg.id] && (
+                <div className={`text-[10px] text-gray-400 mt-1 w-full px-1 ${isMe ? 'text-right' : 'text-left'}`}>
+                  {activeTab === 'dms' 
+                    ? `Seen at ${formatTime(seenByMsgId[msg.id][0].time)}` 
+                    : `Seen by ${seenByMsgId[msg.id].map(u => u.name).join(', ')}`}
+                </div>
+              )}
+
             </div>
           </div>
         )

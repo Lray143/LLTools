@@ -1049,6 +1049,21 @@ const getChatSidebarData = async (userId) => {
     }))
   }
 }
+
+const getRoomReceipts = async (roomId) => {
+  const rows = await queryAll(`
+    SELECT r.user_id, r.last_read_at, u.username, e.name as employee_name
+    FROM chat_read_receipts r
+    LEFT JOIN users u ON u.id = r.user_id
+    LEFT JOIN employees e ON e.id = u.employee_id
+    WHERE r.room_id = ?
+  `, [roomId])
+  return rows.map(r => ({
+    userId: r.user_id,
+    lastReadAt: r.last_read_at,
+    userName: r.employee_name || r.username
+  }))
+}
 // ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
   initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud,
@@ -1071,5 +1086,5 @@ module.exports = {
   getReportComments, getReportStatusLogs,
   updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
   getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
-  markChatAsRead, getChatSidebarData
+  markChatAsRead, getChatSidebarData, getRoomReceipts
 }

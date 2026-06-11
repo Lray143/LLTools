@@ -21,6 +21,7 @@ export default function Chat({ currentUser, refreshKey }) {
   const [isUploadingFile, setIsUploadingFile] = useState(false)
   const [employees, setEmployees]         = useState([])
   const [sidebarData, setSidebarData]     = useState({ departments: [], dms: [] })
+  const [readReceipts, setReadReceipts]   = useState([])
   const [selectedDept, setSelectedDept]   = useState(currentUser?.department || 'Admin')
   const [selectedUser, setSelectedUser]   = useState(null)
   const messagesEndRef = useRef(null)
@@ -80,6 +81,9 @@ export default function Chat({ currentUser, refreshKey }) {
         msgs = await window.electronAPI.getDirectMessages(reqRoomId)
       }
       
+      const receipts = await window.electronAPI.getRoomReceipts(reqRoomId)
+      setReadReceipts(receipts)
+      
       setMessageCache(prev => ({ ...prev, [reqRoomId]: msgs || [] }))
       
       // Auto-scroll down but only if we haven't switched rooms while fetching
@@ -107,6 +111,20 @@ export default function Chat({ currentUser, refreshKey }) {
       loadSidebarData()
     }
   }, [refreshKey])
+
+  // Also refresh receipts periodically or when refreshKey changes
+  const refreshReceipts = useCallback(async () => {
+    const reqRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
+    if (!reqRoomId) return
+    try {
+      const receipts = await window.electronAPI.getRoomReceipts(reqRoomId)
+      setReadReceipts(receipts)
+    } catch (e) { }
+  }, [activeTab, selectedDept, selectedUser, myParticipantId])
+
+  useEffect(() => {
+    refreshReceipts()
+  }, [refreshKey, refreshReceipts])
 
   // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = async (e, forcedFileUrl = null) => {
@@ -260,6 +278,7 @@ export default function Chat({ currentUser, refreshKey }) {
             currentUser={currentUser}
             activeTab={activeTab}
             selectedUser={selectedUser}
+            readReceipts={readReceipts}
           />
           <div ref={messagesEndRef} />
         </div>
