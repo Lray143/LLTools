@@ -38,6 +38,7 @@ window.electronAPI = {
   sendDirectMessage: (msg) => ipcRenderer.invoke('chat:sendDM', msg),
   markChatAsRead: (userId, roomId) => ipcRenderer.invoke('chat:markAsRead', userId, roomId),
   getChatSidebarData: (userId) => ipcRenderer.invoke('chat:getSidebarData', userId),
+  getRoomReceipts: (roomId) => ipcRenderer.invoke('chat:getRoomReceipts', roomId),
   uploadAttachment: (buffer, name, type) => ipcRenderer.invoke('chat:uploadAttachment', buffer, name, type),
 
   // ── Products ────────────────────────────────────────────────────

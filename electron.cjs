@@ -174,6 +174,10 @@ ipcMain.handle('chat:getSidebarData', async (_, userId) => {
   const db = await import('./db.cjs')
   return await db.getChatSidebarData(userId)
 })
+ipcMain.handle('chat:getRoomReceipts', async (_, roomId) => {
+  const db = await import('./db.cjs')
+  return await db.getRoomReceipts(roomId)
+})
 ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeType) => {
   const buffer = Buffer.from(arrayBuffer)
   return await uploadFileToR2(buffer, fileName, mimeType)
