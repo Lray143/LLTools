@@ -26,7 +26,7 @@ const ALL_NAV_ITEMS = [
   { id: 'leaves',       label: 'Leave Requests',  icon: CalendarClock        },
 ]
 
-const CHAT_ITEM     = { id: 'chat',     label: 'Department Chat', icon: MessageSquare }
+const CHAT_ITEM     = { id: 'chat',     label: 'Chats',           icon: MessageSquare }
 const SETTINGS_ITEM = { id: 'settings', label: 'Settings', icon: Settings }
 
 function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange, refreshKey = 0 }) {

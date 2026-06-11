@@ -62,7 +62,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
   async function handleStatusChange(newStatus) {
     setSubmitting(true)
     try {
-      await window.electronAPI.updateReportStatus(report.id, newStatus, currentUser.username)
+      await window.electronAPI.updateReportStatus(report.id, newStatus, currentUser.employeeName || currentUser.username)
       await loadDetails()
       onRefresh()
     } finally { setSubmitting(false) }
@@ -72,7 +72,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
     if (!assignTo) return
     setSubmitting(true)
     try {
-      await window.electronAPI.assignReport(report.id, assignTo, currentUser.username)
+      await window.electronAPI.assignReport(report.id, assignTo, currentUser.employeeName || currentUser.username)
       onRefresh()
     } finally { setSubmitting(false) }
   }
@@ -83,7 +83,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
     try {
       await window.electronAPI.addReportComment({
         id: uuidv4(), reportId: report.id,
-        userId: String(currentUser.id), username: currentUser.username,
+        userId: String(currentUser.id), username: currentUser.employeeName || currentUser.username,
         comment: newComment.trim(),
       })
       setNewComment('')
@@ -115,6 +115,11 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
 
   // Status buttons for admin — exclude current status and Pending
   const statusActions = REPORT_STATUSES.filter(s => s !== report.status && s !== 'Pending')
+
+  const getEmployeeName = (idOrName) => {
+    const emp = employees.find(e => e.employee_no === idOrName || e.name === idOrName)
+    return emp ? emp.name : idOrName
+  }
 
   return (
     <div className="fixed inset-0 z-[100] flex">
@@ -446,7 +451,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
                           {isStatus ? (
                             <>
                               <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                                <span style={{ fontWeight: 600 }}>{item.data.changedBy}</span>
+                                <span style={{ fontWeight: 600 }}>{getEmployeeName(item.data.changedBy)}</span>
                                 <span style={{ color: 'var(--text-secondary)' }}> changed status</span>
                                 {item.data.oldStatus && (
                                   <span style={{ color: 'var(--text-secondary)' }}> from {item.data.oldStatus}</span>
@@ -462,7 +467,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
                             <>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px' }}>
                                 <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                  {item.data.username}
+                                  {getEmployeeName(item.data.username)}
                                 </span>
                                 <span style={{ fontSize: '11px', color: 'var(--text-secondary)', opacity: 0.65 }}>
                                   {relativeTime(item.time)}
@@ -517,9 +522,9 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
             {showEmojiPicker && (
               <div className="absolute bottom-[48px] left-0 z-50 shadow-2xl rounded-xl border border-gray-100">
                 <EmojiPicker
+                  theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
                   onEmojiClick={(e) => {
                     setNewComment(prev => prev + e.emoji)
-                    setShowEmojiPicker(false)
                   }}
                 />
               </div>

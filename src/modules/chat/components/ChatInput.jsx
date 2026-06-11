@@ -64,9 +64,9 @@ export default function ChatInput({
           {showEmojiPicker && (
             <div className="absolute bottom-12 left-0 z-50 shadow-2xl rounded-xl border border-gray-100">
               <EmojiPicker
+                theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
                 onEmojiClick={(e) => {
                   setInputMsg(prev => prev + e.emoji)
-                  setShowEmojiPicker(false)
                 }}
               />
             </div>

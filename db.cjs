@@ -1000,28 +1000,24 @@ const markChatAsRead = async (userId, roomId) => {
 const getChatSidebarData = async (userId) => {
   // Get latest message timestamp per department
   const depts = await queryAll(`
-    SELECT department as room_id, MAX(created_at) as last_msg_at
-    FROM department_chats
-    GROUP BY department
+    SELECT room_id, last_msg_at, last_sender_id, last_sender_name, last_message, last_file_url
+    FROM (
+      SELECT department as room_id, created_at as last_msg_at, sender_id as last_sender_id, sender_name as last_sender_name, message as last_message, file_url as last_file_url,
+             ROW_NUMBER() OVER(PARTITION BY department ORDER BY created_at DESC) as rn
+      FROM department_chats
+    )
+    WHERE rn = 1
   `)
 
-  // Get latest message timestamp per DM room involving the user
-  // DM room format is DM_id1_id2
-  const dms = await queryAll(`
-    SELECT room_id, MAX(created_at) as last_msg_at
-    FROM direct_messages
-    WHERE room_id LIKE ? OR room_id LIKE ?
-    GROUP BY room_id
-  `, [`%_${userId}_%`, `%_${userId}`]) 
-
-  // Wait, room_id is DM_id1_id2. A simpler LIKE check covers it:
-  // e.g. LIKE '%DM_%' 
-  // For safety, we can just fetch all DM rooms that contain the user's ID
   const allDms = await queryAll(`
-    SELECT room_id, MAX(created_at) as last_msg_at
-    FROM direct_messages
-    WHERE room_id LIKE ? OR room_id LIKE ?
-    GROUP BY room_id
+    SELECT room_id, last_msg_at, last_sender_id, last_sender_name, last_message, last_file_url
+    FROM (
+      SELECT room_id, created_at as last_msg_at, sender_id as last_sender_id, sender_name as last_sender_name, message as last_message, file_url as last_file_url,
+             ROW_NUMBER() OVER(PARTITION BY room_id ORDER BY created_at DESC) as rn
+      FROM direct_messages
+      WHERE room_id LIKE ? OR room_id LIKE ?
+    )
+    WHERE rn = 1
   `, [`DM_${userId}_%`, `DM_%_${userId}`])
 
   // Get the user's read receipts
@@ -1040,12 +1036,20 @@ const getChatSidebarData = async (userId) => {
     departments: depts.map(d => ({
       roomId: d.room_id,
       lastMsgAt: d.last_msg_at,
-      unread: !receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id]
+      lastSenderId: d.last_sender_id,
+      lastSenderName: d.last_sender_name,
+      lastMessage: d.last_message,
+      lastFileUrl: d.last_file_url,
+      unread: String(d.last_sender_id) !== String(userId) && (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
     })),
     dms: allDms.map(d => ({
       roomId: d.room_id,
       lastMsgAt: d.last_msg_at,
-      unread: !receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id]
+      lastSenderId: d.last_sender_id,
+      lastSenderName: d.last_sender_name,
+      lastMessage: d.last_message,
+      lastFileUrl: d.last_file_url,
+      unread: String(d.last_sender_id) !== String(userId) && (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
     }))
   }
 }

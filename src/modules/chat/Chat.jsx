@@ -143,6 +143,9 @@ export default function Chat({ currentUser, refreshKey }) {
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
         await window.electronAPI.sendDirectMessage(msgData)
       }
+
+      window.electronAPI.markChatAsRead(myParticipantId, roomId).catch(console.error)
+      loadSidebarData()
     } catch (err) {
       console.error('Failed to send message', err)
     } finally {
@@ -224,7 +227,7 @@ export default function Chat({ currentUser, refreshKey }) {
         activeTab={activeTab} setActiveTab={setActiveTab}
         sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
         sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
-        isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId}
+        isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
       />
 
       {/* ── MAIN CHAT AREA ── */}

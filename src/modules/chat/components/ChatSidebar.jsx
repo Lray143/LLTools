@@ -5,7 +5,7 @@ const ChatSidebar = memo(function ChatSidebar({
   activeTab, setActiveTab,
   sortedDepts, selectedDept, setSelectedDept, isUnread,
   sortedEmployees, selectedUser, setSelectedUser,
-  currentUser, getRoomId,
+  currentUser, getRoomId, sidebarData
 }) {
   return (
     <div className="w-72 shrink-0 flex flex-col bg-white rounded-xl shadow-sm border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
@@ -45,11 +45,26 @@ const ChatSidebar = memo(function ChatSidebar({
                   `}
                   style={isActive ? { color: 'var(--theme-600)' } : {}}
                 >
-                  <div className="flex items-center gap-3">
-                    <Hash size={16} className={isActive ? 'opacity-100' : 'opacity-40'} />
-                    <span className={unread ? 'font-bold text-gray-900' : ''}>{dept}</span>
+                  <div className="flex items-center gap-3 w-full overflow-hidden">
+                    <Hash size={16} className={isActive ? 'opacity-100 shrink-0' : 'opacity-40 shrink-0'} />
+                    <div className="flex flex-col overflow-hidden min-w-0 flex-1">
+                      <span className={unread ? 'font-bold text-gray-900 truncate text-left' : 'truncate text-left'}>{dept}</span>
+                      {(() => {
+                        const entry = sidebarData?.departments?.find(d => d.roomId === dept)
+                        if (entry && entry.lastMsgAt) {
+                          const isMe = String(entry.lastSenderId) === String(currentUser.employeeId || currentUser.id)
+                          const prefix = isMe ? 'You' : (entry.lastSenderName?.split(' ')[0] || 'Someone')
+                          return (
+                            <span className="text-[11px] text-gray-400 truncate text-left mt-0.5 max-w-full">
+                              {prefix}: {entry.lastMessage || 'Sent an attachment'}
+                            </span>
+                          )
+                        }
+                        return null
+                      })()}
+                    </div>
                   </div>
-                  {unread && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm" />}
+                  {unread && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shrink-0 ml-2" />}
                 </button>
               )
             })}
@@ -77,9 +92,21 @@ const ChatSidebar = memo(function ChatSidebar({
                     <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
                       <User size={12} className="text-gray-500" />
                     </div>
-                    <div className="flex-1 text-left truncate">
+                    <div className="flex-1 text-left truncate flex flex-col justify-center">
                       <div className={`truncate ${unread ? 'font-bold text-gray-900' : ''}`}>{emp.name}</div>
-                      <div className="text-[10px] text-gray-400 truncate leading-tight">{emp.department || 'No Dept'}</div>
+                      {(() => {
+                        const entry = sidebarData?.dms?.find(d => d.roomId === roomId)
+                        if (entry && entry.lastMsgAt) {
+                          const isMe = String(entry.lastSenderId) === myParticipantId
+                          const prefix = isMe ? 'You' : (entry.lastSenderName?.split(' ')[0] || 'Someone')
+                          return (
+                            <div className="text-[11px] text-gray-400 truncate mt-0.5">
+                              {prefix}: {entry.lastMessage || 'Sent an attachment'}
+                            </div>
+                          )
+                        }
+                        return <div className="text-[10px] text-gray-400 truncate mt-0.5">{emp.department || 'No Dept'}</div>
+                      })()}
                     </div>
                   </div>
                   {unread && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shrink-0 ml-2" />}
