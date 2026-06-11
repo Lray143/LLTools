@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, FileText, CalendarClock, CheckCheck, CheckCircle, XCircle, Clock, Eye, Loader } from 'lucide-react'
+import { Bell, FileText, CalendarClock, CheckCheck, CheckCircle, XCircle, Clock, Eye, Loader, MessageSquare } from 'lucide-react'
 import {
   getUnseenItems, markSeen, markAllSeen,
   SEEN_REPORTS_KEY, SEEN_LEAVES_KEY,
@@ -61,6 +61,8 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
   const [unseenMyReports,    setUnseenMyReports]    = useState([])
   const [unseenMyLeaves,     setUnseenMyLeaves]     = useState([])
 
+  const [unseenChats,        setUnseenChats]        = useState([])
+
   const [open, setOpen] = useState(false)
   const wrapperRef      = useRef(null)
 
@@ -114,6 +116,19 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
             setUnseenMyLeaves(getUnseenItems(acted, myLeavKey))
           } catch (_) {}
         })(),
+
+        // ── All users: unread chat messages ──────────────────────────────
+        (async () => {
+          try {
+            const chatUserId = currentUser.employeeId || String(currentUser.id)
+            const chatData = await window.electronAPI.getChatSidebarData(chatUserId)
+            if (chatData) {
+              const depts = (chatData.departments || []).filter(d => d.unread).map(d => ({ ...d, isDept: true }))
+              const dms = (chatData.dms || []).filter(d => d.unread).map(d => ({ ...d, isDept: false }))
+              setUnseenChats([...depts, ...dms])
+            }
+          } catch (_) {}
+        })(),
       ])
     } catch (e) {
       console.error('[NotificationBell] fetch error:', e)
@@ -143,9 +158,15 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     } else if (stream === 'my-report') {
       markSeen(myRepKey, item.id)
       setUnseenMyReports(prev => prev.filter(r => r.id !== item.id))
-    } else {
+    } else if (stream === 'my-leave') {
       markSeen(myLeavKey, item.id)
       setUnseenMyLeaves(prev => prev.filter(l => l.id !== item.id))
+    } else if (stream === 'chat') {
+      const chatUserId = currentUser.employeeId || String(currentUser.id)
+      window.electronAPI.markChatAsRead(chatUserId, item.roomId).catch(() => {})
+      setUnseenChats(prev => prev.filter(c => c.roomId !== item.roomId))
+      if (onNavigate) onNavigate('chat')
+      return // skip the report/leave navigation below
     }
     
     // Navigate to the relevant module if onNavigate is provided
@@ -163,10 +184,18 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     markAllSeen(SEEN_LEAVES_KEY,  incomingLeaves.map(l => l.id))
     markAllSeen(myRepKey, myReports.map(r => r.id))
     markAllSeen(myLeavKey, myLeaves.map(l => l.id))
+    
+    // Mark chats as read
+    const chatUserId = currentUser?.employeeId || String(currentUser?.id)
+    unseenChats.forEach(c => {
+      window.electronAPI.markChatAsRead(chatUserId, c.roomId).catch(() => {})
+    })
+
     setUnseenInReports([])
     setUnseenInLeaves([])
     setUnseenMyReports([])
     setUnseenMyLeaves([])
+    setUnseenChats([])
   }
 
   // ── Build combined list ───────────────────────────────────────────────────
@@ -201,13 +230,21 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
       _unread: unseenMyLeaveIds.has(l.id),
       _sortTime: l.updatedAt ?? l.createdAt ?? l.created_at ?? 0,
     })),
+    // Unread Chat Messages
+    ...unseenChats.map(c => ({
+      ...c, _stream: 'chat',
+      _unread: true,
+      _sortTime: c.lastMsgAt || 0,
+      id: c.roomId, // needed for key
+    })),
   ]
     .sort((a, b) => new Date(b._sortTime) - new Date(a._sortTime))
     .slice(0, 25)
 
   const totalUnseen =
     unseenInReports.length + unseenInLeaves.length +
-    unseenMyReports.length + unseenMyLeaves.length
+    unseenMyReports.length + unseenMyLeaves.length +
+    unseenChats.length
 
   if (!currentUser) return null
 
@@ -317,11 +354,18 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                 const isMyReport = item._stream === 'my-report'
                 const isMyLeave  = item._stream === 'my-leave'
                 const isInReport = item._stream === 'in-report'
+                const isChat     = item._stream === 'chat'
 
                 // --- Icon & color ---
                 let Icon, iconColor, iconBg, dotColor, accentColor
 
-                if (isIncoming) {
+                if (isChat) {
+                  Icon        = MessageSquare
+                  accentColor = '#14b8a6' // Teal
+                  iconColor   = accentColor
+                  iconBg      = 'rgba(20,184,166,0.12)'
+                  dotColor    = accentColor
+                } else if (isIncoming) {
                   // Admin/HR incoming: orange for reports, indigo for leaves
                   Icon        = isInReport ? FileText : CalendarClock
                   accentColor = isInReport ? '#f97316' : '#6366f1'
@@ -344,7 +388,10 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
 
                 // --- Title & subtitle ---
                 let title, subtitle
-                if (isInReport) {
+                if (isChat) {
+                  title    = item.isDept ? `New in ${item.roomId}` : `New from ${item.lastSenderName?.split(' ')[0] || 'Someone'}`
+                  subtitle = item.lastMessage || 'Sent an attachment'
+                } else if (isInReport) {
                   title    = item.subject || 'New Report'
                   subtitle = `Pending · from ${item.employeeName || item.employeeNo || 'Employee'}`
                 } else if (item._stream === 'in-leave') {
