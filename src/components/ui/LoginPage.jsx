@@ -30,7 +30,26 @@ function LoginPage({ onLogin }) {
   return (
     <div
       className="login-wrapper flex h-screen"
-      style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}
+      style={{
+        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+        /* ── Pin all theme CSS variables so the active theme cannot bleed in ── */
+        '--page-bg':        '#f9f9fb',
+        '--page-bg-alt':    '#f0f0f2',
+        '--surface':        '#ffffff',
+        '--surface-hover':  '#f5f5f7',
+        '--border':         '#e5e5e5',
+        '--border-strong':  '#d1d1d6',
+        '--text-primary':   '#1a1a1a',
+        '--text-secondary': '#6b7280',
+        '--accent-bg':      '#f97316',
+        '--accent-text':    '#ffffff',
+        '--accent-hover':   '#ea580c',
+        '--sidebar-bg':     '#242426',
+        '--sidebar-active': '#f97316',
+        background:         '#f9f9fb',
+        color:              '#1a1a1a',
+        colorScheme:        'light',
+      }}
     >
       {/* ── LEFT PANEL — brand strip ─────────────────────────────── */}
       <div

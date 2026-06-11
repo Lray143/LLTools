@@ -234,6 +234,7 @@ const initDb = async () => {
     );
     CREATE TABLE IF NOT EXISTS leave_requests (
       id            TEXT PRIMARY KEY,
+      leave_no      TEXT UNIQUE,
       employee_id   TEXT,
       employee_no   TEXT,
       employee_name TEXT,
@@ -323,6 +324,11 @@ const initDb = async () => {
     CREATE INDEX IF NOT EXISTS idx_outlets_name ON outlets(name);
     CREATE INDEX IF NOT EXISTS idx_products_sort ON products(group_id, sort_order, created_at);
   `)
+
+  // Migration: add leave_no to existing tables that don't have it yet
+  try {
+    await run("ALTER TABLE leave_requests ADD COLUMN leave_no TEXT")
+  } catch (_) { /* column already exists — safe to ignore */ }
 
   // ── Seed admin user ────────────────────────────────────────────────────────
   const adminHash = bcrypt.hashSync('admin123', 10)
@@ -807,12 +813,22 @@ const deleteOrder        = async (id)        => run(`DELETE FROM saved_orders WH
 
 // ── LEAVE REQUESTS ────────────────────────────────────────────────────────────
 const submitLeaveRequest = async (req) => {
+  // Generate next LVE-XXX number
+  const last = await queryOne(`SELECT leave_no FROM leave_requests WHERE leave_no IS NOT NULL ORDER BY created_at DESC LIMIT 1`)
+  let nextNum = 1
+  if (last?.leave_no) {
+    const match = last.leave_no.match(/LVE-(\d+)/)
+    if (match) nextNum = parseInt(match[1], 10) + 1
+  }
+  const leaveNo = `LVE-${String(nextNum).padStart(3, '0')}`
+
   await run(`
-    INSERT INTO leave_requests (id, employee_id, employee_no, employee_name, leave_type, start_date, end_date, reason)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [req.id, req.employee_id, req.employee_no, req.employee_name,
+    INSERT INTO leave_requests (id, leave_no, employee_id, employee_no, employee_name, leave_type, start_date, end_date, reason)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [req.id, leaveNo, req.employee_id, req.employee_no, req.employee_name,
       req.leave_type, req.start_date, req.end_date, req.reason ?? null])
   await syncCloud()
+  return { leaveNo }
 }
 
 const getLeaveRequests = async () => queryAll(`
@@ -989,6 +1005,10 @@ const sendDirectMessage = async ({ id, roomId, senderId, senderName, message, fi
   `, [id, roomId, senderId, senderName, message || null, fileUrl || null])
 }
 
+// Patches the file_url after a background cloud upload completes
+const updateChatFileUrl  = async (id, fileUrl) => run(`UPDATE department_chats SET file_url = ? WHERE id = ?`, [fileUrl, id])
+const updateDmFileUrl    = async (id, fileUrl) => run(`UPDATE direct_messages  SET file_url = ? WHERE id = ?`, [fileUrl, id])
+
 const markChatAsRead = async (userId, roomId) => {
   await run(`
     INSERT INTO chat_read_receipts (user_id, room_id, last_read_at)
@@ -1000,28 +1020,24 @@ const markChatAsRead = async (userId, roomId) => {
 const getChatSidebarData = async (userId) => {
   // Get latest message timestamp per department
   const depts = await queryAll(`
-    SELECT department as room_id, MAX(created_at) as last_msg_at
-    FROM department_chats
-    GROUP BY department
+    SELECT room_id, last_msg_at, last_sender_id, last_sender_name, last_message, last_file_url
+    FROM (
+      SELECT department as room_id, created_at as last_msg_at, sender_id as last_sender_id, sender_name as last_sender_name, message as last_message, file_url as last_file_url,
+             ROW_NUMBER() OVER(PARTITION BY department ORDER BY created_at DESC) as rn
+      FROM department_chats
+    )
+    WHERE rn = 1
   `)
 
-  // Get latest message timestamp per DM room involving the user
-  // DM room format is DM_id1_id2
-  const dms = await queryAll(`
-    SELECT room_id, MAX(created_at) as last_msg_at
-    FROM direct_messages
-    WHERE room_id LIKE ? OR room_id LIKE ?
-    GROUP BY room_id
-  `, [`%_${userId}_%`, `%_${userId}`]) 
-
-  // Wait, room_id is DM_id1_id2. A simpler LIKE check covers it:
-  // e.g. LIKE '%DM_%' 
-  // For safety, we can just fetch all DM rooms that contain the user's ID
   const allDms = await queryAll(`
-    SELECT room_id, MAX(created_at) as last_msg_at
-    FROM direct_messages
-    WHERE room_id LIKE ? OR room_id LIKE ?
-    GROUP BY room_id
+    SELECT room_id, last_msg_at, last_sender_id, last_sender_name, last_message, last_file_url
+    FROM (
+      SELECT room_id, created_at as last_msg_at, sender_id as last_sender_id, sender_name as last_sender_name, message as last_message, file_url as last_file_url,
+             ROW_NUMBER() OVER(PARTITION BY room_id ORDER BY created_at DESC) as rn
+      FROM direct_messages
+      WHERE room_id LIKE ? OR room_id LIKE ?
+    )
+    WHERE rn = 1
   `, [`DM_${userId}_%`, `DM_%_${userId}`])
 
   // Get the user's read receipts
@@ -1040,12 +1056,20 @@ const getChatSidebarData = async (userId) => {
     departments: depts.map(d => ({
       roomId: d.room_id,
       lastMsgAt: d.last_msg_at,
-      unread: !receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id]
+      lastSenderId: d.last_sender_id,
+      lastSenderName: d.last_sender_name,
+      lastMessage: d.last_message,
+      lastFileUrl: d.last_file_url,
+      unread: String(d.last_sender_id) !== String(userId) && (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
     })),
     dms: allDms.map(d => ({
       roomId: d.room_id,
       lastMsgAt: d.last_msg_at,
-      unread: !receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id]
+      lastSenderId: d.last_sender_id,
+      lastSenderName: d.last_sender_name,
+      lastMessage: d.last_message,
+      lastFileUrl: d.last_file_url,
+      unread: String(d.last_sender_id) !== String(userId) && (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
     }))
   }
 }
@@ -1086,5 +1110,6 @@ module.exports = {
   getReportComments, getReportStatusLogs,
   updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
   getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
+  updateChatFileUrl, updateDmFileUrl,
   markChatAsRead, getChatSidebarData, getRoomReceipts
 }
