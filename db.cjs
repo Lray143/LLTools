@@ -437,17 +437,31 @@ const DEPT_ROLE_MAP = {
   'IT'         : 'admin',
 }
 function deptToRole(dept) {
-  return DEPT_ROLE_MAP[dept] ?? 'hr'
+  // Return 'employee' (no module access) when no department is set.
+  // Do NOT default to 'hr' — that would give unassigned employees HR access.
+  if (!dept || dept.trim() === '') return 'employee'
+  return DEPT_ROLE_MAP[dept] ?? 'employee'
 }
 
 const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
-  const role     = deptToRole(dept)
-  const existing = await queryOne('SELECT id FROM users WHERE employee_id = ?', [employeeId])
+  const existing = await queryOne('SELECT id, role FROM users WHERE employee_id = ?', [employeeId])
   if (existing) {
-    await run(
-      `UPDATE users SET username = ?, role = ?, sync_status = 'pending' WHERE employee_id = ?`,
-      [employeeNo, role, employeeId]
-    )
+    // Always update username (employee_no may have changed)
+    // Only update role if a real department is assigned — never silently
+    // overwrite an existing role when the employee has no department yet.
+    const hasDept = dept && dept.trim() !== ''
+    if (hasDept) {
+      const role = deptToRole(dept)
+      await run(
+        `UPDATE users SET username = ?, role = ?, sync_status = 'pending' WHERE employee_id = ?`,
+        [employeeNo, role, employeeId]
+      )
+    } else {
+      await run(
+        `UPDATE users SET username = ?, sync_status = 'pending' WHERE employee_id = ?`,
+        [employeeNo, employeeId]
+      )
+    }
   } else {
     const hash = bcrypt.hashSync(employeeNo, 10)
     await run(
