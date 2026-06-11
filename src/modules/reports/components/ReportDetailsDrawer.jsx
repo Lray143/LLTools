@@ -4,8 +4,9 @@ import {
   X, ClipboardList, Paperclip, Send,
   Clock, Eye, Loader, CheckCircle, XCircle,
   UserCheck, MessageSquare, ArrowRight,
-  Archive, RotateCcw, Trash2, Edit, ChevronDown,
+  Archive, RotateCcw, Trash2, Edit, ChevronDown, Smile
 } from 'lucide-react'
+import EmojiPicker from 'emoji-picker-react'
 import { ReportStatusBadge, PriorityBadge } from './ReportStatusBadge'
 import { formatDateTime, relativeTime, REPORT_STATUSES } from './reportConstants'
 import { canManageReports } from '../../../lib/permissions'
@@ -31,10 +32,11 @@ const DETAIL_LABELS = {
   'Technical Issue':     { affectedSystem: 'Affected System', device: 'Device', errorMessage: 'Error Message', urgency: 'Urgency' },
 }
 
-export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, employees = [], onEdit }) {
+export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, employees = [], onEdit, refreshKey }) {
   const [comments,   setComments]   = useState([])
   const [statusLogs, setStatusLogs] = useState([])
   const [newComment, setNewComment] = useState('')
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [assignTo,   setAssignTo]   = useState(report?.assignedTo ?? '')
 
@@ -52,7 +54,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
     setStatusLogs(s ?? [])
   }, [report?.id])
 
-  useEffect(() => { loadDetails() }, [loadDetails])
+  useEffect(() => { loadDetails() }, [loadDetails, refreshKey])
   useEffect(() => { setAssignTo(report?.assignedTo ?? '') }, [report?.assignedTo])
 
   if (!report) return null
@@ -494,9 +496,35 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
 
         {/* ── COMMENT INPUT ────────────────────────────────────────────── */}
         <div
-          className="shrink-0 px-6 py-4 border-t flex gap-2 items-center"
+          className="shrink-0 px-6 py-4 border-t flex gap-2 items-center relative"
           style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
         >
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setShowEmojiPicker(prev => !prev)}
+              style={{
+                width: '38px', height: '38px', borderRadius: '8px', border: 'none',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', transition: 'background 150ms',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <Smile size={20} />
+            </button>
+            {showEmojiPicker && (
+              <div className="absolute bottom-[48px] left-0 z-50 shadow-2xl rounded-xl border border-gray-100">
+                <EmojiPicker
+                  onEmojiClick={(e) => {
+                    setNewComment(prev => prev + e.emoji)
+                    setShowEmojiPicker(false)
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <input
             value={newComment}
             onChange={e => setNewComment(e.target.value)}

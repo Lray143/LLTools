@@ -158,6 +158,14 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
 
   useEffect(() => { load(refreshKey === 0) }, [load, refreshKey])
 
+  useEffect(() => {
+    if (drawerReport && refreshKey !== 0) {
+      window.electronAPI.getReportById(drawerReport.id).then(fresh => {
+        if (fresh) setDrawerReport(fresh)
+      })
+    }
+  }, [refreshKey]) // Update drawer data when refreshKey changes
+
   // ── Submit ────────────────────────────────────────────────────────
   async function handleSubmit(form) {
     setSubmitting(true)
@@ -437,6 +445,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
           onRefresh={handleDrawerRefresh}
           employees={employees}
           onEdit={(r) => { setEditingReport(r); setDrawerReport(null) }}
+          refreshKey={refreshKey}
         />
       )}
     </div>
