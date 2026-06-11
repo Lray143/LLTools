@@ -35,7 +35,7 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
   if (readReceipts && readReceipts.length > 0 && messages.length > 0) {
     readReceipts.forEach(receipt => {
       if (String(receipt.userId) === String(mySenderId)) return
-      
+
       let lastSeenMsg = null
       for (let i = messages.length - 1; i >= 0; i--) {
         if (new Date(receipt.lastReadAt) >= new Date(messages[i].createdAt)) {
@@ -43,7 +43,7 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
           break
         }
       }
-      
+
       if (lastSeenMsg) {
         if (!seenByMsgId[lastSeenMsg.id]) seenByMsgId[lastSeenMsg.id] = []
         seenByMsgId[lastSeenMsg.id].push({ name: receipt.userName, time: receipt.lastReadAt })
@@ -94,11 +94,11 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
                   </div>
                 )}
               </div>
-              
+
               {seenByMsgId[msg.id] && (
                 <div className={`text-[10px] text-gray-400 mt-1 w-full px-1 ${isMe ? 'text-right' : 'text-left'}`}>
-                  {activeTab === 'dms' 
-                    ? `Seen at ${formatTime(seenByMsgId[msg.id][0].time)}` 
+                  {activeTab === 'dms'
+                    ? `Seen at ${formatTime(seenByMsgId[msg.id][0].time)}`
                     : `Seen by ${seenByMsgId[msg.id].map(u => u.name).join(', ')}`}
                 </div>
               )}
