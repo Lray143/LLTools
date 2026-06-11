@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, protocol, net } = require('electron')
 const path = require('path')
 const { uploadFileToR2 } = require('./r2.cjs')
 const fs = require('fs')
@@ -23,10 +23,21 @@ const {
   updateReportStatus, assignReport, addReportComment,
   getReportComments, getReportStatusLogs,
   updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
+  getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
+  updateChatFileUrl, updateDmFileUrl,
+  markChatAsRead, getChatSidebarData, getRoomReceipts,
+  refreshUser,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
 let mainWindow = null
+
+// MUST be called before app is ready — tells Electron to treat attachment://
+// as a secure, standard scheme (same trust level as https://)
+protocol.registerSchemesAsPrivileged([{
+  scheme: 'attachment',
+  privileges: { secure: true, standard: true, stream: true, supportFetchAPI: true }
+}])
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -178,9 +189,41 @@ ipcMain.handle('chat:getRoomReceipts', async (_, roomId) => {
   const db = await import('./db.cjs')
   return await db.getRoomReceipts(roomId)
 })
-ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeType) => {
+ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeType, msgId, msgType) => {
   const buffer = Buffer.from(arrayBuffer)
-  return await uploadFileToR2(buffer, fileName, mimeType)
+
+  // ── Step 1: Save locally first so the image shows IMMEDIATELY (even offline)
+  const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads')
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+  const ext = path.extname(fileName) || ''
+  const localName = `${crypto.randomUUID()}${ext}`
+  const localPath = path.join(uploadsDir, localName)
+  fs.writeFileSync(localPath, buffer)
+
+  // Return an attachment:// URL — works offline, displays instantly
+  const localUrl = `attachment://${localPath.replace(/\\/g, '/')}`
+
+  // ── Step 2: Upload to R2 in the background (fire-and-forget)
+  // Once done, patch the DB record with the real public URL so OTHER devices can see it
+  setImmediate(async () => {
+    try {
+      const { updateChatFileUrl, updateDmFileUrl } = require('./db.cjs')
+      const publicUrl = await uploadFileToR2(buffer, localName, mimeType)
+      if (msgType === 'dm') {
+        await updateDmFileUrl(msgId, publicUrl)
+      } else {
+        await updateChatFileUrl(msgId, publicUrl)
+      }
+    } catch (err) {
+      console.error('[R2] Background upload failed — local copy still works:', err)
+    }
+  })
+
+  return localUrl
+})
+
+ipcMain.handle('chat:openAttachment', async (_, filePath) => {
+  await shell.openPath(filePath)
 })
 
 // ── ATTACHMENTS ───────────────────────────────────────────────────
@@ -201,6 +244,14 @@ ipcMain.handle('attachments:open', async (_, filepath) => {
 app.whenReady().then(async () => {
   await initDb()
   createWindow()
+
+  // Register attachment:// protocol handler — serves local chat upload files
+  // registerSchemesAsPrivileged (called before ready) makes this trusted & streamable
+  protocol.handle('attachment', (request) => {
+    // Strip the scheme prefix to get the raw absolute file path
+    const filePath = decodeURIComponent(request.url.slice('attachment://'.length))
+    return net.fetch(`file:///${filePath}`)
+  })
 
   // ── Background sync in a dedicated worker thread ──────────────
   // This completely offloads the heavy DB sync operations from the main

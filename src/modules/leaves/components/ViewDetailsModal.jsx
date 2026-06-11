@@ -44,6 +44,11 @@ export function ViewDetailsModal({ request, onClose, onReview, isHR }) {
 
             {/* Info grid */}
             <div className="rounded-xl p-4 flex flex-col gap-2.5 text-[13px] shrink-0" style={{ background: 'var(--surface-hover)' }}>
+              <InfoRow label="Reference No">
+                <span className="font-mono font-bold" style={{ color: 'var(--accent-bg)' }}>
+                  {request.leave_no || '—'}
+                </span>
+              </InfoRow>
               <InfoRow label="Employee">
                 {request.emp_name || request.employee_name || request.employee_no || '—'}
               </InfoRow>

@@ -244,23 +244,45 @@ export const THEMES = [
     }
   },
   {
-    id: 'cyberpunk',
-    name: 'Midnight Purple',
+    id: 'amber-night',
+    name: 'Amber Night',
     type: 'dark',
     colors: {
-      pageBg: '#0f0913',
-      pageBgAlt: '#0a050d',
-      surface: '#1d122b',
-      surfaceHover: '#2a1a3e',
-      border: '#3c2358',
-      borderStrong: '#5e368c',
-      textPrimary: '#e2d4f0',
-      textSecondary: '#a58ec2',
-      accentBg: '#9d4edd',
+      pageBg:       '#0c0800',
+      pageBgAlt:    '#130e00',
+      surface:      '#1c1500',
+      surfaceHover: '#2a1f00',
+      border:       '#3d2e00',
+      borderStrong: '#8b6400',
+      textPrimary:  '#fff4d6',
+      textSecondary:'#c9a04a',
+      accentBg:     '#d97706',
+      accentText:   '#ffffff',
+      accentHover:  '#f59e0b',
+      sidebarBg:    '#070500',
+      sidebarActive:'#d97706'
+    }
+  },
+  {
+    id: 'kuromi',
+    name: 'Kuromi',
+    type: 'dark',
+    mascotSidebar: '/kuromi_mascot.png',
+    mascotEmpty: '/kuromi_empty_state.png',
+    colors: {
+      pageBg: '#0d0814',
+      pageBgAlt: '#120b1e',
+      surface: '#1c1230',
+      surfaceHover: '#271847',
+      border: '#3b2260',
+      borderStrong: '#7c3aed',
+      textPrimary: '#f0e6ff',
+      textSecondary: '#c4a8f0',
+      accentBg: '#9333ea',
       accentText: '#ffffff',
-      accentHover: '#b15eff',
-      sidebarBg: '#0a050d',
-      sidebarActive: '#c77dff'
+      accentHover: '#a855f7',
+      sidebarBg: '#08040f',
+      sidebarActive: '#9333ea'
     }
   }
 ]
@@ -316,6 +338,11 @@ export function applyThemeToDocument(themeId) {
   // Provide a fallback for legacy --theme-500 just in case it's used elsewhere
   root.style.setProperty('--theme-500',      theme.colors.accentBg)
   root.style.setProperty('--theme-600',      theme.colors.accentHover)
+
+  // Mascot images (empty string if not a mascot theme)
+  root.style.setProperty('--mascot-sidebar', theme.mascotSidebar ? `url('${theme.mascotSidebar}')` : 'none')
+  root.dataset.mascotSidebar  = theme.mascotSidebar  || ''
+  root.dataset.mascotEmpty    = theme.mascotEmpty    || ''
 
   // Toggle Tailwind's dark mode class
   if (theme.type === 'dark') {

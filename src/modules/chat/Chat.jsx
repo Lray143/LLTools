@@ -127,7 +127,7 @@ export default function Chat({ currentUser, refreshKey }) {
   }, [refreshKey, refreshReceipts])
 
   // ── Send message ──────────────────────────────────────────────────────────
-  const handleSend = async (e, forcedFileUrl = null) => {
+  const handleSend = async (e, forcedFileUrl = null, forcedId = null) => {
     if (e) e.preventDefault()
     if (!inputMsg.trim() && !forcedFileUrl) return
     setIsSending(true)
@@ -136,7 +136,7 @@ export default function Chat({ currentUser, refreshKey }) {
     try {
       if (activeTab === 'channels') {
         const msgData = {
-          id: crypto.randomUUID(), department: selectedDept,
+          id: forcedId || crypto.randomUUID(), department: selectedDept,
           senderId: myParticipantId,
           senderName: currentUser.employeeName || currentUser.username,
           message: inputMsg.trim() || 'Sent an attachment', fileUrl: forcedFileUrl
@@ -149,7 +149,7 @@ export default function Chat({ currentUser, refreshKey }) {
         await window.electronAPI.sendChatMessage(msgData)
       } else if (activeTab === 'dms' && selectedUser) {
         const msgData = {
-          id: crypto.randomUUID(), roomId,
+          id: forcedId || crypto.randomUUID(), roomId,
           senderId: myParticipantId,
           senderName: currentUser.employeeName || currentUser.username,
           message: inputMsg.trim() || 'Sent an attachment', fileUrl: forcedFileUrl
@@ -193,9 +193,13 @@ export default function Chat({ currentUser, refreshKey }) {
     e.target.value = ''
     setIsUploadingFile(true)
     try {
+      // Generate the message ID here so we can pass it to the uploader
+      // The main process uses it to patch the DB record once R2 upload completes
+      const msgId = crypto.randomUUID()
+      const msgType = activeTab === 'dms' ? 'dm' : 'channel'
       const arrayBuffer = await file.arrayBuffer()
-      const publicUrl = await window.electronAPI.uploadAttachment(arrayBuffer, file.name, file.type)
-      await handleSend(null, publicUrl)
+      const fileUrl = await window.electronAPI.uploadAttachment(arrayBuffer, file.name, file.type, msgId, msgType)
+      await handleSend(null, fileUrl, msgId)
     } catch (err) {
       console.error('File upload error', err)
       alert('Failed to upload file. Please try again.')
@@ -225,6 +229,13 @@ export default function Chat({ currentUser, refreshKey }) {
       return (bT ? new Date(bT).getTime() : 0) - (aT ? new Date(aT).getTime() : 0)
     }), [employees, sidebarData.dms, myParticipantId])
 
+  // Members visible in the current channel (used for @mentions)
+  const channelMembers = useMemo(() => {
+    if (activeTab !== 'channels') return []
+    // Include ALL employees in that dept (not filtered by current user)
+    return employees.filter(e => e.department === selectedDept)
+  }, [activeTab, employees, selectedDept])
+
   const isUnread = useCallback((roomId, isDept = false) => {
     const list = isDept ? sidebarData.departments : sidebarData.dms
     const entry = list.find(d => d.roomId === roomId)
@@ -249,33 +260,33 @@ export default function Chat({ currentUser, refreshKey }) {
       />
 
       {/* ── MAIN CHAT AREA ── */}
-      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+      <div className="flex-1 flex flex-col rounded-xl shadow-sm border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
 
         {/* Header */}
         <div className="px-6 py-4 border-b flex items-center shadow-sm z-10" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
           {activeTab === 'channels' ? (
             <div>
-              <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <Hash size={20} style={{ color: 'var(--theme-600)' }} />
+              <h1 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <Hash size={20} style={{ color: 'var(--accent-bg)' }} />
                 {selectedDept}
               </h1>
-              <p className="text-xs text-gray-500 mt-0.5">Real-time synchronization active.</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Real-time synchronization active.</p>
             </div>
           ) : selectedUser ? (
             <div>
-              <h1 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <User size={20} style={{ color: 'var(--theme-600)' }} />
+              <h1 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <User size={20} style={{ color: 'var(--accent-bg)' }} />
                 {selectedUser.name}
               </h1>
-              <p className="text-xs text-gray-500 mt-0.5">{selectedUser.position || 'Employee'} • {selectedUser.department}</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{selectedUser.position || 'Employee'} • {selectedUser.department}</p>
             </div>
           ) : (
-            <h1 className="text-lg font-bold text-gray-800">Direct Messages</h1>
+            <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Direct Messages</h1>
           )}
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
+        <div className="flex-1 overflow-y-auto p-6" style={{ background: 'var(--page-bg-alt)' }}>
           <ChatMessages
             messages={currentMessages}
             currentUser={currentUser}
@@ -296,6 +307,8 @@ export default function Chat({ currentUser, refreshKey }) {
           isUploadingFile={isUploadingFile}
           disabled={inputDisabled}
           onTyping={handleTyping}
+          members={channelMembers}
+          activeTab={activeTab}
         />
       </div>
     </div>

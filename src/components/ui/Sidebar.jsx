@@ -29,9 +29,39 @@ const ALL_NAV_ITEMS = [
 const CHAT_ITEM     = { id: 'chat',     label: 'Chats',           icon: MessageSquare }
 const SETTINGS_ITEM = { id: 'settings', label: 'Settings', icon: Settings }
 
+// ── Canvas-based background removal for mascot images ────────────────────────
+// Iterates every pixel; if it's near-black (the baked-in bg), sets alpha = 0.
+function useTransparentImage(src, threshold = 60) {
+  const [dataUrl, setDataUrl] = useState('')
+  useEffect(() => {
+    if (!src) { setDataUrl(''); return }
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width  = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const d = imgData.data
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] < threshold && d[i+1] < threshold && d[i+2] < threshold) {
+          d[i+3] = 0 // fully transparent
+        }
+      }
+      ctx.putImageData(imgData, 0, 0)
+      setDataUrl(canvas.toDataURL('image/png'))
+    }
+    img.src = src
+  }, [src, threshold])
+  return dataUrl
+}
+
 function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange, refreshKey = 0 }) {
   const [isPinned, setIsPinned]   = useState(true)
   const [isHovered, setIsHovered] = useState(false)
+  const [mascotSidebar, setMascotSidebar] = useState(document.documentElement.dataset.mascotSidebar || '')
+  const transparentMascot = useTransparentImage(mascotSidebar)
 
   // ── ONLINE STATUS ─────────────────────────────────────────────
   const [isOnline, setIsOnline] = useState(navigator.onLine)
@@ -47,6 +77,15 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
       window.removeEventListener('online',  goOnline)
       window.removeEventListener('offline', goOffline)
     }
+  }, [])
+
+  // Watch for theme changes to update mascot
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setMascotSidebar(document.documentElement.dataset.mascotSidebar || '')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mascot-sidebar'] })
+    return () => observer.disconnect()
   }, [])
   // ─────────────────────────────────────────────────────────────
 
@@ -109,11 +148,11 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
     >
       <aside
         className={`
-          flex flex-col py-6 h-full
-          text-white overflow-hidden
+          flex flex-col py-6 h-full relative
+          text-white
           transition-[width,box-shadow] duration-300 ease-in-out
           ${isPinned
-            ? 'relative w-52 px-3'
+            ? 'w-52 px-3'
             : `absolute top-0 left-0 z-50 h-screen px-3
                ${isExpanded
                  ? 'w-52 shadow-[4px_0_24px_rgba(0,0,0,0.5)]'
@@ -121,7 +160,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
                }`
           }
         `}
-        style={{ background: 'var(--sidebar-bg)' }}
+        style={{ background: 'var(--sidebar-bg)', overflow: 'hidden' }}
       >
 
         {/* ── LOGO ─────────────────────────────────────── */}
@@ -159,7 +198,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         </div>
 
         {/* ── OVERVIEW NAV (scrollable, grows to fill space) ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto relative" style={{ zIndex: 1 }}>
           <p className={`
             text-xs text-gray-500 uppercase px-2 mb-2
             transition-all duration-200 whitespace-nowrap overflow-hidden
@@ -171,7 +210,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         </div>
 
         {/* ── SYSTEM / SETTINGS — always pinned above user info ── */}
-        <div className="shrink-0 mt-4">
+        <div className="shrink-0 mt-4 relative" style={{ zIndex: 1 }}>
           <div className={`
             h-px mx-1 mb-4
             transition-all duration-200
@@ -188,11 +227,28 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
           <NavButton item={SETTINGS_ITEM} />
         </div>
 
+        {/* Kuromi mascot: centered watermark, low opacity so nav text stays readable */}
+        {transparentMascot && (
+          <img
+            src={transparentMascot}
+            alt=""
+            aria-hidden="true"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none"
+            style={{
+              width: '140px',
+              opacity: isExpanded ? 0.30 : 0,
+              transition: 'opacity 0.3s ease',
+              filter: 'hue-rotate(260deg) saturate(5) drop-shadow(0 0 12px rgba(147,51,234,0.7))',
+              zIndex: 0,
+            }}
+          />
+        )}
+
         {/* ── BOTTOM — User info + logout ──────────────── */}
         <div className={`
-          shrink-0 flex items-center py-2 rounded-md transition-all duration-200 mt-3
+          shrink-0 flex items-center py-2 rounded-md transition-all duration-200 mt-3 relative
           ${isExpanded ? 'gap-3 px-2' : 'justify-center px-0'}
-        `}>
+        `} style={{ zIndex: 1 }}>
 
           {/* Avatar with online/offline dot */}
           <div className="relative shrink-0">

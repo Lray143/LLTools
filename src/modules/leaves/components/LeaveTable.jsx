@@ -22,6 +22,7 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="border-b" style={{ borderColor: 'var(--border)' }}>
+            <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>Leave No</th>
             {isManageView && <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>Employee</th>}
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>Leave Type</th>
             <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-widest whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>Start</th>
@@ -46,6 +47,16 @@ export function LeaveTable({ rows, isManageView, onView, onReview, onNewRequest 
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
               >
+                {/* Leave No */}
+                <td className="px-4 py-3 align-middle">
+                  <span
+                    className="font-mono font-bold text-[12px] whitespace-nowrap"
+                    style={{ color: 'var(--accent-bg)' }}
+                  >
+                    {r.leave_no || '—'}
+                  </span>
+                </td>
+
                 {/* Employee */}
                 {isManageView && (
                   <td className="px-4 py-3 align-middle">

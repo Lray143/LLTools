@@ -39,7 +39,8 @@ window.electronAPI = {
   markChatAsRead: (userId, roomId) => ipcRenderer.invoke('chat:markAsRead', userId, roomId),
   getChatSidebarData: (userId) => ipcRenderer.invoke('chat:getSidebarData', userId),
   getRoomReceipts: (roomId) => ipcRenderer.invoke('chat:getRoomReceipts', roomId),
-  uploadAttachment: (buffer, name, type) => ipcRenderer.invoke('chat:uploadAttachment', buffer, name, type),
+  uploadAttachment: (buffer, name, type, msgId, msgType) => ipcRenderer.invoke('chat:uploadAttachment', buffer, name, type, msgId, msgType),
+  openAttachment:   (filePath) => ipcRenderer.invoke('chat:openAttachment', filePath),
 
   // ── Products ────────────────────────────────────────────────────
   getProductGroups:        ()        => ipcRenderer.invoke('products:getAll'),
