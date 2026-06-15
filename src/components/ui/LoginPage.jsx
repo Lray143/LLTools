@@ -49,6 +49,7 @@ function LoginPage({ onLogin }) {
         background:         '#f9f9fb',
         color:              '#1a1a1a',
         colorScheme:        'light',
+        overflow:           'hidden',
       }}
     >
       {/* ── LEFT PANEL — brand strip ─────────────────────────────── */}
