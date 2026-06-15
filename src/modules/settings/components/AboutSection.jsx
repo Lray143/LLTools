@@ -100,12 +100,12 @@ export function AboutSection() {
           fontWeight: 600,
           color: 'var(--accent-bg)',
         }}>
-          v{APP_VERSION}
+          v{appVersion}
         </div>
       </div>
 
       <SettingRow label="Version" description="Current installed version of LLTools.">
-        <InfoChip value={`v${APP_VERSION}`} />
+        <InfoChip value={`v${appVersion}`} />
       </SettingRow>
 
       <SettingRow label="Developer" description="Built and maintained by the LLTools team.">
