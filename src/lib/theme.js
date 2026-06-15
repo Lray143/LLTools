@@ -267,8 +267,8 @@ export const THEMES = [
     id: 'kuromi',
     name: 'Kuromi',
     type: 'dark',
-    mascotSidebar: '/kuromi_mascot.png',
-    mascotEmpty: '/kuromi_empty_state.png',
+    mascotSidebar: './kuromi_mascot.png',
+    mascotEmpty: './kuromi_empty_state.png',
     colors: {
       pageBg: '#0d0814',
       pageBgAlt: '#120b1e',

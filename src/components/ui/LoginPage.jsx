@@ -88,7 +88,7 @@ function LoginPage({ onLogin }) {
 
         {/* Logo */}
         <img
-          src="/Logo.png"
+          src="./Logo.png"
           alt="Double L Beauty Products"
           style={{
             width: "160px",
@@ -170,7 +170,7 @@ function LoginPage({ onLogin }) {
 
         {/* Mobile-only logo */}
         <img
-          src="/Logo.png"
+          src="./Logo.png"
           alt="Double L Beauty Products"
           className="md:hidden mb-8"
           style={{ width: "120px", objectFit: "contain" }}

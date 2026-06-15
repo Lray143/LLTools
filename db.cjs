@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('dotenv').config({ path: require('path').join(__dirname, '.env') })
 const { createClient } = require('@libsql/client')
 const path      = require('path')
 const { app }   = require('electron')

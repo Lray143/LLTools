@@ -18,6 +18,25 @@
     "start": "concurrently \"cross-env NODE_ENV=development vite\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
     "dist": "vite build && electron-builder"
   },
+  "build": {
+    "appId": "com.lltools.app",
+    "productName": "LLTools",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "dist/**/*",
+      ".env"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Lray143",
+        "repo": "LLTools"
+      }
+    ]
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1065.0",
     "@libsql/client": "^0.17.3",
@@ -27,6 +46,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
+    "electron-updater": "^6.8.9",
     "emoji-picker-react": "^4.19.1",
     "exceljs": "^4.4.0",
     "lucide-react": "^1.16.0",

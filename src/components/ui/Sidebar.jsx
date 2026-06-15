@@ -166,7 +166,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         {/* ── LOGO ─────────────────────────────────────── */}
         <div className="relative flex items-center justify-center mb-8 h-16 shrink-0">
           <img
-            src="/Logo.png"
+            src="./Logo.png"
             alt="Company Logo"
             className={`
               absolute inset-0 w-full h-full object-contain px-2
@@ -175,7 +175,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
             `}
           />
           <img
-            src="/Logo.png"
+            src="./Logo.png"
             alt=""
             aria-hidden="true"
             className={`
