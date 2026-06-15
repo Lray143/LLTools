@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
-import { Hash, User } from 'lucide-react'
+import { Hash, User, Users, MessageSquare, Wifi } from 'lucide-react'
 import ChatSidebar from './components/ChatSidebar'
 import ChatMessages from './components/ChatMessages'
 import ChatInput from './components/ChatInput'
+import NotificationBell from '../../components/ui/NotificationBell'
 
 const DEPARTMENTS = [
   'HR', 'Admin', 'Accounting', 'Finance', 'Sales',
@@ -13,7 +14,7 @@ const GLOBAL_ROLES = ['admin', 'hr']
 const getRoomId = (user1Id, user2Id) =>
   `DM_${[String(user1Id), String(user2Id)].sort().join('_')}`
 
-export default function Chat({ currentUser, refreshKey }) {
+export default function Chat({ currentUser, refreshKey, onNavigate }) {
   const [activeTab, setActiveTab]         = useState('channels')
   const [messageCache, setMessageCache]   = useState({})
   const [inputMsg, setInputMsg]           = useState('')
@@ -24,7 +25,9 @@ export default function Chat({ currentUser, refreshKey }) {
   const [readReceipts, setReadReceipts]   = useState([])
   const [selectedDept, setSelectedDept]   = useState(currentUser?.department || 'Admin')
   const [selectedUser, setSelectedUser]   = useState(null)
+  const [replyTo, setReplyTo]             = useState(null)
   const messagesEndRef = useRef(null)
+  const scrollContainerRef = useRef(null)
   // Track typing so background refreshes don't interrupt mid-keystroke
   const isTypingRef    = useRef(false)
   const typingTimer    = useRef(null)
@@ -57,8 +60,6 @@ export default function Chat({ currentUser, refreshKey }) {
   useEffect(() => { loadSidebarData() }, [refreshKey])
 
   // ── Mark current room as read when user switches rooms ───────────────────
-  // NOTE: Do NOT include messages.length here — that would fire on every new
-  // incoming message and cause a DB write + sync that makes typing lag.
   useEffect(() => {
     const roomId = activeTab === 'channels'
       ? selectedDept
@@ -69,10 +70,18 @@ export default function Chat({ currentUser, refreshKey }) {
       .catch(console.error)
   }, [selectedDept, selectedUser, activeTab])
 
+  // Check if user is scrolled near the bottom of the messages container
+  const isNearBottom = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return true
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 150
+  }, [])
+
   // ── Load messages when room changes ──────────────────────────────────────
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async (forceScroll = false) => {
     const reqRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
     if (!reqRoomId) return
+    const wasNearBottom = isNearBottom()
     try {
       let msgs = []
       if (activeTab === 'channels') {
@@ -86,33 +95,33 @@ export default function Chat({ currentUser, refreshKey }) {
       
       setMessageCache(prev => ({ ...prev, [reqRoomId]: msgs || [] }))
       
-      // Auto-scroll down but only if we haven't switched rooms while fetching
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
-      }, 50)
+      // Only auto-scroll if user was already near the bottom or we're switching rooms
+      if (forceScroll || wasNearBottom) {
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: forceScroll ? 'auto' : 'smooth' })
+        }, 50)
+      }
     } catch (err) {
       console.error('Failed to load messages', err)
     }
-  }, [activeTab, selectedDept, selectedUser, myParticipantId])
+  }, [activeTab, selectedDept, selectedUser, myParticipantId, isNearBottom])
 
-  // Load messages immediately when room changes
+  // Room switch → always scroll to bottom
   useEffect(() => {
-    loadMessages()
+    setReplyTo(null)
+    loadMessages(true)
   }, [selectedDept, selectedUser, activeTab])
 
-  // On cloud sync (refreshKey), only reload messages if the user is NOT typing.
-  // If they ARE typing, set a flag and reload as soon as they stop.
+  // Background sync → only scroll if already near bottom
   useEffect(() => {
     if (isTypingRef.current) {
-      // User is mid-keystroke — just mark that a refresh is pending
       pendingRefresh.current = true
     } else {
-      loadMessages()
+      loadMessages(false)
       loadSidebarData()
     }
   }, [refreshKey])
 
-  // Also refresh receipts periodically or when refreshKey changes
   const refreshReceipts = useCallback(async () => {
     const reqRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
     if (!reqRoomId) return
@@ -133,18 +142,25 @@ export default function Chat({ currentUser, refreshKey }) {
     setIsSending(true)
     const roomId = activeTab === 'channels' ? selectedDept : getRoomId(myParticipantId, selectedUser.id)
     
+    let finalMsgText = inputMsg.trim() || (forcedFileUrl ? 'Sent an attachment' : '')
+    if (replyTo && finalMsgText) {
+      const replySnippet = (replyTo.message || 'Attachment').replace(/\n/g, ' ').substring(0, 80)
+      finalMsgText = `[reply]${replyTo.senderName}|${replySnippet}[/reply]\n${finalMsgText}`
+    }
+
     try {
       if (activeTab === 'channels') {
         const msgData = {
           id: forcedId || crypto.randomUUID(), department: selectedDept,
           senderId: myParticipantId,
           senderName: currentUser.employeeName || currentUser.username,
-          message: inputMsg.trim() || 'Sent an attachment', fileUrl: forcedFileUrl
+          message: finalMsgText, fileUrl: forcedFileUrl
         }
         setMessageCache(prev => ({
           ...prev, [roomId]: [...(prev[roomId] || []), { ...msgData, createdAt: new Date().toISOString() }]
         }))
         setInputMsg('')
+        setReplyTo(null)
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
         await window.electronAPI.sendChatMessage(msgData)
       } else if (activeTab === 'dms' && selectedUser) {
@@ -152,12 +168,13 @@ export default function Chat({ currentUser, refreshKey }) {
           id: forcedId || crypto.randomUUID(), roomId,
           senderId: myParticipantId,
           senderName: currentUser.employeeName || currentUser.username,
-          message: inputMsg.trim() || 'Sent an attachment', fileUrl: forcedFileUrl
+          message: finalMsgText, fileUrl: forcedFileUrl
         }
         setMessageCache(prev => ({
           ...prev, [roomId]: [...(prev[roomId] || []), { ...msgData, createdAt: new Date().toISOString() }]
         }))
         setInputMsg('')
+        setReplyTo(null)
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
         await window.electronAPI.sendDirectMessage(msgData)
       }
@@ -175,7 +192,6 @@ export default function Chat({ currentUser, refreshKey }) {
   const handleTyping = useCallback(() => {
     isTypingRef.current = true
     clearTimeout(typingTimer.current)
-    // After 1.5 seconds of no typing, flush any pending refresh
     typingTimer.current = setTimeout(() => {
       isTypingRef.current = false
       if (pendingRefresh.current) {
@@ -193,8 +209,6 @@ export default function Chat({ currentUser, refreshKey }) {
     e.target.value = ''
     setIsUploadingFile(true)
     try {
-      // Generate the message ID here so we can pass it to the uploader
-      // The main process uses it to patch the DB record once R2 upload completes
       const msgId = crypto.randomUUID()
       const msgType = activeTab === 'dms' ? 'dm' : 'channel'
       const arrayBuffer = await file.arrayBuffer()
@@ -229,10 +243,8 @@ export default function Chat({ currentUser, refreshKey }) {
       return (bT ? new Date(bT).getTime() : 0) - (aT ? new Date(aT).getTime() : 0)
     }), [employees, sidebarData.dms, myParticipantId])
 
-  // Members visible in the current channel (used for @mentions)
   const channelMembers = useMemo(() => {
     if (activeTab !== 'channels') return []
-    // Include ALL employees in that dept (not filtered by current user)
     return employees.filter(e => e.department === selectedDept)
   }, [activeTab, employees, selectedDept])
 
@@ -249,67 +261,154 @@ export default function Chat({ currentUser, refreshKey }) {
   const currentRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
   const currentMessages = currentRoomId ? (messageCache[currentRoomId] || []) : []
 
+  // Count total unreads for the header badge
+  const totalUnreads = useMemo(() => {
+    const deptUnreads = sidebarData.departments.filter(d => d.unread).length
+    const dmUnreads = sidebarData.dms.filter(d => d.unread).length
+    return deptUnreads + dmUnreads
+  }, [sidebarData])
+
+  // Context info for header strip
+  const contextInfo = useMemo(() => {
+    if (activeTab === 'channels') {
+      const memberCount = employees.filter(e => e.department === selectedDept).length
+      return { type: 'channel', name: selectedDept, memberCount }
+    }
+    if (selectedUser) {
+      return { type: 'dm', name: selectedUser.name, position: selectedUser.position, department: selectedUser.department }
+    }
+    return { type: 'none' }
+  }, [activeTab, selectedDept, selectedUser, employees])
+
   return (
-    <div className="flex h-full p-4 gap-4" style={{ background: 'var(--page-bg)' }}>
+    <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
 
-      <ChatSidebar
-        activeTab={activeTab} setActiveTab={setActiveTab}
-        sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
-        sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
-        isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
-      />
+      {/* ── TOP HEADER BAR (matches app-wide pattern) ── */}
+      <div className="flex items-center justify-between px-8 py-4 border-b shrink-0"
+        style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
+        <div>
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Chats</h1>
+          <p className="text-xs m-0 mt-1" style={{ color: 'var(--text-secondary)' }}>
+            Real-time messaging & team communication
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {/* Sync status indicator */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '12px' }}>
+            <Wifi size={12} style={{ color: '#16a34a' }} />
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Synced</span>
+          </div>
 
-      {/* ── MAIN CHAT AREA ── */}
-      <div className="flex-1 flex flex-col rounded-xl shadow-sm border overflow-hidden" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-
-        {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center shadow-sm z-10" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
-          {activeTab === 'channels' ? (
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <Hash size={20} style={{ color: 'var(--accent-bg)' }} />
-                {selectedDept}
-              </h1>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>Real-time synchronization active.</p>
+          {/* Unread badge */}
+          {totalUnreads > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '12px' }}>
+              <MessageSquare size={12} style={{ color: 'var(--theme-500)' }} />
+              <span style={{ color: 'var(--theme-500)', fontWeight: 600 }}>{totalUnreads} unread</span>
             </div>
-          ) : selectedUser ? (
-            <div>
-              <h1 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                <User size={20} style={{ color: 'var(--accent-bg)' }} />
-                {selectedUser.name}
-              </h1>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{selectedUser.position || 'Employee'} • {selectedUser.department}</p>
-            </div>
-          ) : (
-            <h1 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Direct Messages</h1>
           )}
-        </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ background: 'var(--page-bg-alt)' }}>
-          <ChatMessages
-            messages={currentMessages}
-            currentUser={currentUser}
-            activeTab={activeTab}
-            selectedUser={selectedUser}
-            readReceipts={readReceipts}
-          />
-          <div ref={messagesEndRef} />
+          <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
+      </div>
 
-        {/* Input */}
-        <ChatInput
-          inputMsg={inputMsg}
-          setInputMsg={setInputMsg}
-          onSend={handleSend}
-          onFileChange={handleFileChange}
-          isSending={isSending}
-          isUploadingFile={isUploadingFile}
-          disabled={inputDisabled}
-          onTyping={handleTyping}
-          members={channelMembers}
-          activeTab={activeTab}
+      {/* ── CONTENT AREA ── */}
+      <div className="flex-1 min-h-0 flex p-6 gap-4">
+
+        <ChatSidebar
+          activeTab={activeTab} setActiveTab={setActiveTab}
+          sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
+          sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
+          isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
         />
+
+        {/* ── MAIN CHAT AREA ── */}
+        <div className="flex-1 flex flex-col rounded-xl shadow-sm overflow-hidden"
+          style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+
+          {/* Context strip */}
+          <div className="px-5 py-3 border-b flex items-center justify-between shrink-0"
+            style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+            {activeTab === 'channels' ? (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: 'var(--page-bg-alt)' }}>
+                  <Hash size={16} style={{ color: 'var(--theme-500)' }} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    {selectedDept}
+                  </h2>
+                  <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                    {contextInfo.memberCount} member{contextInfo.memberCount !== 1 ? 's' : ''} • Real-time sync active
+                  </p>
+                </div>
+              </div>
+            ) : selectedUser ? (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                  style={{ background: 'var(--theme-500)', color: 'var(--accent-text)' }}>
+                  {selectedUser.name?.charAt(0).toUpperCase() || '?'}
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                    {selectedUser.name}
+                  </h2>
+                  <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                    {selectedUser.position || 'Employee'} • {selectedUser.department}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: 'var(--page-bg-alt)' }}>
+                  <Users size={16} style={{ color: 'var(--text-secondary)' }} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Direct Messages</h2>
+                  <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>Select a conversation to start</p>
+                </div>
+              </div>
+            )}
+
+            {/* Message count badge */}
+            <div className="text-[11px] px-2.5 py-1 rounded-md"
+              style={{ background: 'var(--page-bg-alt)', color: 'var(--text-secondary)', fontWeight: 500 }}>
+              {currentMessages.length} message{currentMessages.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 chat-scroll" style={{ background: 'var(--page-bg-alt)' }}>
+            <ChatMessages
+              messages={currentMessages}
+              currentUser={currentUser}
+              activeTab={activeTab}
+              selectedUser={selectedUser}
+              readReceipts={readReceipts}
+              setReplyTo={setReplyTo}
+            />
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <ChatInput
+            inputMsg={inputMsg}
+            setInputMsg={setInputMsg}
+            onSend={handleSend}
+            onFileChange={handleFileChange}
+            isSending={isSending}
+            isUploadingFile={isUploadingFile}
+            disabled={inputDisabled}
+            onTyping={handleTyping}
+            members={channelMembers}
+            activeTab={activeTab}
+            replyTo={replyTo}
+            setReplyTo={setReplyTo}
+          />
+        </div>
       </div>
     </div>
   )
