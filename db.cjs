@@ -107,6 +107,12 @@ const initDb = async () => {
   // Pull latest data from cloud before we do anything
   await syncCloud()
 
+  try {
+    await client.execute("ALTER TABLE users ADD COLUMN last_active TEXT DEFAULT NULL")
+  } catch (err) {
+    // Column already exists or error
+  }
+
   // Create all tables
   await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
@@ -291,6 +297,7 @@ const initDb = async () => {
       sender_name  TEXT NOT NULL,
       message      TEXT,
       file_url     TEXT,
+      reactions    TEXT DEFAULT '{}',
       created_at   TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS direct_messages (
@@ -300,6 +307,7 @@ const initDb = async () => {
       sender_name  TEXT NOT NULL,
       message      TEXT,
       file_url     TEXT,
+      reactions    TEXT DEFAULT '{}',
       created_at   TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS chat_read_receipts (
@@ -329,6 +337,15 @@ const initDb = async () => {
   try {
     await run("ALTER TABLE leave_requests ADD COLUMN leave_no TEXT")
   } catch (_) { /* column already exists — safe to ignore */ }
+
+  try { await run("ALTER TABLE department_chats ADD COLUMN reactions TEXT DEFAULT '{}'") } catch (_) {}
+  try { await run("ALTER TABLE direct_messages ADD COLUMN reactions TEXT DEFAULT '{}'") } catch (_) {}
+  try { await run("ALTER TABLE department_chats ADD COLUMN is_unsent INTEGER DEFAULT 0") } catch (_) {}
+  try { await run("ALTER TABLE department_chats ADD COLUMN is_edited INTEGER DEFAULT 0") } catch (_) {}
+  try { await run("ALTER TABLE department_chats ADD COLUMN deleted_for TEXT DEFAULT '[]'") } catch (_) {}
+  try { await run("ALTER TABLE direct_messages ADD COLUMN is_unsent INTEGER DEFAULT 0") } catch (_) {}
+  try { await run("ALTER TABLE direct_messages ADD COLUMN is_edited INTEGER DEFAULT 0") } catch (_) {}
+  try { await run("ALTER TABLE direct_messages ADD COLUMN deleted_for TEXT DEFAULT '[]'") } catch (_) {}
 
   // ── Seed admin user ────────────────────────────────────────────────────────
   const adminHash = bcrypt.hashSync('admin123', 10)
@@ -472,9 +489,18 @@ const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
 }
 
 // ── USER MANAGEMENT ────────────────────────────────────────────────────────────
+const heartbeatUser = async (userId) => {
+  if (!userId) return
+  try {
+    await run(`UPDATE users SET last_active = datetime('now') WHERE id = ?`, [userId])
+  } catch (err) {
+    console.error('Heartbeat error:', err)
+  }
+}
+
 const getUsers = async () => {
   const rows = await queryAll(`
-    SELECT u.id, u.username, u.role, u.employee_id, u.created_at,
+    SELECT u.id, u.username, u.role, u.employee_id, u.created_at, u.last_active,
            e.name AS employee_name, e.department
     FROM users u
     LEFT JOIN employees e ON e.id = u.employee_id
@@ -488,6 +514,7 @@ const getUsers = async () => {
     employeeName: u.employee_name ?? null,
     department:   u.department    ?? null,
     createdAt:    u.created_at    ?? '',
+    lastActive:   u.last_active   ?? null,
   }))
 }
 
@@ -500,6 +527,7 @@ const updateUserTheme     = async (id, color, mode) => run(`UPDATE users SET the
 const getEmployees = async () => queryAll(`
   SELECT
     e.*,
+    u.last_active,
     (SELECT lr.leave_type  FROM leave_requests lr
       WHERE lr.employee_no = e.employee_no AND lr.status = 'Approved'
         AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date LIMIT 1) AS auto_leave_type,
@@ -510,6 +538,7 @@ const getEmployees = async () => queryAll(`
       WHERE lr.employee_no = e.employee_no AND lr.status = 'Approved'
         AND date('now','localtime') BETWEEN lr.start_date AND lr.end_date LIMIT 1) AS auto_leave_end
   FROM employees e
+  LEFT JOIN users u ON u.employee_id = e.id
   WHERE e.status != 'Archived'
   ORDER BY e.name
 `)
@@ -985,7 +1014,11 @@ const getDepartmentChats = async (department) => {
     senderName:  r.sender_name,
     message:     r.message,
     fileUrl:     r.file_url,
-    createdAt:   r.created_at,
+    reactions:   (() => { try { return JSON.parse(r.reactions || '{}') } catch { return {} } })(),
+    createdAt:   r.created_at ? r.created_at.replace(' ', 'T') + 'Z' : '',
+    isUnsent:    !!r.is_unsent,
+    isEdited:    !!r.is_edited,
+    deletedFor:  (() => { try { return JSON.parse(r.deleted_for || '[]') } catch { return [] } })(),
   }))
 }
 
@@ -1010,7 +1043,11 @@ const getDirectMessages = async (roomId) => {
     senderName:  r.sender_name,
     message:     r.message,
     fileUrl:     r.file_url,
-    createdAt:   r.created_at,
+    reactions:   (() => { try { return JSON.parse(r.reactions || '{}') } catch { return {} } })(),
+    createdAt:   r.created_at ? r.created_at.replace(' ', 'T') + 'Z' : '',
+    isUnsent:    !!r.is_unsent,
+    isEdited:    !!r.is_edited,
+    deletedFor:  (() => { try { return JSON.parse(r.deleted_for || '[]') } catch { return [] } })(),
   }))
 }
 
@@ -1024,6 +1061,66 @@ const sendDirectMessage = async ({ id, roomId, senderId, senderName, message, fi
 // Patches the file_url after a background cloud upload completes
 const updateChatFileUrl  = async (id, fileUrl) => run(`UPDATE department_chats SET file_url = ? WHERE id = ?`, [fileUrl, id])
 const updateDmFileUrl    = async (id, fileUrl) => run(`UPDATE direct_messages  SET file_url = ? WHERE id = ?`, [fileUrl, id])
+
+const editMessage = async (msgId, userId, newText, isDm = false) => {
+  const table = isDm ? 'direct_messages' : 'department_chats'
+  const row = await queryOne(`SELECT sender_id, created_at FROM ${table} WHERE id = ?`, [msgId])
+  if (!row || String(row.sender_id) !== String(userId)) return { success: false, error: 'Unauthorized' }
+  const diffMs = Date.now() - new Date(row.created_at.replace(' ', 'T') + 'Z').getTime()
+  if (diffMs > 15 * 60 * 1000) return { success: false, error: 'Message is too old to edit' }
+  await run(`UPDATE ${table} SET message = ?, is_edited = 1 WHERE id = ?`, [newText, msgId])
+  return { success: true }
+}
+
+const unsendMessage = async (msgId, userId, isDm = false) => {
+  const table = isDm ? 'direct_messages' : 'department_chats'
+  const row = await queryOne(`SELECT sender_id, created_at FROM ${table} WHERE id = ?`, [msgId])
+  if (!row || String(row.sender_id) !== String(userId)) return { success: false, error: 'Unauthorized' }
+  const diffMs = Date.now() - new Date(row.created_at.replace(' ', 'T') + 'Z').getTime()
+  if (diffMs > 15 * 60 * 1000) return { success: false, error: 'Message is too old to unsend' }
+  await run(`UPDATE ${table} SET message = NULL, is_unsent = 1, file_url = NULL WHERE id = ?`, [msgId])
+  return { success: true }
+}
+
+const deleteMessageForMe = async (msgId, userId, isDm = false) => {
+  const table = isDm ? 'direct_messages' : 'department_chats'
+  const row = await queryOne(`SELECT deleted_for FROM ${table} WHERE id = ?`, [msgId])
+  if (!row) return { success: false, error: 'Message not found' }
+  let deletedFor = []
+  try { deletedFor = JSON.parse(row.deleted_for || '[]') } catch (e) {}
+  if (!deletedFor.includes(String(userId))) {
+    deletedFor.push(String(userId))
+    await run(`UPDATE ${table} SET deleted_for = ? WHERE id = ?`, [JSON.stringify(deletedFor), msgId])
+  }
+  return { success: true }
+}
+const toggleReaction = async (msgId, userId, userName, emoji, isDm = false) => {
+  const table = isDm ? 'direct_messages' : 'department_chats'
+  const row = await queryOne(`SELECT reactions FROM ${table} WHERE id = ?`, [msgId])
+  if (!row) return
+
+  let reactions = {}
+  try { reactions = JSON.parse(row.reactions || '{}') } catch (e) {}
+
+  let wasSameEmoji = false;
+  // Remove user's previous reaction from ANY emoji
+  for (const [existingEmoji, users] of Object.entries(reactions)) {
+    const idx = users.findIndex(r => String(r.userId) === String(userId))
+    if (idx >= 0) {
+      if (existingEmoji === emoji) wasSameEmoji = true;
+      users.splice(idx, 1)
+      if (users.length === 0) delete reactions[existingEmoji]
+    }
+  }
+
+  // If they clicked a DIFFERENT emoji than they already had, add it
+  if (!wasSameEmoji) {
+    if (!reactions[emoji]) reactions[emoji] = []
+    reactions[emoji].push({ userId, userName })
+  }
+
+  await run(`UPDATE ${table} SET reactions = ? WHERE id = ?`, [JSON.stringify(reactions), msgId])
+}
 
 const markChatAsRead = async (userId, roomId) => {
   await run(`
@@ -1071,7 +1168,7 @@ const getChatSidebarData = async (userId) => {
   return {
     departments: depts.map(d => ({
       roomId: d.room_id,
-      lastMsgAt: d.last_msg_at,
+      lastMsgAt: d.last_msg_at ? d.last_msg_at.replace(' ', 'T') + 'Z' : null,
       lastSenderId: d.last_sender_id,
       lastSenderName: d.last_sender_name,
       lastMessage: d.last_message,
@@ -1080,7 +1177,7 @@ const getChatSidebarData = async (userId) => {
     })),
     dms: allDms.map(d => ({
       roomId: d.room_id,
-      lastMsgAt: d.last_msg_at,
+      lastMsgAt: d.last_msg_at ? d.last_msg_at.replace(' ', 'T') + 'Z' : null,
       lastSenderId: d.last_sender_id,
       lastSenderName: d.last_sender_name,
       lastMessage: d.last_message,
@@ -1100,7 +1197,7 @@ const getRoomReceipts = async (roomId) => {
   `, [roomId])
   return rows.map(r => ({
     userId: r.user_id,
-    lastReadAt: r.last_read_at,
+    lastReadAt: r.last_read_at ? r.last_read_at.replace(' ', 'T') + 'Z' : null,
     userName: r.employee_name || r.username
   }))
 }
@@ -1118,7 +1215,7 @@ module.exports = {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
-  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
+  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme, heartbeatUser,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,
@@ -1126,6 +1223,7 @@ module.exports = {
   getReportComments, getReportStatusLogs,
   updateReport, archiveReport, unarchiveReport, permanentDeleteReport,
   getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
-  updateChatFileUrl, updateDmFileUrl,
+  updateChatFileUrl, updateDmFileUrl, toggleReaction,
+  editMessage, unsendMessage, deleteMessageForMe,
   markChatAsRead, getChatSidebarData, getRoomReceipts
 }

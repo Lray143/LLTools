@@ -28,7 +28,7 @@ const {
   getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
   updateChatFileUrl, updateDmFileUrl,
   markChatAsRead, getChatSidebarData, getRoomReceipts,
-  refreshUser,
+  refreshUser, heartbeatUser,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -130,6 +130,7 @@ ipcMain.handle('users:updateRole',     (_, id, role)         => updateUserRole(i
 ipcMain.handle('users:resetPassword',  (_, id, newPassword)  => resetUserPassword(id, newPassword))
 ipcMain.handle('users:delete',         (_, id)               => deleteUserAccount(id))
 ipcMain.handle('users:updateTheme',    (_, id, color, mode)  => updateUserTheme(id, color, mode))
+ipcMain.handle('users:heartbeat',      (_, id)               => heartbeatUser(id))
 
 // ── SAVED ORDERS ──────────────────────────────────────────────────
 ipcMain.handle('orders:save',          (_, order)    => saveOrder(order))
@@ -193,6 +194,22 @@ ipcMain.handle('chat:getSidebarData', async (_, userId) => {
 ipcMain.handle('chat:getRoomReceipts', async (_, roomId) => {
   const db = await import('./db.cjs')
   return await db.getRoomReceipts(roomId)
+})
+ipcMain.handle('chat:toggleReaction', async (_, msgId, userId, userName, emoji, isDm) => {
+  const db = await import('./db.cjs')
+  await db.toggleReaction(msgId, userId, userName, emoji, isDm)
+})
+ipcMain.handle('chat:editMessage', async (_, msgId, userId, newText, isDm) => {
+  const db = await import('./db.cjs')
+  return await db.editMessage(msgId, userId, newText, isDm)
+})
+ipcMain.handle('chat:unsendMessage', async (_, msgId, userId, isDm) => {
+  const db = await import('./db.cjs')
+  return await db.unsendMessage(msgId, userId, isDm)
+})
+ipcMain.handle('chat:deleteForMe', async (_, msgId, userId, isDm) => {
+  const db = await import('./db.cjs')
+  return await db.deleteMessageForMe(msgId, userId, isDm)
 })
 ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeType, msgId, msgType) => {
   const buffer = Buffer.from(arrayBuffer)

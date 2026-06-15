@@ -48,10 +48,28 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
 
   // ── Load employees once ───────────────────────────────────────────────────
   useEffect(() => {
-    window.electronAPI.getEmployees()
-      .then(data => setEmployees(data.filter(e =>
-        e.id !== currentUser?.employeeId && currentUser?.username !== e.employee_no
-      )))
+    Promise.all([
+      window.electronAPI.getEmployees(),
+      window.electronAPI.getUsers()
+    ])
+      .then(([emps, users]) => {
+        const systemUsers = users
+          .filter(u => !u.employeeId)
+          .map(u => ({
+            id: String(u.id),
+            employee_no: u.username,
+            name: u.role === 'admin' ? 'Administrator' : (u.role === 'hr' ? 'HR Dept' : u.username),
+            department: 'System',
+            position: u.role.toUpperCase()
+          }))
+
+        const allPeople = [...emps, ...systemUsers].filter(e => 
+          e.id !== currentUser?.employeeId && 
+          String(e.id) !== String(currentUser?.id) &&
+          currentUser?.username !== e.employee_no
+        )
+        setEmployees(allPeople)
+      })
       .catch(console.error)
     loadSidebarData()
   }, [currentUser?.id, currentUser?.employeeId, currentUser?.username, loadSidebarData])
@@ -144,7 +162,9 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
     
     let finalMsgText = inputMsg.trim() || (forcedFileUrl ? 'Sent an attachment' : '')
     if (replyTo && finalMsgText) {
-      const replySnippet = (replyTo.message || 'Attachment').replace(/\n/g, ' ').substring(0, 80)
+      // Strip any existing [reply] tags from the message we are replying to
+      const cleanReplyMsg = (replyTo.message || 'Attachment').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/, '')
+      const replySnippet = cleanReplyMsg.replace(/\n/g, ' ').substring(0, 80)
       finalMsgText = `[reply]${replyTo.senderName}|${replySnippet}[/reply]\n${finalMsgText}`
     }
 

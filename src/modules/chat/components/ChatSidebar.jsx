@@ -181,7 +181,7 @@ const ChatSidebar = memo(function ChatSidebar({
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {/* Avatar with online status dot */}
+                    {/* Avatar with online/offline dot */}
                     <div className="relative shrink-0">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold"
                         style={{
@@ -191,9 +191,11 @@ const ChatSidebar = memo(function ChatSidebar({
                         }}>
                         {emp.name?.charAt(0).toUpperCase() || '?'}
                       </div>
-                      {/* Online indicator dot */}
-                      <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-400"
-                        style={{ borderWidth: '2px', borderStyle: 'solid', borderColor: 'var(--surface)' }} />
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-zinc-900 ${
+                        emp.last_active && (Date.now() - new Date(emp.last_active + 'Z').getTime()) < 3 * 60 * 1000
+                          ? 'bg-green-500' 
+                          : 'bg-zinc-400 dark:bg-zinc-600'
+                      }`} />
                     </div>
                     <div className="flex-1 text-left truncate flex flex-col justify-center">
                       <div

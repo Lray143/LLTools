@@ -62,6 +62,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
   const [unseenMyLeaves,     setUnseenMyLeaves]     = useState([])
 
   const [unseenChats,        setUnseenChats]        = useState([])
+  const [filter,             setFilter]             = useState('all') // 'all' | 'unread'
 
   const [open, setOpen] = useState(false)
   const wrapperRef      = useRef(null)
@@ -241,12 +242,9 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     .sort((a, b) => new Date(b._sortTime) - new Date(a._sortTime))
     .slice(0, 25)
 
-  const totalUnseen =
-    unseenInReports.length + unseenInLeaves.length +
-    unseenMyReports.length + unseenMyLeaves.length +
-    unseenChats.length
+  const filteredItems = filter === 'unread' ? allItems.filter(i => i._unread) : allItems
 
-  if (!currentUser) return null
+  const totalUnseen = unseenInReports.length + unseenInLeaves.length + unseenMyReports.length + unseenMyLeaves.length + unseenChats.length
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -293,62 +291,86 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
       {open && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-          width: '340px',
+          width: '360px',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
-          borderRadius: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08)',
+          borderRadius: '12px',
+          boxShadow: '0 12px 28px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08)',
           zIndex: 9999,
-          overflow: 'hidden',
+          display: 'flex', flexDirection: 'column'
         }}>
 
           {/* Header */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '14px 16px 10px',
-          }}>
-            <span style={{ fontSize: '15px', fontWeight: 500, color: 'var(--theme-500)' }}>
-              Notifications
-            </span>
-            {totalUnseen > 0 && (
-              <button
-                onClick={handleMarkAllRead}
+          <div style={{ padding: '16px 16px 8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+              <span style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                Notifications
+              </span>
+              {totalUnseen > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    fontSize: '14px', color: 'var(--text-secondary)',
+                    cursor: 'pointer', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '8px', transition: 'background 150ms',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  title="Mark all as read"
+                >
+                  <CheckCheck size={20} />
+                </button>
+              )}
+            </div>
+            {/* Filter Pills */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={() => setFilter('all')}
                 style={{
-                  background: 'transparent', border: 'none',
-                  fontSize: '12px', fontWeight: 600, color: 'var(--theme-500)',
-                  cursor: 'pointer', padding: '4px 8px', borderRadius: '6px',
-                  display: 'flex', alignItems: 'center', gap: '4px',
-                  transition: 'background 150ms',
+                  padding: '6px 12px', borderRadius: '16px', fontSize: '15px', fontWeight: 600,
+                  border: 'none', cursor: 'pointer', transition: 'background 150ms',
+                  background: filter === 'all' ? 'rgba(var(--theme-500-rgb, 59, 130, 246), 0.1)' : 'transparent',
+                  color: filter === 'all' ? 'var(--theme-500)' : 'var(--text-primary)',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                onMouseEnter={e => { if (filter !== 'all') e.currentTarget.style.background = 'var(--surface-hover)' }}
+                onMouseLeave={e => { if (filter !== 'all') e.currentTarget.style.background = 'transparent' }}
               >
-                <CheckCheck size={13} /> Mark all read
+                All
               </button>
-            )}
+              <button onClick={() => setFilter('unread')}
+                style={{
+                  padding: '6px 12px', borderRadius: '16px', fontSize: '15px', fontWeight: 600,
+                  border: 'none', cursor: 'pointer', transition: 'background 150ms',
+                  background: filter === 'unread' ? 'rgba(var(--theme-500-rgb, 59, 130, 246), 0.1)' : 'transparent',
+                  color: filter === 'unread' ? 'var(--theme-500)' : 'var(--text-primary)',
+                }}
+                onMouseEnter={e => { if (filter !== 'unread') e.currentTarget.style.background = 'var(--surface-hover)' }}
+                onMouseLeave={e => { if (filter !== 'unread') e.currentTarget.style.background = 'transparent' }}
+              >
+                Unread
+              </button>
+            </div>
           </div>
 
           {/* Items */}
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            {allItems.length === 0 ? (
-              <div style={{ padding: '32px 16px 28px', textAlign: 'center' }}>
+          <div className="chat-scroll" style={{ maxHeight: '480px', overflowY: 'auto', padding: '0 8px 8px' }}>
+            {filteredItems.length === 0 ? (
+              <div style={{ padding: '40px 16px 32px', textAlign: 'center' }}>
                 <div style={{
-                  width: '44px', height: '44px', borderRadius: '50%',
+                  width: '60px', height: '60px', borderRadius: '50%',
                   background: 'var(--surface-hover)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 10px',
+                  margin: '0 auto 12px',
                 }}>
-                  <Bell size={18} style={{ color: 'var(--text-secondary)', opacity: 0.45 }} />
+                  <Bell size={24} style={{ color: 'var(--text-secondary)', opacity: 0.5 }} />
                 </div>
-                <p style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                  All caught up!
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '3px', marginBottom: 0 }}>
-                  No pending notifications
+                <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                  {filter === 'unread' ? "You're all caught up" : "No notifications"}
                 </p>
               </div>
             ) : (
-              allItems.map((item, idx) => {
+              filteredItems.map((item, idx) => {
                 const isUnread   = item._unread
                 const isIncoming = item._stream === 'in-report' || item._stream === 'in-leave'
                 const isMyReport = item._stream === 'my-report'
@@ -356,59 +378,47 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                 const isInReport = item._stream === 'in-report'
                 const isChat     = item._stream === 'chat'
 
-                // --- Icon & color ---
-                let Icon, iconColor, iconBg, dotColor, accentColor
+                // --- Avatar & Badge Icon ---
+                let Icon, accentColor, avatarInitial, avatarBg
 
                 if (isChat) {
                   Icon        = MessageSquare
                   accentColor = '#14b8a6' // Teal
-                  iconColor   = accentColor
-                  iconBg      = 'rgba(20,184,166,0.12)'
-                  dotColor    = accentColor
+                  avatarBg    = 'var(--theme-500)'
+                  avatarInitial = item.isDept ? '#' : (item.lastSenderName?.charAt(0) || '?').toUpperCase()
                 } else if (isIncoming) {
-                  // Admin/HR incoming: orange for reports, indigo for leaves
                   Icon        = isInReport ? FileText : CalendarClock
                   accentColor = isInReport ? '#f97316' : '#6366f1'
-                  iconColor   = isUnread ? accentColor : 'var(--text-secondary)'
-                  iconBg      = isUnread
-                    ? (isInReport ? 'rgba(249,115,22,0.12)' : 'rgba(99,102,241,0.12)')
-                    : 'var(--surface-hover)'
-                  dotColor = isUnread ? accentColor : 'transparent'
+                  avatarBg    = 'var(--page-bg-alt)'
+                  avatarInitial = (item.employeeName || item.employee_name || item.employeeNo || item.employee_no || '?').charAt(0).toUpperCase()
                 } else {
-                  // Personal status update: color by status
                   const status  = item.status ?? 'Pending'
                   accentColor   = STATUS_COLOR[status] ?? '#6b7280'
-                  Icon          = isMyReport ? FileText : CalendarClock
-                  iconColor     = isUnread ? accentColor : 'var(--text-secondary)'
-                  iconBg        = isUnread
-                    ? `${accentColor}18`  // ~10% opacity
-                    : 'var(--surface-hover)'
-                  dotColor = isUnread ? accentColor : 'transparent'
+                  Icon          = STATUS_ICON[status] || (isMyReport ? FileText : CalendarClock)
+                  avatarBg      = 'var(--page-bg-alt)'
+                  avatarInitial = (currentUser.employeeName || currentUser.username || '?').charAt(0).toUpperCase()
                 }
 
-                // --- Title & subtitle ---
-                let title, subtitle
+                // --- Text Formatting (Inline Flow) ---
+                let boldText, mainText
                 if (isChat) {
-                  title    = item.isDept ? `New in ${item.roomId}` : `New from ${item.lastSenderName?.split(' ')[0] || 'Someone'}`
-                  subtitle = item.lastMessage || 'Sent an attachment'
+                  boldText = item.isDept ? item.roomId : (item.lastSenderName?.split(' ')[0] || 'Someone')
+                  mainText = ` sent a message: "${item.lastMessage || 'Attachment'}"`
                 } else if (isInReport) {
-                  title    = item.subject || 'New Report'
-                  subtitle = `Pending · from ${item.employeeName || item.employeeNo || 'Employee'}`
+                  boldText = item.employeeName || item.employeeNo || 'Employee'
+                  mainText = ` submitted a new report: ${item.subject || 'Report'}`
                 } else if (item._stream === 'in-leave') {
-                  title    = `${item.leave_type || 'Leave'} Request`
-                  subtitle = `Pending · from ${item.employee_name || item.employee_no || 'Employee'}`
+                  boldText = item.employee_name || item.employee_no || 'Employee'
+                  mainText = ` requested a ${item.leave_type || 'Leave'}`
                 } else if (isMyReport) {
                   const status = item.status ?? ''
-                  const SIcon  = STATUS_ICON[status]
-                  title    = item.subject || item.reportNo || 'Report Update'
-                  subtitle = `Your report is now ${status}`
+                  boldText = 'Your report'
+                  mainText = ` "${item.subject || item.reportNo}" was marked as ${status}.`
                 } else {
                   const status = item.status ?? ''
-                  title    = `${item.leave_type || 'Leave'} Request`
-                  subtitle = `Your leave was ${status}`
+                  boldText = 'Your leave request'
+                  mainText = ` for ${item.leave_type || 'Leave'} was ${status}.`
                 }
-
-                const time = relativeTime(item._sortTime)
 
                 return (
                   <button
@@ -417,62 +427,64 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                     style={{
                       width: '100%',
                       display: 'flex', alignItems: 'center', gap: '12px',
-                      padding: '10px 16px',
-                      background: isUnread ? 'rgba(249,115,22,0.04)' : 'transparent',
+                      padding: '8px',
+                      borderRadius: '8px',
+                      background: 'transparent',
                       border: 'none',
-                      borderBottom: '1px solid var(--border)',
-                      cursor: isUnread ? 'pointer' : 'default',
+                      cursor: 'pointer',
                       textAlign: 'left',
                       transition: 'background 120ms',
                     }}
-                    onMouseEnter={e => { if (isUnread) e.currentTarget.style.background = 'var(--surface-hover)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = isUnread ? 'rgba(249,115,22,0.04)' : 'transparent' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >
-                    {/* Icon bubble */}
-                    <div style={{
-                      width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
-                      background: iconBg,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'background 200ms',
-                    }}>
-                      <Icon size={17} color={iconColor} style={{ transition: 'color 200ms' }} />
+                    {/* Avatar Container with Overlapping Badge */}
+                    <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
+                      <div style={{
+                        width: '100%', height: '100%', borderRadius: '50%',
+                        background: avatarBg, color: avatarBg === 'var(--page-bg-alt)' ? 'var(--text-primary)' : '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '22px', fontWeight: 600
+                      }}>
+                        {avatarInitial}
+                      </div>
+                      <div style={{
+                        position: 'absolute', bottom: '-2px', right: '-2px',
+                        width: '26px', height: '26px', borderRadius: '50%',
+                        background: accentColor,
+                        border: '2.5px solid var(--surface)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <Icon size={13} color="#fff" strokeWidth={2.5} />
+                      </div>
                     </div>
 
-                    {/* Text */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Text Content */}
+                    <div style={{ flex: 1, minWidth: 0, paddingRight: '8px' }}>
                       <p style={{
-                        fontSize: '13px',
-                        fontWeight: isUnread ? 600 : 400,
-                        color: isUnread ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        margin: 0, marginBottom: '2px',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        fontSize: '15px', color: 'var(--text-primary)',
+                        margin: 0, lineHeight: '1.3',
+                        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'
                       }}>
-                        {title}
+                        <span style={{ fontWeight: 600 }}>{boldText}</span>
+                        {mainText}
                       </p>
                       <p style={{
-                        fontSize: '11.5px', color: 'var(--text-secondary)',
-                        margin: 0, marginBottom: '2px',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        opacity: isUnread ? 0.9 : 0.65,
+                        fontSize: '13px', fontWeight: isUnread ? 600 : 400,
+                        color: isUnread ? 'var(--theme-500)' : 'var(--text-secondary)',
+                        margin: '4px 0 0 0',
                       }}>
-                        {subtitle}
-                      </p>
-                      <p style={{
-                        fontSize: '11px', fontWeight: isUnread ? 600 : 400,
-                        color: isUnread ? accentColor : 'var(--text-secondary)',
-                        margin: 0, opacity: isUnread ? 1 : 0.55,
-                        transition: 'color 200ms',
-                      }}>
-                        {time}
+                        {relativeTime(item._sortTime)}
                       </p>
                     </div>
 
-                    {/* Unread dot */}
-                    <div style={{
-                      width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
-                      background: dotColor,
-                      transition: 'background 200ms',
-                    }} />
+                    {/* Unread Indicator */}
+                    {isUnread && (
+                      <div style={{
+                        width: '12px', height: '12px', borderRadius: '50%', flexShrink: 0,
+                        background: 'var(--theme-500)',
+                      }} />
+                    )}
                   </button>
                 )
               })
