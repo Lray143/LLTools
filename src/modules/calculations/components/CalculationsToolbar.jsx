@@ -242,10 +242,14 @@ export default function CalculationsToolbar({
 
       {/* Outlet context hint */}
       {!isSummary && selectedOutletId && (
-        <div className="mx-8 mb-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-sm text-orange-700">
+        <div className="mx-8 mb-2 flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+          border: '1px solid rgba(249, 115, 22, 0.2)',
+          color: '#f97316'
+        }}>
           <Store size={13} />
           <span>
-            Using <strong>{outlets.find((o) => o.id === selectedOutletId)?.name ?? 'outlet'}</strong> prices.
+            Using <strong style={{ color: '#ea580c', textShadow: '0 0 1px rgba(255,255,255,0.1)' }}>{outlets.find((o) => o.id === selectedOutletId)?.name ?? 'outlet'}</strong> prices.
             Orange prices are outlet-specific overrides.
           </span>
         </div>

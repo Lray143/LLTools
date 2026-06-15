@@ -6,7 +6,7 @@ const { uploadFileToR2 } = require('./r2.cjs')
 const fs = require('fs')
 const crypto = require('crypto')
 const {
-  initDb, loginUser, syncCloud,
+  initDb, loginUser, syncCloud, wipeAllData,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
@@ -131,6 +131,8 @@ ipcMain.handle('users:resetPassword',  (_, id, newPassword)  => resetUserPasswor
 ipcMain.handle('users:delete',         (_, id)               => deleteUserAccount(id))
 ipcMain.handle('users:updateTheme',    (_, id, color, mode)  => updateUserTheme(id, color, mode))
 ipcMain.handle('users:heartbeat',      (_, id)               => heartbeatUser(id))
+
+ipcMain.handle('db:wipeAll',           ()                    => wipeAllData())
 
 // ── SAVED ORDERS ──────────────────────────────────────────────────
 ipcMain.handle('orders:save',          (_, order)    => saveOrder(order))

@@ -22,18 +22,18 @@ export default function CalculationsSummary({
   if (subtotal === 0) return null
 
   return (
-    <div className="border-t border-gray-200 bg-white px-8 py-4 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.06)]">
+    <div className="border-t px-8 py-4 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.06)]" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
       <div className="flex items-end justify-between gap-6 flex-wrap">
 
         {/* Left: line count + discount info */}
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+          <div className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <ShoppingCart size={14} className="text-orange-400" />
             <span>{lineCount} item{lineCount !== 1 ? 's' : ''} in order</span>
           </div>
 
           {discounts.length > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 border border-orange-200 rounded-lg text-xs text-orange-700">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs" style={{ background: 'rgba(249,115,22,0.1)', border: '1px solid rgba(249,115,22,0.2)', color: '#f97316' }}>
               <span className="font-medium">
                 {discounts.length} discount{discounts.length !== 1 ? 's' : ''} applied
               </span>
@@ -47,23 +47,23 @@ export default function CalculationsSummary({
         <div className="flex items-end gap-6">
 
           <div className="text-right">
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Subtotal</p>
-            <p className="text-base font-medium text-gray-700">₱{fmt(subtotal)}</p>
+            <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Subtotal</p>
+            <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>₱{fmt(subtotal)}</p>
           </div>
 
           {/* Show each discount step */}
           {steps.map((step) => (
             <div key={step.id} className="text-right">
-              <p className="text-xs text-gray-400 uppercase tracking-wide">
+              <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
                 {step.name} ({step.value}%)
               </p>
               <p className="text-base font-medium text-red-500">−₱{fmt(step.deduction)}</p>
             </div>
           ))}
 
-          <div className="text-right pl-4 border-l border-gray-200">
-            <p className="text-xs text-gray-400 uppercase tracking-wide">Grand Total</p>
-            <p className="text-2xl font-bold text-gray-900">₱{fmt(grandTotal)}</p>
+          <div className="text-right pl-4 border-l" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>Grand Total</p>
+            <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>₱{fmt(grandTotal)}</p>
           </div>
 
           {/* View Receipt */}

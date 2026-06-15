@@ -6,8 +6,7 @@ import ChatInput from './components/ChatInput'
 import NotificationBell from '../../components/ui/NotificationBell'
 
 const DEPARTMENTS = [
-  'HR', 'Admin', 'Accounting', 'Finance', 'Sales',
-  'Marketing', 'Warehouse', 'Production', 'IT', 'Intern'
+  'Sales', 'HR', 'Accounting', 'Admin', 'Warehouse'
 ]
 const GLOBAL_ROLES = ['admin', 'hr']
 

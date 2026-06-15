@@ -10,7 +10,7 @@ const ROLE_LABELS = {
 
 export function AccountSection({ currentUser }) {
   const roleLabel = ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? '—'
-  const displayName = currentUser?.employeeName || currentUser?.username || '—'
+  const displayName = String(currentUser?.employeeName || currentUser?.username || '—')
   const initials  = displayName.slice(0, 2).toUpperCase()
 
   return (
@@ -90,6 +90,32 @@ export function AccountSection({ currentUser }) {
       <SettingRow label="System Role" description="Your technical access level in LLTools.">
         <InfoChip value={roleLabel} />
       </SettingRow>
+
+      {currentUser?.username === 'admin@doublel.com' && (
+        <SettingRow label="Wipe Test Data" description="Delete all records (employees, products, chats, etc.) to prepare for production use.">
+          <button
+            onClick={async () => {
+              if (window.confirm('Are you absolutely sure you want to completely WIPE all data? This will clear the entire database. It cannot be undone.')) {
+                await window.electronAPI.wipeAllData()
+                alert('Database completely wiped! Reloading app...')
+                window.location.reload()
+              }
+            }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: '#ef4444',
+              color: '#fff',
+              border: 'none',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: '13px'
+            }}
+          >
+            Wipe Database
+          </button>
+        </SettingRow>
+      )}
     </div>
   )
 }

@@ -385,18 +385,18 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                   Icon        = MessageSquare
                   accentColor = '#14b8a6' // Teal
                   avatarBg    = 'var(--theme-500)'
-                  avatarInitial = item.isDept ? '#' : (item.lastSenderName?.charAt(0) || '?').toUpperCase()
+                  avatarInitial = item.isDept ? '#' : String(item.lastSenderName || '?').charAt(0).toUpperCase()
                 } else if (isIncoming) {
                   Icon        = isInReport ? FileText : CalendarClock
                   accentColor = isInReport ? '#f97316' : '#6366f1'
                   avatarBg    = 'var(--page-bg-alt)'
-                  avatarInitial = (item.employeeName || item.employee_name || item.employeeNo || item.employee_no || '?').charAt(0).toUpperCase()
+                  avatarInitial = String(item.employeeName || item.employee_name || item.employeeNo || item.employee_no || '?').charAt(0).toUpperCase()
                 } else {
                   const status  = item.status ?? 'Pending'
                   accentColor   = STATUS_COLOR[status] ?? '#6b7280'
                   Icon          = STATUS_ICON[status] || (isMyReport ? FileText : CalendarClock)
                   avatarBg      = 'var(--page-bg-alt)'
-                  avatarInitial = (currentUser.employeeName || currentUser.username || '?').charAt(0).toUpperCase()
+                  avatarInitial = String(currentUser.employeeName || currentUser.username || '?').charAt(0).toUpperCase()
                 }
 
                 // --- Text Formatting (Inline Flow) ---

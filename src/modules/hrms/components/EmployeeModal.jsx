@@ -74,9 +74,16 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
     }
   }
 
-  function handleSave() {
+  const [isSaving, setIsSaving] = useState(false)
+
+  async function handleSave() {
     if (!form.name.trim()) return
-    onSave({ ...form })
+    setIsSaving(true)
+    try {
+      await onSave({ ...form })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -220,11 +227,11 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
         </div>
 
         <DialogFooter className="gap-2 pt-4 border-t border-gray-100 mt-2">
-          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose}>
+          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave}>
-            {isEdit ? "Save Changes" : "Add Employee"}
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Employee"}
           </Button>
         </DialogFooter>
       </DialogContent>

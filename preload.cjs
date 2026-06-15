@@ -5,6 +5,7 @@ window.electronAPI = {
   // ── Auth ────────────────────────────────────────────────────────
   login:                   (creds)              => ipcRenderer.invoke('auth:login', creds),
   refreshUser:             (id)                 => ipcRenderer.invoke('auth:refresh', id),
+  wipeAllData:             ()                   => ipcRenderer.invoke('db:wipeAll'),
 
   // ── Employees ───────────────────────────────────────────────────
   getEmployees:            ()        => ipcRenderer.invoke('employees:getAll'),

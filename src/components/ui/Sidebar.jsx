@@ -93,7 +93,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
 
   const navItems = ALL_NAV_ITEMS.filter(item => allowedModules.includes(item.id))
 
-  const displayName = currentUser?.employeeName || currentUser?.username || '??'
+  const displayName = String(currentUser?.employeeName || currentUser?.username || '??')
   const initials  = displayName.slice(0, 2).toUpperCase()
   // Show department for employee accounts; fall back to role label for system accounts
   const roleLabel = currentUser?.department ?? ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? ''

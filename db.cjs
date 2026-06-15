@@ -61,7 +61,7 @@ const SEED_PRODUCT_GROUPS = [
       { id: 'r-c5', caseBarcode: '14809010740458', itemBarcode: '4809010740359', description: 'Whitening Cream',        qty: 12,  size: '6g',   price: 31.00  },
       { id: 'r-c6', caseBarcode: '14809010740465', itemBarcode: '4809010740366', description: 'Whitening Cream',        qty: 12,  size: '12g',  price: 61.50  },
       { id: 'r-c7', caseBarcode: '14806517780359', itemBarcode: '4809010740352', description: 'Whitening Cream (tube)', qty: 120, size: '25mL', price: 110.00 },
-      { id: 'r-c8', caseBarcode: '14809010740509', itemBarcode: '4809010740302', description: 'Placenta Cream',         qty: 12,  size: '20g',  price: 75.75  },
+      { id: 'r-c8', caseBarcode: '14809010740509', itemBarcode: '4809010740502', description: 'Placenta Cream',         qty: 12,  size: '20g',  price: 75.75  },
     ],
   },
   {
@@ -82,22 +82,59 @@ const SEED_PRODUCT_GROUPS = [
       { id: 'r-s6',  caseBarcode: '14809010740219', itemBarcode: '4809010740212', description: 'Papaya Soap',                        qty: 96,  size: '135g',  price: 52.80 },
       { id: 'r-s7',  caseBarcode: '14806517740851', itemBarcode: '4809010740854', description: 'Papaya Soap w/ Milk',                qty: 96,  size: '135g',  price: 52.80 },
       { id: 'r-s8',  caseBarcode: '14806517780991', itemBarcode: '4806517780994', description: 'RDL Papaya Soap',                    qty: 144, size: '90g',   price: 39.00 },
-      { id: 'r-s9',  caseBarcode: '14809010740844', itemBarcode: '4809010740847', description: 'Babyskin Whitening Bath Soap',       qty: 96,  size: '135g',  price: 53.00 },
+      { id: 'r-s9',  caseBarcode: '14809010740844', itemBarcode: '4809010740847', description: 'Baby Bath Soap w/ SB',               qty: 96,  size: '135g',  price: 53.00 },
       { id: 'r-s10', caseBarcode: '14809010740264', itemBarcode: '4809010740267', description: 'Tawas Soap',                         qty: 96,  size: '135g',  price: 83.50 },
-      { id: 'r-s11', caseBarcode: '14806517780212', itemBarcode: '4806517780215', description: 'Surewhite Soap',                     qty: 118, size: '90g',   price: 66.75 },
-      { id: 'r-s12', caseBarcode: '14809010740561', itemBarcode: '4809010740564', description: 'Whitening Soap',                     qty: 96,  size: '150g',  price: 69.00 },
-      { id: 'r-s13', caseBarcode: '14809010740691', itemBarcode: '4809010740694', description: 'Papaya Soap Sachets',                qty: 432, size: '25g',   price: 14.75 },
-      { id: 'r-s14', caseBarcode: '14809010740998', itemBarcode: '4809010740991', description: 'Papaya Soap with Milk Sachet',       qty: 432, size: '25g',   price: 14.75 },
-      { id: 'r-s15', caseBarcode: '14806517781370', itemBarcode: '4806517781373', description: 'Kojic Soap sachet',                  qty: 432, size: '25g',   price: 17.00 },
-      { id: 'r-s16', caseBarcode: '14809010740868', itemBarcode: '4809010740861', description: 'Babyskin Bath Soap Sachet',          qty: 432, size: '25g',   price: 14.75 },
-      { id: 'r-s17', caseBarcode: '14806517781974', itemBarcode: '4806517781977', description: 'Papaya Whitening Soap 3x Valuepack', qty: 60,  size: '65gms', price: 78.00 },
+      { id: 'r-s11', caseBarcode: '14806517781349', itemBarcode: '4806517781342', description: 'Kojic Soap',                         qty: 96,  size: '150g',  price: 66.25 },
+      { id: 'r-s12', caseBarcode: '1480651770991',  itemBarcode: '4806517780994', description: 'RDL Papaya Soap',                    qty: 144, size: '90g',   price: 39.00 },
+      { id: 'r-s13', caseBarcode: '14806517780212', itemBarcode: '4806517780215', description: 'Surewhite Soap w/ Gigawhite',        qty: 118, size: '135g',  price: 66.75 },
+      { id: 'r-s14', caseBarcode: '14809010740561', itemBarcode: '4809010740564', description: 'Whitening Soap w/ Melawhite',        qty: 96,  size: '135g',  price: 69.00 },
+      { id: 'r-s15', caseBarcode: '14809010740691', itemBarcode: '4809010740694', description: 'Papaya Soap Sachets',                qty: 432, size: '25g',   price: 14.75 },
+      { id: 'r-s16', caseBarcode: '14809010740998', itemBarcode: '4809010740991', description: 'Papaya Soap with Milk Sachet',       qty: 432, size: '25g',   price: 14.75 },
+      { id: 'r-s17', caseBarcode: '14806517781370', itemBarcode: '4806517781373', description: 'Kojic Soap sachet',                  qty: 432, size: '25g',   price: 17.00 },
+      { id: 'r-s18', caseBarcode: '14809010740868', itemBarcode: '4809010740861', description: 'Babyskin Bath Soap-Sachet',          qty: 432, size: '25g',   price: 14.75 },
+      { id: 'r-s19', caseBarcode: '14806517781974', itemBarcode: '4806617781977', description: 'Papaya Whitening Soap 3x Valuepack', qty: 60,  size: '65gms', price: 78.00 },
     ],
   },
   {
     id: 'g-lotion', name: 'LOTION', sortOrder: 4,
     rows: [
-      { id: 'r-l1', caseBarcode: '14806517781383', itemBarcode: '4806517781386', description: 'Kojic Whitening Lotion', qty: 108, size: '50ml',  price: 59.50  },
-      { id: 'r-l2', caseBarcode: '14806517781356', itemBarcode: '4806517781389', description: 'Kojic Whitening Lotion', qty: 72,  size: '100ml', price: 116.50 },
+      { id: 'r-l1', caseBarcode: '14806517781363', itemBarcode: '4806517781366', description: 'Kojic Whitening Lotion', qty: 108, size: '50ml',  price: 59.50  },
+      { id: 'r-l2', caseBarcode: '14806517781356', itemBarcode: '480651781359', description: 'Kojic Whitening Lotion', qty: 72,  size: '100ml', price: 116.50 },
+      { id: 'r-l3', caseBarcode: '14806517781660', itemBarcode: '4806517781663', description: 'Kojic Whitening Lotion', qty: 24,  size: '500ml', price: 527.00 },
+      { id: 'r-l4', caseBarcode: '14809010740646', itemBarcode: '4809010740649', description: 'Babyskin Moisturizing Lotion', qty: 144, size: '50ml', price: 43.50 },
+      { id: 'r-l5', caseBarcode: '14809010740653', itemBarcode: '4809010740656', description: 'Babyskin Moisturizing Lotion', qty: 96,  size: '100ml', price: 74.25 },
+    ],
+  },
+  {
+    id: 'g-cleansers', name: "CLEANSER'S", sortOrder: 5,
+    rows: [
+      { id: 'r-cl1', caseBarcode: '14809010740165', itemBarcode: '4809010740168', description: 'Avocado Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl2', caseBarcode: '14809010740158', itemBarcode: '4809010740151', description: 'Avocado Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl3', caseBarcode: '14809010740813', itemBarcode: '4809010740816', description: 'Avocado Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl4', caseBarcode: '14809010740127', itemBarcode: '4809010740120', description: 'Cucumber Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl5', caseBarcode: '14809010740110', itemBarcode: '4809010740113', description: 'Cucumber Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl6', caseBarcode: '14809010740820', itemBarcode: '4809010740823', description: 'Cucumber Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl7', caseBarcode: '14809010740103', itemBarcode: '4809010740106', description: 'Kalamansi Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl8', caseBarcode: '14809010740097', itemBarcode: '4809010740090', description: 'Kalamansi Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl9', caseBarcode: '14809010740806', itemBarcode: '4809010740809', description: 'Kalamansi Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl10', caseBarcode: '14809010740141', itemBarcode: '4809010740144', description: 'Papaya Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl11', caseBarcode: '14809010740134', itemBarcode: '4809010740137', description: 'Papaya Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl12', caseBarcode: '14809010740790', itemBarcode: '4809010740793', description: 'Papaya Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl13', caseBarcode: '14806517781653', itemBarcode: '4806517781656', description: 'Kojic + Glutathione', qty: 144, size: '75ml', price: 38.50 },
+      { id: 'r-cl14', caseBarcode: '14806517781646', itemBarcode: '4806517781649', description: 'Kojic + Glutathione', qty: 72, size: '150ml', price: 54.00 },
+      { id: 'r-cl15', caseBarcode: '14806517781639', itemBarcode: '4806517781632', description: 'Kojic + Glutathione', qty: 72, size: '250ml', price: 71.00 },
+      { id: 'r-cl16', caseBarcode: '14809010740080', itemBarcode: '4809010740083', description: 'Plain', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl17', caseBarcode: '14809010740073', itemBarcode: '4809010740076', description: 'Plain', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl18', caseBarcode: '14809010740837', itemBarcode: '4809010740830', description: 'Plain', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl19', caseBarcode: '14809010740738', itemBarcode: '4806517780314', description: 'Freshmen Papaya', qty: 144, size: '75ml', price: 35.75 },
+      { id: 'r-cl20', caseBarcode: '14809010740745', itemBarcode: '4806517780321', description: 'Freshmen Papaya', qty: 72, size: '150ml', price: 48.75 },
+    ],
+  },
+  {
+    id: 'g-tawas', name: 'TAWAS', sortOrder: 6,
+    rows: [
+      { id: 'r-tw1', caseBarcode: '14806517781097', itemBarcode: '4806517781090', description: 'Tawas Powder Plain', qty: 432, size: '50g', price: 13.00 },
+      { id: 'r-tw2', caseBarcode: '14806517781103', itemBarcode: '4806517781106', description: 'Tawas Powder w/ Perfume', qty: 432, size: '50g', price: 13.75 },
     ],
   },
 ]
@@ -461,14 +498,12 @@ function deptToRole(dept) {
 }
 
 const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
+  const role = deptToRole(dept)
   const existing = await queryOne('SELECT id, role FROM users WHERE employee_id = ?', [employeeId])
+  
   if (existing) {
-    // Always update username (employee_no may have changed)
-    // Only update role if a real department is assigned — never silently
-    // overwrite an existing role when the employee has no department yet.
     const hasDept = dept && dept.trim() !== ''
     if (hasDept) {
-      const role = deptToRole(dept)
       await run(
         `UPDATE users SET username = ?, role = ?, sync_status = 'pending' WHERE employee_id = ?`,
         [employeeNo, role, employeeId]
@@ -480,7 +515,7 @@ const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
       )
     }
   } else {
-    const hash = bcrypt.hashSync(employeeNo, 10)
+    const hash = await bcrypt.hash(employeeNo, 10)
     await run(
       `INSERT OR IGNORE INTO users (username, password_hash, role, employee_id) VALUES (?, ?, ?, ?)`,
       [employeeNo, hash, role, employeeId]
@@ -656,7 +691,21 @@ const importAttendance = async (records) => {
   const CHUNK_SIZE = 50
   for (let i = 0; i < batchQueries.length; i += CHUNK_SIZE) {
     const chunk = batchQueries.slice(i, i + CHUNK_SIZE)
-    await client.batch(chunk)
+    let retries = 5
+    while (retries > 0) {
+      try {
+        await client.batch(chunk)
+        break // success, exit retry loop
+      } catch (err) {
+        if (err.message && (err.message.includes('PermissionDenied') || err.message.includes('Access is denied') || err.message.includes('EBUSY') || err.message.includes('database is locked'))) {
+          retries--
+          if (retries === 0) throw err
+          await new Promise(r => setTimeout(r, 250)) // wait 250ms and retry
+        } else {
+          throw err
+        }
+      }
+    }
     // Yield to let the main process handle OS window events (prevents "Not Responding")
     await new Promise(r => setTimeout(r, 10))
   }
@@ -1201,9 +1250,27 @@ const getRoomReceipts = async (roomId) => {
     userName: r.employee_name || r.username
   }))
 }
+const wipeAllData = async () => {
+  const tables = [
+    'attendance', 'clinic_logs', 'saved_orders', 'leave_requests', 'reports',
+    'report_comments', 'report_status_logs', 'department_chats',
+    'direct_messages', 'chat_read_receipts', 'outlet_product_prices', 'outlets',
+    'products', 'product_groups', 'employees'
+  ];
+  for (const t of tables) {
+    try { await run(`DELETE FROM ${t}`) } catch(e){}
+    // Yield to let the main process handle OS window events (prevents "Not Responding")
+    await new Promise(r => setTimeout(r, 50))
+  }
+  try { await run(`DELETE FROM users WHERE username != 'admin@doublel.com'`) } catch(e){}
+  
+  // Immediately reseed default products and sync to cloud
+  await initDb()
+}
+
 // ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
-  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud,
+  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud, wipeAllData,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
