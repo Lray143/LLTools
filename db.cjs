@@ -18,8 +18,27 @@ const client = createClient({
 // ── Helper wrappers ───────────────────────────────────────────────────────────
 // These mirror the old sql.js API so the rest of the code stays readable.
 
+const executeWithRetry = async (sql, args = []) => {
+  let retries = 20
+  while (retries > 0) {
+    try {
+      return await client.execute({ sql, args })
+    } catch (err) {
+      const msg = err.message || ''
+      const code = err.code || ''
+      if (msg.includes('PermissionDenied') || msg.includes('Access is denied') || msg.includes('EBUSY') || msg.includes('database is locked') || msg.includes('WalConflict') || msg.includes('SQLITE_BUSY') || code === 'SQLITE_BUSY') {
+        retries--
+        if (retries === 0) throw err
+        await new Promise(r => setTimeout(r, 250))
+      } else {
+        throw err
+      }
+    }
+  }
+}
+
 const queryAll = async (sql, params = []) => {
-  const result = await client.execute({ sql, args: params })
+  const result = await executeWithRetry(sql, params)
   return result.rows.map(r => Object.fromEntries(Object.entries(r)))
 }
 
@@ -29,15 +48,41 @@ const queryOne = async (sql, params = []) => {
 }
 
 const run = async (sql, params = []) => {
-  await client.execute({ sql, args: params })
+  await executeWithRetry(sql, params)
 }
 
-// Sync local replica with cloud (call this on startup and periodically)
+// Sync local replica with cloud (call this periodically)
+let lastDataVersion = -1;
+let isSyncing = false;
+let isBulkOperating = false;
+
 const syncCloud = async () => {
-  try { await client.sync() } catch (e) { console.warn('[DB] Sync skipped:', e.message) }
+  if (isSyncing || isBulkOperating) return;
+  isSyncing = true;
+  try {
+    await client.sync();
+    // Check if the cloud sync actually brought in new data by checking the sqlite fingerprint
+    const result = await client.execute('PRAGMA data_version;');
+    const currentVersion = result.rows[0].data_version;
+    
+    if (lastDataVersion !== -1 && currentVersion !== lastDataVersion) {
+      // The database actually changed (e.g. new chat, leave request)
+      const { BrowserWindow } = require('electron');
+      const windows = BrowserWindow.getAllWindows();
+      if (windows.length > 0) {
+        windows[0].webContents.send('db-synced');
+      }
+    }
+    lastDataVersion = currentVersion;
+  } catch (e) {
+    // console.warn('[DB] Sync skipped:', e.message)
+  } finally {
+    isSyncing = false;
+  }
 }
 
-// ── Seed data ──────────────────────────────────────────────────────────────
+// Aggressive 3-second background polling for instant chats (0% idle CPU due to data_version check)
+setInterval(syncCloud, 3000);
 const SEED_PRODUCT_GROUPS = [
   {
     id: 'g-astringents', name: 'ASTRINGENTS', sortOrder: 0,
@@ -636,88 +681,132 @@ const getMyAttendance = async (employeeId) => queryAll(`
 `, [employeeId])
 
 const importAttendance = async (records) => {
-  let newEmployees = 0, newRecords = 0, skippedRecords = 0
+  // Wait if a background sync is currently running to prevent SQLITE_BUSY errors
+  while (isSyncing) {
+    await new Promise(r => setTimeout(r, 100));
+  }
+  isBulkOperating = true;
+  try {
+    let newEmployees = 0, newRecords = 0, skippedRecords = 0
 
-  // 1. Fetch all existing employees into memory to avoid per-record queries
-  const allEmps = await queryAll('SELECT id, employee_no FROM employees')
-  const empMap = new Map() // employee_no -> id
-  for (const e of allEmps) empMap.set(e.employee_no, e.id)
+    // 1. Fetch all existing employees into memory to avoid per-record queries
+    const allEmps = await queryAll('SELECT id, employee_no FROM employees')
+    const empMap = new Map() // employee_no -> id
+    for (const e of allEmps) empMap.set(e.employee_no, e.id)
 
-  // 2. Fetch all attendance composite keys into a Set to avoid per-record queries
-  const allAtt = await queryAll('SELECT employee_id, date FROM attendance')
-  const attSet = new Set()
-  for (const a of allAtt) attSet.add(`${a.employee_id}|${a.date}`)
+    // 2. Fetch all attendance composite keys into a Set to avoid per-record queries
+    const allAtt = await queryAll('SELECT employee_id, date FROM attendance')
+    const attSet = new Set()
+    for (const a of allAtt) attSet.add(`${a.employee_id}|${a.date}`)
 
-  const batchQueries = []
-  const missingAccounts = [] // Store info to create user accounts after batch
+    const empInsertArgs = []
+    const attInsertArgs = []
+    const missingAccounts = [] // Store info to create user accounts after batch
 
-  for (const rec of records) {
-    let empId = empMap.get(rec.employee_no)
-    
-    if (!empId) {
-      empId = crypto.randomUUID()
-      empMap.set(rec.employee_no, empId)
-      batchQueries.push({
-        sql: `INSERT INTO employees (id, employee_no, name, status, shift_start, shift_end, day_offs, sync_status) VALUES (?, ?, ?, 'Active', '07:00', '17:30', 'Saturday,Sunday', 'pending')`,
-        args: [empId, rec.employee_no, rec.employee_no]
-      })
-      missingAccounts.push({ id: empId, no: rec.employee_no })
-      newEmployees++
-    }
+    for (const rec of records) {
+      let empId = empMap.get(rec.employee_no)
+      
+      if (!empId) {
+        empId = crypto.randomUUID()
+        empMap.set(rec.employee_no, empId)
+        empInsertArgs.push(
+          empId, rec.employee_no, rec.employee_no, 
+          'Active', '07:00', '17:30', 'Saturday,Sunday', 'pending'
+        )
+        missingAccounts.push({ id: empId, no: rec.employee_no })
+        newEmployees++
+      }
 
-    const key = `${empId}|${rec.date}`
-    if (attSet.has(key)) {
-      skippedRecords++
-      continue
-    }
+      const key = `${empId}|${rec.date}`
+      if (attSet.has(key)) {
+        skippedRecords++
+        continue
+      }
 
-    attSet.add(key)
-    batchQueries.push({
-      sql: `INSERT INTO attendance
-              (id, employee_id, date, shift_in, lunch_out, lunch_in, shift_out,
-               total_hours, status, extra_taps, sync_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
-      args: [
+      attSet.add(key)
+      attInsertArgs.push(
         crypto.randomUUID(), empId, rec.date,
         rec.shift_in ?? null, rec.lunch_out ?? null, rec.lunch_in ?? null, rec.shift_out ?? null,
         rec.total_hours ?? null, rec.status ?? 'Absent',
-        rec.extraTaps?.length > 0 ? JSON.stringify(rec.extraTaps) : null
-      ]
-    })
-    newRecords++
-  }
+        rec.extraTaps?.length > 0 ? JSON.stringify(rec.extraTaps) : null,
+        'pending'
+      )
+      newRecords++
+    }
 
-  // 3. Execute all inserts in chunks to prevent blocking the main process
-  const CHUNK_SIZE = 50
-  for (let i = 0; i < batchQueries.length; i += CHUNK_SIZE) {
-    const chunk = batchQueries.slice(i, i + CHUNK_SIZE)
-    let retries = 5
-    while (retries > 0) {
-      try {
-        await client.batch(chunk)
-        break // success, exit retry loop
-      } catch (err) {
-        if (err.message && (err.message.includes('PermissionDenied') || err.message.includes('Access is denied') || err.message.includes('EBUSY') || err.message.includes('database is locked'))) {
-          retries--
-          if (retries === 0) throw err
-          await new Promise(r => setTimeout(r, 250)) // wait 250ms and retry
-        } else {
-          throw err
+    const runBulkInsert = async (table, columns, args, argCountPerRow) => {
+      if (args.length === 0) return;
+      const CHUNK_ROWS = 500
+      const totalArgsPerChunk = CHUNK_ROWS * argCountPerRow
+      for (let i = 0; i < args.length; i += totalArgsPerChunk) {
+        const chunkArgs = args.slice(i, i + totalArgsPerChunk)
+        const rowCount = chunkArgs.length / argCountPerRow
+        const rowPlaceholders = `(${Array(argCountPerRow).fill('?').join(', ')})`
+        const placeholders = Array(rowCount).fill(rowPlaceholders).join(', ')
+        
+        const sql = `INSERT INTO ${table} (${columns}) VALUES ${placeholders}`
+        
+        let retries = 20
+        while (retries > 0) {
+          try {
+            await client.execute({ sql, args: chunkArgs })
+            break
+          } catch (err) {
+            const msg = err.message || ''
+            const code = err.code || ''
+            if (msg.includes('PermissionDenied') || msg.includes('Access is denied') || msg.includes('EBUSY') || msg.includes('database is locked') || msg.includes('WalConflict') || msg.includes('SQLITE_BUSY') || code === 'SQLITE_BUSY') {
+              retries--
+              if (retries === 0) throw err
+              await new Promise(r => setTimeout(r, 250))
+            } else {
+              throw err
+            }
+          }
         }
+        await new Promise(r => setTimeout(r, 10))
       }
     }
-    // Yield to let the main process handle OS window events (prevents "Not Responding")
-    await new Promise(r => setTimeout(r, 10))
+
+    await runBulkInsert('employees', 'id, employee_no, name, status, shift_start, shift_end, day_offs, sync_status', empInsertArgs, 8)
+    await runBulkInsert('attendance', 'id, employee_id, date, shift_in, lunch_out, lunch_in, shift_out, total_hours, status, extra_taps, sync_status', attInsertArgs, 11)
+
+    // 4. Create dummy user accounts for any newly discovered employees
+    for (const acc of missingAccounts) {
+      await createEmployeeAccount(acc.id, acc.no, '')
+    }
+
+    return { newEmployees, newRecords, skippedRecords }
+  } finally {
+    isBulkOperating = false;
+  }
+}
+
+const importAttendanceRawText = async (text) => {
+  const { parseRawBiometrics } = require('./parseRawBiometrics.cjs');
+  
+  // 1. Fetch fresh employee map for parsing rules
+  const allEmps = await queryAll('SELECT * FROM employees');
+  const empMap = {};
+  for (const e of allEmps) {
+    let daySchedule = null
+    if (e.day_schedule) {
+      try { daySchedule = JSON.parse(e.day_schedule) } catch (_) {}
+    }
+    empMap[String(e.employee_no)] = {
+      shiftStart  : e.shift_start ?? '07:00',
+      shiftEnd    : e.shift_end   ?? '17:30',
+      dayOffs     : e.day_offs ? e.day_offs.split(',').map(d => d.trim()).filter(Boolean) : ['Saturday', 'Sunday'],
+      daySchedule,
+    }
   }
 
-  // 4. Create dummy user accounts for any newly discovered employees
-  for (const acc of missingAccounts) {
-    await createEmployeeAccount(acc.id, acc.no, '')
-  }
+  // 3. Parse raw biometrics in Main Thread
+  const parsed = await parseRawBiometrics(text, empMap);
+  if (parsed.length === 0) return { newEmployees: 0, newRecords: 0, skippedRecords: 0, parsedCount: 0 };
 
-  // NOTE: We no longer force syncCloud() here because it blocks the main thread
-  // on massive imports. The 10-second background interval will sync this automatically!
-  return { newEmployees, newRecords, skippedRecords }
+  // 4. Run the standard DB insertion
+  const result = await importAttendance(parsed);
+  return { ...result, parsedCount: parsed.length };
 }
 
 // ── PRODUCTS ──────────────────────────────────────────────────────────────────
@@ -1251,21 +1340,36 @@ const getRoomReceipts = async (roomId) => {
   }))
 }
 const wipeAllData = async () => {
-  const tables = [
-    'attendance', 'clinic_logs', 'saved_orders', 'leave_requests', 'reports',
-    'report_comments', 'report_status_logs', 'department_chats',
-    'direct_messages', 'chat_read_receipts', 'outlet_product_prices', 'outlets',
-    'products', 'product_groups', 'employees'
-  ];
-  for (const t of tables) {
-    try { await run(`DELETE FROM ${t}`) } catch(e){}
-    // Yield to let the main process handle OS window events (prevents "Not Responding")
-    await new Promise(r => setTimeout(r, 50))
+  // Wait if a background sync is currently running to prevent SQLITE_BUSY errors
+  while (isSyncing) {
+    await new Promise(r => setTimeout(r, 100));
   }
-  try { await run(`DELETE FROM users WHERE username != 'admin@doublel.com'`) } catch(e){}
-  
-  // Immediately reseed default products and sync to cloud
-  await initDb()
+  isBulkOperating = true;
+  try {
+    const tables = [
+      'attendance', 'clinic_logs', 'saved_orders', 'leave_requests', 'reports',
+      'report_comments', 'report_status_logs', 'department_chats',
+      'direct_messages', 'chat_read_receipts', 'outlet_product_prices', 'outlets',
+      'products', 'product_groups', 'employees'
+    ];
+    for (const t of tables) {
+      try { await run(`DELETE FROM ${t}`) } catch(e){}
+      // Yield to let the main process handle OS window events (prevents "Not Responding")
+      await new Promise(r => setTimeout(r, 50))
+    }
+    try { await run(`DELETE FROM users WHERE username != 'admin@doublel.com'`) } catch(e){}
+    
+    // Immediately reseed default products and sync to cloud
+    await initDb()
+
+    const { BrowserWindow } = require('electron');
+    const windows = BrowserWindow.getAllWindows();
+    if (windows.length > 0) {
+      windows[0].webContents.send('db-synced');
+    }
+  } finally {
+    isBulkOperating = false;
+  }
 }
 
 // ── Exports ───────────────────────────────────────────────────────────────────
@@ -1273,7 +1377,7 @@ module.exports = {
   initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud, wipeAllData,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
-  getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
+  getAttendance, getAttendanceByDate, getMyAttendance, importAttendance, importAttendanceRawText,
   getProductGroups, getArchivedProducts,
   upsertProductGroup, deleteProductGroup,
   upsertProduct, archiveProduct, restoreProduct, permanentDeleteProduct,

@@ -20,6 +20,7 @@ window.electronAPI = {
   getAttendanceByDate:     (date)    => ipcRenderer.invoke('attendance:getByDate', date),
   getMyAttendance:         (employeeId) => ipcRenderer.invoke('attendance:getMine', employeeId),
   importAttendance:        (recs)    => ipcRenderer.invoke('attendance:import', recs),
+  importAttendanceRawText: (text)    => ipcRenderer.invoke('attendance:importRawText', text),
 
   // ── Reports ─────────────────────────────────────────────────────
   getReports:              ()         => ipcRenderer.invoke('reports:getAll'),

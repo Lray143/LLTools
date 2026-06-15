@@ -67,6 +67,9 @@ function App() {
                 saveTheme(freshUser.themeColor || 'original-light')
               }
             }
+          } else {
+            // The user account was deleted from the database (e.g. wiped)
+            setCurrentUser(null)
           }
         } catch (e) {
           console.error('Failed to auto-refresh session:', e)

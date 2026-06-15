@@ -158,9 +158,15 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState("cards")
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [dept, setDept] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [modal, setModal] = useState(null)
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(handler)
+  }, [search])
 
   const loadEmployees = useCallback(async () => {
     const [active, arch] = await Promise.all([
@@ -219,8 +225,8 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   const filtered = employees
     .map(e => ({ ...e, liveStatus: getLiveStatus(e) }))
     .filter(e => {
-      const matchSearch = e.name.toLowerCase().includes(search.toLowerCase()) ||
-                          (e.employee_no && e.employee_no.toLowerCase().includes(search.toLowerCase()))
+      const matchSearch = e.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                          (e.employee_no && e.employee_no.toLowerCase().includes(debouncedSearch.toLowerCase()))
       const matchDept = dept === "all" || e.dept === dept
       const matchStatus = statusFilter === "all" ||
         e.liveStatus === statusFilter ||

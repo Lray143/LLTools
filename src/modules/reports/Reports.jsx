@@ -108,8 +108,14 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
   const [typeFilter,    setTypeFilter]    = useState('All')
   const [priorityFilter, setPriorityFilter] = useState('All')
   const [search,        setSearch]        = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [successMsg,    setSuccessMsg]    = useState('')
   const [errorMsg,      setErrorMsg]      = useState('')
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(handler)
+  }, [search])
 
   // ── Data loading ────────────────────────────────────────────────
   const loadMine = useCallback(async () => {
@@ -233,12 +239,12 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
     const matchStatus   = statusFilter   === 'All' || r.status === statusFilter
     const matchType     = typeFilter     === 'All' || r.reportType === typeFilter
     const matchPriority = priorityFilter === 'All' || r.priority === priorityFilter
-    const matchSearch   = !search || (
-      (r.reportNo      || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.employeeName  || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.employeeNo    || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.subject       || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.reportType    || '').toLowerCase().includes(search.toLowerCase())
+    const matchSearch   = !debouncedSearch || (
+      (r.reportNo      || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (r.employeeName  || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (r.employeeNo    || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (r.subject       || '').toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      (r.reportType    || '').toLowerCase().includes(debouncedSearch.toLowerCase())
     )
     return matchStatus && matchType && matchPriority && matchSearch
   })

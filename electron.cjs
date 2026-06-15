@@ -45,6 +45,7 @@ ipcMain.handle('app:getVersion', () => app.getVersion())
 
 function createWindow() {
   mainWindow = new BrowserWindow({
+    title: 'LLTools',
     width: 1280,
     height: 800,
     icon: path.join(__dirname, 'public/Logo.png'),
@@ -92,6 +93,9 @@ ipcMain.handle('attendance:getAll',    ()           => getAttendance())
 ipcMain.handle('attendance:getByDate', (_, date)    => getAttendanceByDate(date))
 ipcMain.handle('attendance:getMine',   (_, empId)   => getMyAttendance(empId))
 ipcMain.handle('attendance:import',    (_, records) => importAttendance(records))
+ipcMain.handle('attendance:importRawText', (_, text) => {
+  return import('./db.cjs').then(db => db.importAttendanceRawText(text))
+})
 
 // ── PRODUCTS ──────────────────────────────────────────────────────
 ipcMain.handle('products:getAll',        ()           => getProductGroups())

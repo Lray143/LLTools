@@ -1,7 +1,7 @@
 // employeeMap shape:
 // { [employee_no]: { shiftStart, shiftEnd, dayOffs, daySchedule } }
 // daySchedule: { Monday: { start, end } | null, ... }
-export async function parseRawBiometrics(text, employeeMap = {}) {
+async function parseRawBiometrics(text, employeeMap = {}) {
 
   const MIN_VALID_EMP_ID  = 100
   const DEFAULT_START     = "07:00"
@@ -246,3 +246,5 @@ export async function parseRawBiometrics(text, employeeMap = {}) {
 
   return parsed
 }
+
+module.exports = { parseRawBiometrics }

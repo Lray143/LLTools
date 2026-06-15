@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect }    from 'react'
 import { DEPARTMENTS }                    from './biometricConstants'
-import { parseRawBiometrics }             from './parseRawBiometrics'
 import { exportToXLSX }                   from './exportToXLSX'
 import { BiometricHeader }                from './components/BiometricHeader'
 import { BiometricStatCards }             from './components/BiometricStatCards'
@@ -154,8 +153,14 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
   const [employeeMap, setEmployeeMap] = useState({})
 
   const [searchQuery,      setSearchQuery]      = useState('')
+  const [debouncedSearch,  setDebouncedSearch]  = useState('')
   const [selectedDept,     setSelectedDept]     = useState('All Departments')
   const [viewMode,         setViewMode]         = useState('Daily')
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 300)
+    return () => clearTimeout(handler)
+  }, [searchQuery])
 
   const [selectedDate,     setSelectedDate]     = useState(new Date())
   const [selectedMonth,    setSelectedMonth]    = useState(new Date().getMonth() + 1)
@@ -213,9 +218,9 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     })()
 
     const matchDept   = selectedDept === 'All Departments' || r.department === selectedDept
-    const matchSearch = !searchQuery ||
-      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      String(r.id).toLowerCase().includes(searchQuery.toLowerCase())
+    const matchSearch = !debouncedSearch ||
+      r.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+      String(r.id).toLowerCase().includes(debouncedSearch.toLowerCase())
 
     return matchView && matchDept && matchSearch
   })
@@ -238,28 +243,21 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     setImportError('')
     setImportSuccess('')
 
-    // Re-fetch the employee map fresh so we have the latest shift rules
-    // in case someone updated employees between imports.
-    const empRows     = await window.electronAPI.getEmployees()
-    const freshEmpMap = buildEmployeeMap(empRows)
-    setEmployeeMap(freshEmpMap)
-
     const reader = new FileReader()
     reader.onload = async (evt) => {
       try {
         // Yield to let React paint the "Importing..." button
         await new Promise(r => setTimeout(r, 50))
         
-        // parseRawBiometrics returns records that already include an extraTaps array.
-        const parsed = await parseRawBiometrics(evt.target.result, freshEmpMap)
-        if (parsed.length === 0) {
+        // We pass the raw text string (which is small) to the Main Process.
+        // This avoids the massive JSON serialization bottleneck of passing an array of 50,000 objects.
+        const result = await window.electronAPI.importAttendanceRawText(evt.target.result)
+
+        if (result.parsedCount === 0) {
           setImportError('No records could be read. Check the file matches the expected device format.')
           setIsImporting(false)
           return
         }
-
-        // importAttendance saves extra_taps as JSON in the DB alongside each record.
-        const result = await window.electronAPI.importAttendance(parsed)
 
         // Re-load from DB — mapRow will parse extra_taps back into the extraTaps array
         // automatically, so we don't need to track it in a separate lookup anymore.
@@ -369,20 +367,20 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
 
         {importError && (
           <div className="px-4 py-2 rounded-xl text-sm"
-            style={{ background: 'var(--surface-hover)', border: '1px solid #fecaca', color: '#991b1b' }}>
+            style={{ background: 'var(--surface-hover)', border: '1px solid var(--border-strong)', borderLeft: '4px solid #ef4444', color: 'var(--text-primary)' }}>
             ⚠ {importError}
           </div>
         )}
         {importSuccess && (
           <div className="px-4 py-2 rounded-xl text-sm"
-            style={{ background: 'var(--surface-hover)', border: '1px solid #bbf7d0', color: '#166534' }}>
+            style={{ background: 'var(--surface-hover)', border: '1px solid var(--border-strong)', borderLeft: '4px solid var(--accent-bg)', color: 'var(--text-primary)' }}>
             ✓ {importSuccess}
           </div>
         )}
 
         {/* key forces full remount on search/dept/viewMode change — fixes stale pagination bug */}
         <BiometricTable
-          key={searchQuery + '|' + selectedDept + '|' + viewMode}
+          key={debouncedSearch + '|' + selectedDept + '|' + viewMode}
           records={filteredRecords}
           total={filteredRecords.length}
           viewMode={viewMode}
