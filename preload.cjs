@@ -42,6 +42,10 @@ window.electronAPI = {
   getRoomReceipts: (roomId) => ipcRenderer.invoke('chat:getRoomReceipts', roomId),
   uploadAttachment: (buffer, name, type, msgId, msgType) => ipcRenderer.invoke('chat:uploadAttachment', buffer, name, type, msgId, msgType),
   openAttachment:   (filePath) => ipcRenderer.invoke('chat:openAttachment', filePath),
+  toggleReaction:   (msgId, userId, userName, emoji, isDm) => ipcRenderer.invoke('chat:toggleReaction', msgId, userId, userName, emoji, isDm),
+  editMessage:      (msgId, userId, newText, isDm) => ipcRenderer.invoke('chat:editMessage', msgId, userId, newText, isDm),
+  unsendMessage:    (msgId, userId, isDm) => ipcRenderer.invoke('chat:unsendMessage', msgId, userId, isDm),
+  deleteForMe:      (msgId, userId, isDm) => ipcRenderer.invoke('chat:deleteForMe', msgId, userId, isDm),
 
   // ── Products ────────────────────────────────────────────────────
   getProductGroups:        ()        => ipcRenderer.invoke('products:getAll'),
@@ -80,6 +84,7 @@ window.electronAPI = {
   resetUserPassword:       (id, newPassword)    => ipcRenderer.invoke('users:resetPassword', id, newPassword),
   deleteUserAccount:       (id)                 => ipcRenderer.invoke('users:delete', id),
   updateUserTheme:         (id, color, mode)    => ipcRenderer.invoke('users:updateTheme', id, color, mode),
+  heartbeatUser:           (id)                 => ipcRenderer.invoke('users:heartbeat', id),
 
   // ── Saved Orders ─────────────────────────────────────────────────
   saveOrder:               (order)    => ipcRenderer.invoke('orders:save', order),

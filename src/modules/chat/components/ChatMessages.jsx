@@ -1,5 +1,5 @@
 import { useRef, memo, useState, useCallback } from 'react'
-import { MessageSquare, Image as ImageIcon, User, Smile, Reply, X } from 'lucide-react'
+import { MessageSquare, Image as ImageIcon, User, Smile, Reply, X, Edit2, Trash2 } from 'lucide-react'
 
 function formatTime(iso) {
   if (!iso) return ''
@@ -85,6 +85,10 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
   const messagesEndRef = useRef(null)
   const [lightboxSrc, setLightboxSrc] = useState(null)
   const [hoveredTime, setHoveredTime] = useState(null)
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null)
+  const [editingMsgId, setEditingMsgId] = useState(null)
+  const [editInput, setEditInput] = useState('')
+  const [deleteMenuMsgId, setDeleteMenuMsgId] = useState(null)
 
   if (activeTab === 'dms' && !selectedUser) {
     return (
@@ -141,12 +145,14 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
     return prevDate !== currDate
   }
 
+  const visibleMessages = messages.filter(m => !m.deletedFor?.includes(String(mySenderId)))
+
   return (
     <>
       <div className="space-y-1">
-        {messages.map((msg, i) => {
+        {visibleMessages.map((msg, i) => {
           const isMe = String(msg.senderId) === String(mySenderId)
-          const prevMsg = messages[i - 1]
+          const prevMsg = visibleMessages[i - 1]
           const isGrouped = prevMsg &&
             String(prevMsg.senderId) === String(msg.senderId) &&
             new Date(msg.createdAt) - new Date(prevMsg.createdAt) < 5 * 60000
@@ -155,12 +161,16 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
           // Extract reply block if it exists
           let messageText = msg.message || ''
           let replyBlock = null
-          const replyMatch = messageText.match(/^\[reply\](.*?)\[\/reply\]\n?/)
-          if (replyMatch) {
-            const [_, replyContent] = replyMatch
-            const [replyName, ...replyTextParts] = replyContent.split('|')
-            replyBlock = { name: replyName, text: replyTextParts.join('|') }
-            messageText = messageText.substring(replyMatch[0].length)
+          if (msg.isUnsent) {
+            messageText = "This message was unsent."
+          } else {
+            const replyMatch = messageText.match(/^\[reply\]([\s\S]*?)\[\/reply\]\n?/)
+            if (replyMatch) {
+              const [_, replyContent] = replyMatch
+              const [replyName, ...replyTextParts] = replyContent.split('|')
+              replyBlock = { name: replyName, text: replyTextParts.join('|') }
+              messageText = messageText.substring(replyMatch[0].length)
+            }
           }
 
           return (
@@ -209,28 +219,55 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
                       }
                     >
                       {/* Render Reply Block */}
-                      {replyBlock && (
-                        <div className="mb-2 px-3 py-2 rounded-lg text-xs"
-                          style={{
-                            background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--page-bg-alt)',
-                            borderLeft: `3px solid ${isMe ? '#fff' : 'var(--theme-500)'}`,
-                            opacity: 0.9,
-                          }}>
-                          <div className="font-bold mb-0.5" style={{ color: isMe ? '#fff' : 'var(--theme-500)' }}>
-                            {replyBlock.name}
-                          </div>
-                          <div className="truncate opacity-90">{replyBlock.text}</div>
-                        </div>
-                      )}
-
-                      {messageText && (
-                        <p className="whitespace-pre-wrap break-all overflow-hidden mt-0.5">
-                          {renderMessageText(
-                            messageText,
-                            currentUser.employeeName || currentUser.username,
-                            isMe
-                          )}
+                      {msg.isUnsent ? (
+                        <p className="whitespace-pre-wrap mt-0.5 italic opacity-80" style={{ fontSize: '13px' }}>
+                          This message was unsent.
                         </p>
+                      ) : editingMsgId === msg.id ? (
+                        <div className="flex flex-col gap-1 w-full min-w-[200px] mt-0.5">
+                          <textarea autoFocus value={editInput} onChange={e => setEditInput(e.target.value)} 
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                let finalMsg = editInput.trim()
+                                if (!finalMsg) return
+                                if (replyBlock) {
+                                  finalMsg = `[reply]${replyBlock.name}|${replyBlock.text}[/reply]\n${finalMsg}`
+                                }
+                                window.electronAPI?.editMessage?.(msg.id, mySenderId, finalMsg, activeTab === 'dms')
+                                setEditingMsgId(null)
+                              } else if (e.key === 'Escape') {
+                                setEditingMsgId(null)
+                              }
+                            }}
+                            className="bg-black/10 dark:bg-black/20 border-none rounded px-2 py-1.5 text-sm outline-none text-inherit w-full resize-none focus:ring-1 focus:ring-white/30"
+                            rows={2}
+                          />
+                          <span className="text-[10px] opacity-70">Press Enter to save, Esc to cancel</span>
+                        </div>
+                      ) : (
+                        <>
+                          {replyBlock && (
+                            <div className="mb-2 px-3 py-2 rounded-lg text-xs"
+                              style={{
+                                background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--page-bg-alt)',
+                                borderLeft: `3px solid ${isMe ? '#fff' : 'var(--theme-500)'}`,
+                                opacity: 0.9,
+                              }}>
+                              <div className="font-bold mb-0.5" style={{ color: isMe ? '#fff' : 'var(--theme-500)' }}>
+                                {replyBlock.name}
+                              </div>
+                              <div className="truncate opacity-90">{replyBlock.text}</div>
+                            </div>
+                          )}
+
+                          {messageText && (
+                            <p className="whitespace-pre-wrap break-all overflow-hidden mt-0.5">
+                              {renderMessageText(messageText, currentUser.employeeName || currentUser.username, isMe)}
+                              {msg.isEdited && <span className="text-[10px] opacity-60 ml-1.5 italic">(edited)</span>}
+                            </p>
+                          )}
+                        </>
                       )}
                       {msg.fileUrl && (
                         <div className="mt-2 p-2 rounded-lg flex flex-col items-start gap-2 max-w-[240px]"
@@ -277,17 +314,106 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
                     <div className={`chat-msg-actions absolute ${isMe ? 'right-1' : 'left-1'} -top-8`}>
                       <div className="flex items-center gap-0.5 rounded-lg px-1 py-0.5"
                         style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                        <button className="chat-action-btn p-1.5" title="React"
-                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                          <Smile size={14} />
-                        </button>
-                        <button className="chat-action-btn p-1.5" title="Reply" onClick={() => setReplyTo?.(msg)}
-                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                          <Reply size={14} />
-                        </button>
+                        <div className="relative"
+                          onMouseEnter={() => setReactionPickerMsgId(msg.id)}
+                          onMouseLeave={() => setReactionPickerMsgId(null)}>
+                          <button className="chat-action-btn p-1.5" title="React"
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <Smile size={14} />
+                          </button>
+                          {reactionPickerMsgId === msg.id && (
+                            <div className={`absolute z-50 bottom-full pb-1 ${isMe ? 'right-0 sm:-right-8' : 'left-0 sm:-left-2'}`}>
+                              <div className="rounded-full shadow-lg"
+                                style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+                                <div className="flex px-1.5 py-1 gap-0.5">
+                                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                                  <button key={emoji} onClick={() => {
+                                    window.electronAPI?.toggleReaction?.(msg.id, mySenderId, currentUser.employeeName || currentUser.username, emoji, activeTab === 'dms')
+                                    setReactionPickerMsgId(null)
+                                  }} className="text-[22px] hover:bg-black/5 dark:hover:bg-white/10 w-9 h-9 flex items-center justify-center rounded-full transition-transform hover:scale-110 border-none bg-transparent cursor-pointer">
+                                    {emoji}
+                                  </button>
+                                ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {!msg.isUnsent && (
+                          <button className="chat-action-btn p-1.5" title="Reply" onClick={() => setReplyTo?.(msg)}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <Reply size={14} />
+                          </button>
+                        )}
+                        {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
+                          <button className="chat-action-btn p-1.5" title="Edit" onClick={() => {
+                            setEditingMsgId(msg.id)
+                            setEditInput(msg.message.replace(/^\[reply\].*?\[\/reply\]\n?/, ''))
+                          }}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <Edit2 size={14} />
+                          </button>
+                        )}
+                        <div className="relative"
+                          onMouseLeave={() => setDeleteMenuMsgId(null)}>
+                          <button className="chat-action-btn p-1.5" title="Delete options" onClick={() => setDeleteMenuMsgId(msg.id)}
+                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <Trash2 size={14} />
+                          </button>
+                          {deleteMenuMsgId === msg.id && (
+                            <div className={`absolute z-50 bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} rounded-lg shadow-lg overflow-hidden flex flex-col text-sm w-48`}
+                              style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+                              {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
+                                <button className="px-3 py-2.5 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border-none bg-transparent cursor-pointer font-medium transition-colors"
+                                  onClick={() => {
+                                    window.electronAPI?.unsendMessage?.(msg.id, mySenderId, activeTab === 'dms')
+                                    setDeleteMenuMsgId(null)
+                                  }}>
+                                  Unsend for Everyone
+                                </button>
+                              )}
+                              <button className="px-3 py-2.5 text-left hover:bg-black/5 dark:hover:bg-white/5 border-none bg-transparent cursor-pointer transition-colors"
+                                style={{ color: 'var(--text-primary)' }}
+                                onClick={() => {
+                                  window.electronAPI?.deleteForMe?.(msg.id, mySenderId, activeTab === 'dms')
+                                  setDeleteMenuMsgId(null)
+                                }}>
+                                Remove for You
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
+
+                  {/* Render Reactions */}
+                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                    <div className={`flex flex-wrap gap-1 mt-1 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      {Object.entries(msg.reactions).map(([emoji, users]) => {
+                        const hasReacted = users.some(u => String(u.userId) === String(mySenderId))
+                        return (
+                          <div key={emoji} className="relative group flex items-center">
+                            <button
+                              onClick={() => window.electronAPI?.toggleReaction?.(msg.id, mySenderId, currentUser.employeeName || currentUser.username, emoji, activeTab === 'dms')}
+                              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs transition-colors border ${hasReacted ? 'bg-black/5 dark:bg-white/10' : 'bg-transparent hover:bg-black/5 dark:hover:bg-white/5'}`}
+                              style={{
+                                borderColor: hasReacted ? 'var(--theme-500)' : 'var(--border)',
+                                color: hasReacted ? 'var(--theme-500)' : 'var(--text-secondary)',
+                                cursor: 'pointer'
+                              }}>
+                              <span className="text-[15px] leading-none">{emoji}</span>
+                              <span className="font-semibold">{users.length}</span>
+                            </button>
+                            {/* Custom Tooltip */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] px-2 py-1 rounded shadow-lg">
+                              {users.map(u => u.userName).join(', ')}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
 
                   {/* Read receipts */}
                   {seenByMsgId[msg.id] && (

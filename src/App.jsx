@@ -31,6 +31,16 @@ function App() {
     applyThemeToDocument(getSavedTheme())
   }, [])
 
+  // Ping online heartbeat
+  useEffect(() => {
+    if (!currentUser?.id) return
+    window.electronAPI?.heartbeatUser?.(currentUser.id).catch(console.error)
+    const interval = setInterval(() => {
+      window.electronAPI?.heartbeatUser?.(currentUser.id).catch(console.error)
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [currentUser?.id])
+
   // Use a ref so the effect closure always has the latest user without re-binding
   const currentUserRef = useRef(currentUser)
   useEffect(() => {
