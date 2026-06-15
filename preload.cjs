@@ -86,6 +86,7 @@ window.electronAPI = {
   getOrdersByDefault:      ()         => ipcRenderer.invoke('orders:getByDefault'),
   getAllOrders:             ()         => ipcRenderer.invoke('orders:getAll'),
   deleteOrder:             (id)       => ipcRenderer.invoke('orders:delete', id),
+  updateOrderDate:         (id, date) => ipcRenderer.invoke('orders:updateDate', id, date),
 
   // ── Leave Requests ───────────────────────────────────────────────
   submitLeaveRequest:      (req)                   => ipcRenderer.invoke('leaves:submit', req),

@@ -17,7 +17,7 @@ const {
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
-  saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
+  saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,
   updateReportStatus, assignReport, addReportComment,
@@ -133,6 +133,7 @@ ipcMain.handle('orders:getByOutlet',   (_, outletId) => getOrdersByOutlet(outlet
 ipcMain.handle('orders:getByDefault',  ()            => getOrdersByDefault())
 ipcMain.handle('orders:getAll',        ()            => getAllOrders())
 ipcMain.handle('orders:delete',        (_, id)       => deleteOrder(id))
+ipcMain.handle('orders:updateDate',    (_, id, date) => updateOrderDate(id, date))
 
 // ── LEAVE REQUESTS ────────────────────────────────────────────────
 ipcMain.handle('leaves:submit',  (_, req)              => submitLeaveRequest(req))

@@ -8,6 +8,7 @@ import CalculationsRow          from './CalculationsRow'
 import CalculationsSummary      from './CalculationsSummary'
 import CalculationsReceiptModal from './CalculationsReceiptModal'
 import CalculationsMonthlySummary from './CalculationsMonthlySummary'
+import OutletModal from '../../outlets/components/OutletModal'
 
 const COLUMNS = [
   { label: 'Item Description', width: 'w-auto'                },
@@ -44,6 +45,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
   const [selectedOutletId, setSelectedOutletId] = useState(null)
   const [outletPrices,     setOutletPrices]     = useState({})   // { productId: price }
   const [outletDiscounts,  setOutletDiscounts]  = useState([])   // all discounts from selected outlet
+  const [showAddOutlet,    setShowAddOutlet]    = useState(false)
 
   // ── Order state ──────────────────────────────────────────────────
   const [qtys, setQtys] = useState({})
@@ -57,11 +59,12 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
   }, [])
 
   // ── Load outlets ──────────────────────────────────────────────────
-  useEffect(() => {
+  const loadOutlets = () =>
     window.electronAPI.getOutlets()
       .then((data) => setOutlets(data ?? []))
       .catch(() => setOutlets([]))
-  }, [])
+
+  useEffect(() => { loadOutlets() }, [])
 
   // ── Load outlet prices + discounts when outlet changes ────────────
   useEffect(() => {
@@ -82,6 +85,13 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
   const handleSelectOutlet = (id) => {
     setSelectedOutletId(id || null)
     setQtys({})
+  }
+
+  const handleAddOutletSave = async (payload) => {
+    await window.electronAPI.upsertOutlet(payload)
+    await loadOutlets()
+    setSelectedOutletId(payload.id)
+    setShowAddOutlet(false)
   }
 
   const handleQtyChange = (productId, value) => {
@@ -155,6 +165,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
         outlets={outlets}
         selectedOutletId={selectedOutletId}
         onSelectOutlet={handleSelectOutlet}
+        onAddOutlet={() => setShowAddOutlet(true)}
         totalItems={totalItems}
         totalGroups={totalGroups}
         hasQty={hasQty}
@@ -194,7 +205,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
                         >
                           {col.label}
                           {col.label === 'Unit Price' && selectedOutletId && (
-                            <span className="ml-1 text-orange-400 font-normal normal-case tracking-normal">
+                            <span className="ml-1 font-normal normal-case tracking-normal" style={{ color: 'var(--accent-bg)', opacity: 0.8 }}>
                               (outlet)
                             </span>
                           )}
@@ -275,6 +286,15 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
               outletPrices={outletPrices}
               discounts={outletDiscounts}
               onClose={() => setShowReceipt(false)}
+            />
+          )}
+
+          {showAddOutlet && (
+            <OutletModal
+              outlet={{}}
+              onSave={handleAddOutletSave}
+              onClose={() => setShowAddOutlet(false)}
+              regions={[...new Set(outlets.map(o => o.region).filter(Boolean))].sort()}
             />
           )}
         </>

@@ -10,7 +10,7 @@ import {
 } from '../../../components/ui/select'
 import { DISCOUNT_PRESETS } from '../outletConstants'
 
-const emptyDiscount = () => ({ id: crypto.randomUUID(), name: '', value: '' })
+const emptyDiscount = (index) => ({ id: crypto.randomUUID(), name: `Discount ${index + 1}`, value: '' })
 
 export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
   const isEditing = !!outlet?.id
@@ -47,7 +47,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const addDiscount    = () => setDiscounts(prev => [...prev, emptyDiscount()])
+  const addDiscount    = () => setDiscounts(prev => [...prev, emptyDiscount(prev.length)])
   const removeDiscount = (id) => setDiscounts(prev => prev.filter(d => d.id !== id))
   const updateDiscount = (id, field, value) =>
     setDiscounts(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d))

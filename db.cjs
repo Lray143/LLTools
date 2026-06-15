@@ -815,15 +815,17 @@ const mapOrder = (r) => ({
 })
 
 const saveOrder = async (order) => run(`
-  INSERT INTO saved_orders (id, series_number, outlet_id, outlet_name, groups_json, subtotal, discounts_json, grand_total)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO saved_orders (id, series_number, outlet_id, outlet_name, groups_json, subtotal, discounts_json, grand_total, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `, [order.id, order.seriesNumber, order.outletId ?? null, order.outletName ?? null,
-    JSON.stringify(order.groups ?? []), order.subtotal ?? 0, JSON.stringify(order.discounts ?? []), order.grandTotal ?? 0])
+    JSON.stringify(order.groups ?? []), order.subtotal ?? 0, JSON.stringify(order.discounts ?? []), order.grandTotal ?? 0,
+    order.orderDate ?? null])
 
 const getOrdersByOutlet  = async (outletId) => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id = ?    ORDER BY created_at DESC`, [outletId])).map(mapOrder)
 const getOrdersByDefault = async ()          => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id IS NULL ORDER BY created_at DESC`)).map(mapOrder)
 const getAllOrders        = async ()          => (await queryAll(`SELECT * FROM saved_orders ORDER BY created_at DESC`)).map(mapOrder)
 const deleteOrder        = async (id)        => run(`DELETE FROM saved_orders WHERE id=?`, [id])
+const updateOrderDate    = async (id, date)  => run(`UPDATE saved_orders SET created_at = ? WHERE id = ?`, [date, id])
 
 // ── LEAVE REQUESTS ────────────────────────────────────────────────────────────
 const submitLeaveRequest = async (req) => {
@@ -1117,7 +1119,7 @@ module.exports = {
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
-  saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder,
+  saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,
   updateReportStatus, assignReport, addReportComment,

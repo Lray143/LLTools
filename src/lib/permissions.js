@@ -36,7 +36,7 @@ export const DEPT_MODULES = {
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Accounting': [
-    'dashboard', 'my-attendance', 'calculations',
+    'dashboard', 'my-attendance', 'products', 'outlets', 'calculations',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Finance': [

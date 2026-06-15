@@ -54,6 +54,7 @@ export default function CalculationsReceiptModal({
 
   // ── Save state ────────────────────────────────────────────────
   const [series,     setSeries]     = useState('')
+  const [orderDate,  setOrderDate]  = useState(() => new Date().toISOString().slice(0, 10)) // YYYY-MM-DD
   const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
 
   const handleSave = async () => {
@@ -69,6 +70,8 @@ export default function CalculationsReceiptModal({
         subtotal,
         discounts,
         grandTotal,
+        // Convert local date string to ISO datetime (midnight local → stored as-is)
+        orderDate:    orderDate ? `${orderDate}T00:00:00` : null,
       })
       setSaveStatus('saved')
     } catch (e) {
@@ -204,6 +207,19 @@ export default function CalculationsReceiptModal({
               </div>
             ) : (
               <>
+                {/* Date picker */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Order Date</label>
+                  <input
+                    type="date"
+                    value={orderDate}
+                    onChange={(e) => setOrderDate(e.target.value)}
+                    className="border border-gray-200 rounded-lg px-3 py-2 text-sm
+                               focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent
+                               text-gray-700 w-full"
+                  />
+                </div>
+
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -238,4 +254,4 @@ export default function CalculationsReceiptModal({
       </div>
     </div>
   )
-}
+}

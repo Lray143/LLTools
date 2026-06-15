@@ -1,6 +1,6 @@
 // src/modules/calculations/components/CalculationsToolbar.jsx
 import { useState, useRef, useEffect } from 'react'
-import { Search, User, Store, RotateCcw, BarChart2, Table2, ChevronDown, Check } from 'lucide-react'
+import { Search, User, Store, RotateCcw, BarChart2, Table2, ChevronDown, Check, Plus } from 'lucide-react'
 import NotificationBell from '../../../components/ui/NotificationBell'
 
 // ── Shared inline styles (matches Employees / Outlets) ──────────────
@@ -13,7 +13,7 @@ const displayPill = {
 }
 
 // ── CustomSelect (same pattern as Outlets / Employees) ──────────────
-function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
+function CustomSelect({ value, onChange, options, minWidth = '148px', onAdd }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -84,6 +84,29 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
               </button>
             )
           })}
+
+          {/* Add outlet button */}
+          {onAdd && (
+            <>
+              <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
+              <button
+                onClick={() => { setOpen(false); onAdd() }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'none',
+                  background: 'transparent',
+                  color: 'var(--theme-500)',
+                  fontSize: '13px', fontWeight: 500,
+                  cursor: 'pointer', transition: 'background 100ms',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <Plus size={13} />
+                Add Outlet
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -98,6 +121,7 @@ export default function CalculationsToolbar({
   outlets,
   selectedOutletId,
   onSelectOutlet,
+  onAddOutlet,
   totalItems,
   totalGroups,
   hasQty,
@@ -184,6 +208,7 @@ export default function CalculationsToolbar({
                 onChange={(val) => onSelectOutlet(val || null)}
                 options={outletOptions}
                 minWidth="160px"
+                onAdd={onAddOutlet}
               />
 
               {/* Count */}

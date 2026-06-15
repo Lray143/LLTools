@@ -1,5 +1,5 @@
 // src/modules/calculations/components/CalculationsMonthlySummary.jsx
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   ChevronDown, ChevronRight, Trash2, Receipt,
   TrendingUp, TrendingDown, Calendar, Minus, Download,
@@ -480,7 +480,25 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
 }
 
 // ── Expanded month orders table ───────────────────────────────────
-function MonthOrdersTable({ orders, onDelete }) {
+function MonthOrdersTable({ orders, onDelete, onDateChange }) {
+  const [editingId, setEditingId] = useState(null)
+  const [dateVal,   setDateVal]   = useState('')
+  const inputRef = useRef(null)
+
+  const startEdit = (order) => {
+    setEditingId(order.id)
+    // createdAt is like '2026-06-15T00:00:00' or '2026-06-15 00:00:00'
+    const iso = order.createdAt.slice(0, 10)
+    setDateVal(iso)
+    setTimeout(() => inputRef.current?.focus(), 30)
+  }
+
+  const commitEdit = async (orderId) => {
+    if (!dateVal) { setEditingId(null); return }
+    await onDateChange(orderId, dateVal)
+    setEditingId(null)
+  }
+
   return (
     <div className="bg-white border-t border-gray-100 px-6 py-3">
       <table className="w-full text-xs">
@@ -508,7 +526,30 @@ function MonthOrdersTable({ orders, onDelete }) {
                     : <span className="text-gray-300 italic">Default</span>
                   }
                 </td>
-                <td className="py-2 text-gray-400 whitespace-nowrap">{formatDate(order.createdAt)}</td>
+                <td className="py-2 text-gray-400 whitespace-nowrap">
+                  {editingId === order.id ? (
+                    <input
+                      ref={inputRef}
+                      type="date"
+                      value={dateVal}
+                      onChange={e => setDateVal(e.target.value)}
+                      onBlur={() => commitEdit(order.id)}
+                      onKeyDown={e => { if (e.key === 'Enter') commitEdit(order.id); if (e.key === 'Escape') setEditingId(null) }}
+                      className="border border-orange-300 rounded px-1.5 py-0.5 text-xs text-gray-700 outline-none focus:ring-1 focus:ring-orange-300"
+                    />
+                  ) : (
+                    <button
+                      onClick={() => startEdit(order)}
+                      title="Click to change date"
+                      className="flex items-center gap-1 hover:text-orange-500 transition-colors group/date"
+                    >
+                      {formatDate(order.createdAt)}
+                      <span className="opacity-0 group-hover/date:opacity-100 transition-opacity">
+                        <Calendar size={10} className="text-orange-400" />
+                      </span>
+                    </button>
+                  )}
+                </td>
                 <td className="py-2 text-center">
                   <span className="bg-gray-50 text-gray-600 px-1.5 py-0.5 rounded-full">
                     {itemCount}
@@ -594,6 +635,18 @@ export default function CalculationsMonthlySummary() {
       setOrders((prev) => prev.filter((o) => o.id !== id))
     } catch (e) {
       console.error(e)
+    }
+  }
+
+  const handleDateChange = async (id, dateStr) => {
+    try {
+      const isoDate = `${dateStr}T00:00:00`
+      await window.electronAPI.updateOrderDate(id, isoDate)
+      // Re-fetch so the monthly grouping reflects the new date
+      const data = await window.electronAPI.getAllOrders()
+      setOrders(data ?? [])
+    } catch (e) {
+      console.error('Failed to update date:', e)
     }
   }
 
@@ -789,7 +842,7 @@ export default function CalculationsMonthlySummary() {
 
                 {/* Expanded orders */}
                 {isExpanded && (
-                  <MonthOrdersTable orders={month.orders} onDelete={handleDelete} />
+                  <MonthOrdersTable orders={month.orders} onDelete={handleDelete} onDateChange={handleDateChange} />
                 )}
               </div>
             )

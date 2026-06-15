@@ -34,8 +34,8 @@ export default function CalculationsRow({
 
   return (
     <tr
-      className={`border-b border-gray-100 transition-colors
-                  ${lineTotal !== null ? 'bg-orange-50/30' : isEven ? 'bg-white' : 'bg-white'}`}
+      className={`border-b border-gray-100 transition-colors ${isEven ? 'bg-white' : 'bg-white'}`}
+      style={lineTotal !== null ? { backgroundColor: 'color-mix(in srgb, var(--accent-bg) 8%, var(--surface))' } : {}}
     >
       {/* Item Description */}
       <td className="px-3 py-2 text-xs text-gray-700 w-auto">
@@ -60,7 +60,10 @@ export default function CalculationsRow({
 
       {/* Unit Price */}
       <td className="px-3 py-2 text-xs text-right w-28">
-        <span className={isOutletPrice ? 'text-orange-600 font-semibold' : 'text-gray-700'}>
+        <span
+          className={isOutletPrice ? 'font-semibold' : 'text-gray-700'}
+          style={isOutletPrice ? { color: 'var(--accent-bg)' } : {}}
+        >
           {fmt(unitPrice)}
         </span>
       </td>
@@ -77,12 +80,22 @@ export default function CalculationsRow({
           onKeyDown={handleKeyDown}
           placeholder="0"
           className={`w-full text-center border rounded-lg px-2 py-1.5 text-sm font-medium
-                      focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent
+                      focus:outline-none focus:ring-2 focus:border-transparent
                       transition-colors
-                      ${qty !== '' && Number(qty) > 0
-                        ? 'border-orange-300 bg-orange-50 text-orange-700'
-                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                      }`}
+                      ${qty !== '' && Number(qty) > 0 ? '' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'}
+                      `}
+          style={
+            qty !== '' && Number(qty) > 0
+              ? {
+                  borderColor: 'color-mix(in srgb, var(--accent-bg) 40%, transparent)',
+                  backgroundColor: 'color-mix(in srgb, var(--accent-bg) 10%, var(--surface))',
+                  color: 'color-mix(in srgb, var(--accent-bg) 90%, black)',
+                  '--tw-ring-color': 'color-mix(in srgb, var(--accent-bg) 40%, transparent)'
+                }
+              : {
+                  '--tw-ring-color': 'color-mix(in srgb, var(--accent-bg) 40%, transparent)'
+                }
+          }
         />
       </td>
 
