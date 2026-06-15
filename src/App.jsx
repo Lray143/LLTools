@@ -107,7 +107,7 @@ function App() {
     if (activePage === 'leaves')     return <LeaveRequests currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
     if (activePage === 'reports')    return <Reports currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
     if (activePage === 'settings')   return <Settings currentUser={currentUser} />
-    if (activePage === 'chat')       return <Chat currentUser={currentUser} refreshKey={refreshKey} />
+    if (activePage === 'chat')       return <Chat currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
 
     // Static pages
     const STATIC_PAGES = {

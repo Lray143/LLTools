@@ -143,20 +143,34 @@
   --tw-ring-color: var(--border) !important;
 }
 
-/* Scrollbar styling in dark mode */
-.dark ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Global aesthetic scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
-.dark ::-webkit-scrollbar-track {
-  background: var(--page-bg);
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
 /* Input/select elements in dark mode */
@@ -195,3 +209,146 @@
 
 /* ── Prevent Themes from Affecting the Login Page ──────────────────────────── */
 /* Login inputs are fully self-contained with inline styles; no overrides needed. */
+
+/* ── Chat Page Animations ──────────────────────────────────────────────────── */
+@keyframes chatFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes chatPulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40%           { opacity: 1;   transform: scale(1); }
+}
+
+@keyframes chatSlideIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Message bubble hover lift */
+.chat-bubble-hover {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+.chat-bubble-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Chat sidebar item active indicator */
+.chat-sidebar-item {
+  position: relative;
+  transition: background 150ms ease, transform 100ms ease;
+}
+.chat-sidebar-item:active {
+  transform: scale(0.98);
+}
+.chat-sidebar-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--theme-500);
+  animation: chatSlideIn 200ms ease;
+}
+
+/* Send button interactive animation */
+.chat-send-btn {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+.chat-send-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+.chat-send-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+/* Chat action button hover */
+.chat-action-btn {
+  transition: background 150ms ease, color 150ms ease, transform 100ms ease;
+  border-radius: 8px;
+}
+.chat-action-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--theme-500);
+}
+.chat-action-btn:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+/* Focus ring for chat inputs */
+.chat-input-focus {
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+.chat-input-focus:focus-within {
+  border-color: var(--theme-500) !important;
+  box-shadow: 0 0 0 3px rgba(var(--theme-500-rgb, 59, 130, 246), 0.1);
+}
+
+/* Typing indicator */
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: chatPulse 1.4s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* Date separator */
+.chat-date-separator {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.chat-date-separator::before,
+.chat-date-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Message hover action bar */
+.chat-msg-actions {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+  pointer-events: none;
+}
+.chat-msg-wrapper:hover .chat-msg-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Image lightbox overlay */
+.chat-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  animation: chatFadeIn 200ms ease;
+  cursor: zoom-out;
+}
+.chat-lightbox img {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
