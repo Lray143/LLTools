@@ -1,6 +1,7 @@
 const { ipcRenderer } = require('electron')
 
 window.electronAPI = {
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
   // ── Auth ────────────────────────────────────────────────────────
   login:                   (creds)              => ipcRenderer.invoke('auth:login', creds),
   refreshUser:             (id)                 => ipcRenderer.invoke('auth:refresh', id),
@@ -124,4 +125,41 @@ window.electronAPI = {
     ipcRenderer.on('db:synced', callback)
     return () => ipcRenderer.removeListener('db:synced', callback)
   },
+
+  // ── Auto Updater ────────────────────────────────────────────────
+  updater: {
+    check: () => ipcRenderer.invoke('updater:check'),
+    download: () => ipcRenderer.invoke('updater:download'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    onChecking: (cb) => {
+      const listener = () => cb();
+      ipcRenderer.on('updater:checking', listener);
+      return () => ipcRenderer.removeListener('updater:checking', listener);
+    },
+    onUpdateAvailable: (cb) => {
+      const listener = (_, info) => cb(info);
+      ipcRenderer.on('updater:update-available', listener);
+      return () => ipcRenderer.removeListener('updater:update-available', listener);
+    },
+    onUpdateNotAvailable: (cb) => {
+      const listener = (_, info) => cb(info);
+      ipcRenderer.on('updater:update-not-available', listener);
+      return () => ipcRenderer.removeListener('updater:update-not-available', listener);
+    },
+    onDownloadProgress: (cb) => {
+      const listener = (_, progressObj) => cb(progressObj);
+      ipcRenderer.on('updater:download-progress', listener);
+      return () => ipcRenderer.removeListener('updater:download-progress', listener);
+    },
+    onUpdateDownloaded: (cb) => {
+      const listener = (_, info) => cb(info);
+      ipcRenderer.on('updater:update-downloaded', listener);
+      return () => ipcRenderer.removeListener('updater:update-downloaded', listener);
+    },
+    onError: (cb) => {
+      const listener = (_, err) => cb(err);
+      ipcRenderer.on('updater:error', listener);
+      return () => ipcRenderer.removeListener('updater:error', listener);
+    }
+  }
 }

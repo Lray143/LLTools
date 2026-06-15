@@ -1,5 +1,7 @@
 const { app, BrowserWindow, ipcMain, shell, protocol, net } = require('electron')
 const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '.env') })
+const { autoUpdater } = require('electron-updater')
 const { uploadFileToR2 } = require('./r2.cjs')
 const fs = require('fs')
 const crypto = require('crypto')
@@ -38,6 +40,8 @@ protocol.registerSchemesAsPrivileged([{
   scheme: 'attachment',
   privileges: { secure: true, standard: true, stream: true, supportFetchAPI: true }
 }])
+
+ipcMain.handle('app:getVersion', () => app.getVersion())
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -225,6 +229,65 @@ ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeTyp
 
 ipcMain.handle('chat:openAttachment', async (_, filePath) => {
   await shell.openPath(filePath)
+})
+
+// ── AUTO UPDATER ──────────────────────────────────────────────────
+autoUpdater.autoDownload = false
+
+ipcMain.handle('updater:check', () => {
+  if (!isDev) {
+    autoUpdater.checkForUpdates().catch(err => {
+      if (mainWindow) mainWindow.webContents.send('updater:error', err.message)
+    })
+  } else {
+    if (mainWindow) mainWindow.webContents.send('updater:checking')
+    setTimeout(() => {
+      if (mainWindow) mainWindow.webContents.send('updater:update-not-available', { version: 'Dev Mode' })
+    }, 1000)
+  }
+})
+
+ipcMain.handle('updater:download', () => {
+  if (!isDev) {
+    autoUpdater.downloadUpdate().catch(err => {
+      if (mainWindow) mainWindow.webContents.send('updater:error', err.message)
+    })
+  } else {
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 20;
+      if (mainWindow) mainWindow.webContents.send('updater:download-progress', { percent: progress })
+      if (progress >= 100) {
+        clearInterval(interval);
+        if (mainWindow) mainWindow.webContents.send('updater:update-downloaded')
+      }
+    }, 500)
+  }
+})
+
+ipcMain.handle('updater:install', () => {
+  if (!isDev) {
+    autoUpdater.quitAndInstall()
+  }
+})
+
+autoUpdater.on('checking-for-update', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:checking')
+})
+autoUpdater.on('update-available', (info) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:update-available', info)
+})
+autoUpdater.on('update-not-available', (info) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:update-not-available', info)
+})
+autoUpdater.on('error', (err) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:error', err.message)
+})
+autoUpdater.on('download-progress', (progressObj) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:download-progress', progressObj)
+})
+autoUpdater.on('update-downloaded', (info) => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('updater:update-downloaded', info)
 })
 
 // ── ATTACHMENTS ───────────────────────────────────────────────────
