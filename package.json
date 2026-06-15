@@ -21,6 +21,7 @@
   "build": {
     "appId": "com.lltools.app",
     "productName": "LLTools",
+    "artifactName": "LLTools-Setup-${version}.${ext}",
     "directories": {
       "output": "release"
     },
