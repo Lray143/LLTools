@@ -610,6 +610,15 @@ const heartbeatUser = async (userId) => {
   }
 }
 
+const logoutUser = async (userId) => {
+  if (!userId) return
+  try {
+    await run(`UPDATE users SET last_active = NULL WHERE id = ?`, [userId])
+  } catch (err) {
+    console.error('Logout error:', err)
+  }
+}
+
 const getUsers = async () => {
   const rows = await queryAll(`
     SELECT u.id, u.username, u.role, u.employee_id, u.created_at, u.last_active,

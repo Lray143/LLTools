@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, startTransition } from 'react'
 import { Hash, User, Users, MessageSquare, Wifi } from 'lucide-react'
 import ChatSidebar from './components/ChatSidebar'
 import ChatMessages from './components/ChatMessages'
@@ -109,7 +109,9 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
       const receipts = await window.electronAPI.getRoomReceipts(reqRoomId)
       setReadReceipts(receipts)
       
-      setMessageCache(prev => ({ ...prev, [reqRoomId]: msgs || [] }))
+      startTransition(() => {
+        setMessageCache(prev => ({ ...prev, [reqRoomId]: msgs || [] }))
+      })
       
       // Only auto-scroll if user was already near the bottom or we're switching rooms
       if (forceScroll || wasNearBottom) {
@@ -218,8 +220,10 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
     try {
       const msgId = crypto.randomUUID()
       const msgType = activeTab === 'dms' ? 'dm' : 'channel'
-      const arrayBuffer = await file.arrayBuffer()
-      const fileUrl = await window.electronAPI.uploadAttachment(arrayBuffer, file.name, file.type, msgId, msgType)
+      
+      // OPTIMIZATION: Pass the file path natively instead of serializing huge arrays over IPC
+      const fileData = file.path || await file.arrayBuffer()
+      const fileUrl = await window.electronAPI.uploadAttachment(fileData, file.name, file.type, msgId, msgType)
       await handleSend(null, fileUrl, msgId)
     } catch (err) {
       console.error('File upload error', err)
@@ -286,6 +290,64 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
     }
     return { type: 'none' }
   }, [activeTab, selectedDept, selectedUser, employees])
+
+  // ── Optimistic Action Handlers ────────────────────────────────────────────
+  const handleToggleReaction = useCallback((msgId, senderId, userName, emoji, isDm) => {
+    const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
+    setMessageCache(prev => {
+      const msgs = prev[roomId] || []
+      return {
+        ...prev,
+        [roomId]: msgs.map(m => {
+          if (m.id !== msgId) return m
+          const reactions = { ...m.reactions }
+          const users = reactions[emoji] || []
+          const idx = users.findIndex(u => String(u.userId) === String(senderId))
+          if (idx !== -1) {
+            users.splice(idx, 1)
+            if (users.length === 0) delete reactions[emoji]
+          } else {
+            reactions[emoji] = [...users, { userId: senderId, userName }]
+          }
+          return { ...m, reactions }
+        })
+      }
+    })
+    window.electronAPI?.toggleReaction?.(msgId, senderId, userName, emoji, isDm)
+  }, [selectedDept, selectedUser, myParticipantId])
+
+  const handleEditMessage = useCallback((msgId, senderId, newMsg, isDm) => {
+    const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
+    setMessageCache(prev => ({
+      ...prev,
+      [roomId]: (prev[roomId] || []).map(m => m.id === msgId ? { ...m, message: newMsg, isEdited: true } : m)
+    }))
+    window.electronAPI?.editMessage?.(msgId, senderId, newMsg, isDm)
+  }, [selectedDept, selectedUser, myParticipantId])
+
+  const handleUnsendMessage = useCallback((msgId, senderId, isDm) => {
+    const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
+    setMessageCache(prev => ({
+      ...prev,
+      [roomId]: (prev[roomId] || []).map(m => m.id === msgId ? { ...m, isUnsent: true } : m)
+    }))
+    window.electronAPI?.unsendMessage?.(msgId, senderId, isDm)
+  }, [selectedDept, selectedUser, myParticipantId])
+
+  const handleDeleteForMe = useCallback((msgId, senderId, isDm) => {
+    const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
+    setMessageCache(prev => ({
+      ...prev,
+      [roomId]: (prev[roomId] || []).map(m => {
+        if (m.id === msgId) {
+          const deletedFor = [...(m.deletedFor || []), String(senderId)]
+          return { ...m, deletedFor }
+        }
+        return m
+      })
+    }))
+    window.electronAPI?.deleteForMe?.(msgId, senderId, isDm)
+  }, [selectedDept, selectedUser, myParticipantId])
 
   return (
     <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
@@ -396,6 +458,10 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
               selectedUser={selectedUser}
               readReceipts={readReceipts}
               setReplyTo={setReplyTo}
+              onToggleReaction={handleToggleReaction}
+              onEditMessage={handleEditMessage}
+              onUnsendMessage={handleUnsendMessage}
+              onDeleteForMe={handleDeleteForMe}
             />
             <div ref={messagesEndRef} />
           </div>

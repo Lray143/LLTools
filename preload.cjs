@@ -42,8 +42,9 @@ window.electronAPI = {
   markChatAsRead: (userId, roomId) => ipcRenderer.invoke('chat:markAsRead', userId, roomId),
   getChatSidebarData: (userId) => ipcRenderer.invoke('chat:getSidebarData', userId),
   getRoomReceipts: (roomId) => ipcRenderer.invoke('chat:getRoomReceipts', roomId),
-  uploadAttachment: (buffer, name, type, msgId, msgType) => ipcRenderer.invoke('chat:uploadAttachment', buffer, name, type, msgId, msgType),
-  openAttachment:   (filePath) => ipcRenderer.invoke('chat:openAttachment', filePath),
+  uploadAttachment:        (buffer, name, type, id, msgType) => ipcRenderer.invoke('chat:uploadAttachment', buffer, name, type, id, msgType),
+  openAttachment:          (filePath)           => ipcRenderer.invoke('chat:openAttachment', filePath),
+  openR2File:              (fileName)           => ipcRenderer.invoke('chat:openR2File', fileName),
   toggleReaction:   (msgId, userId, userName, emoji, isDm) => ipcRenderer.invoke('chat:toggleReaction', msgId, userId, userName, emoji, isDm),
   editMessage:      (msgId, userId, newText, isDm) => ipcRenderer.invoke('chat:editMessage', msgId, userId, newText, isDm),
   unsendMessage:    (msgId, userId, isDm) => ipcRenderer.invoke('chat:unsendMessage', msgId, userId, isDm),
@@ -84,9 +85,9 @@ window.electronAPI = {
   getUsers:                ()                   => ipcRenderer.invoke('users:getAll'),
   updateUserRole:          (id, role)           => ipcRenderer.invoke('users:updateRole', id, role),
   resetUserPassword:       (id, newPassword)    => ipcRenderer.invoke('users:resetPassword', id, newPassword),
-  deleteUserAccount:       (id)                 => ipcRenderer.invoke('users:delete', id),
   updateUserTheme:         (id, color, mode)    => ipcRenderer.invoke('users:updateTheme', id, color, mode),
   heartbeatUser:           (id)                 => ipcRenderer.invoke('users:heartbeat', id),
+  logoutUser:              (id)                 => ipcRenderer.invoke('users:logout', id),
 
   // ── Saved Orders ─────────────────────────────────────────────────
   saveOrder:               (order)    => ipcRenderer.invoke('orders:save', order),

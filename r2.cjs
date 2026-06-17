@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3')
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3')
 const fs = require('fs')
 const path = require('path')
 
@@ -28,12 +28,9 @@ const s3Client = new S3Client({
  */
 const uploadFileToR2 = async (fileBuffer, fileName, mimeType) => {
   try {
-    // Create a unique filename to prevent overwrites
-    const uniqueFileName = `${Date.now()}-${fileName}`
-
     const uploadParams = {
       Bucket: BUCKET_NAME,
-      Key: uniqueFileName,
+      Key: fileName,
       Body: fileBuffer,
       ContentType: mimeType,
     }
@@ -41,14 +38,39 @@ const uploadFileToR2 = async (fileBuffer, fileName, mimeType) => {
     const command = new PutObjectCommand(uploadParams)
     await s3Client.send(command)
 
-    // Return the public URL
-    return `${PUBLIC_URL}/${uniqueFileName}`
+    return fileName
   } catch (error) {
     console.error('[R2] Upload failed:', error)
     throw new Error('Failed to upload attachment to R2')
   }
 }
 
+/**
+ * Downloads a file from Cloudflare R2 and returns its stream or buffer.
+ * @param {string} fileName - The name of the file in the bucket.
+ * @returns {Promise<Buffer>} - The file buffer.
+ */
+const downloadFileFromR2 = async (fileName) => {
+  try {
+    const downloadParams = {
+      Bucket: BUCKET_NAME,
+      Key: fileName,
+    }
+    const command = new GetObjectCommand(downloadParams)
+    const response = await s3Client.send(command)
+    // response.Body is a Readable stream in Node.js
+    const chunks = []
+    for await (const chunk of response.Body) {
+      chunks.push(chunk)
+    }
+    return Buffer.concat(chunks)
+  } catch (error) {
+    console.error(`[R2] Download failed for ${fileName}:`, error)
+    throw error
+  }
+}
+
 module.exports = {
-  uploadFileToR2
+  uploadFileToR2,
+  downloadFileFromR2
 }

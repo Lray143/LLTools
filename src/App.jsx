@@ -94,6 +94,9 @@ function App() {
   }
 
   const handleLogout = () => {
+    if (currentUser) {
+      window.electronAPI.logoutUser(currentUser.id).catch(console.error)
+    }
     setCurrentUser(null)
     setActivePage('dashboard')
   }

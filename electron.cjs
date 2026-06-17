@@ -28,7 +28,7 @@ const {
   getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
   updateChatFileUrl, updateDmFileUrl,
   markChatAsRead, getChatSidebarData, getRoomReceipts,
-  refreshUser, heartbeatUser,
+  refreshUser, heartbeatUser, logoutUser,
 } = require('./db.cjs')
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -38,6 +38,9 @@ let mainWindow = null
 // as a secure, standard scheme (same trust level as https://)
 protocol.registerSchemesAsPrivileged([{
   scheme: 'attachment',
+  privileges: { secure: true, standard: true, stream: true, supportFetchAPI: true }
+}, {
+  scheme: 'r2',
   privileges: { secure: true, standard: true, stream: true, supportFetchAPI: true }
 }])
 
@@ -135,6 +138,7 @@ ipcMain.handle('users:resetPassword',  (_, id, newPassword)  => resetUserPasswor
 ipcMain.handle('users:delete',         (_, id)               => deleteUserAccount(id))
 ipcMain.handle('users:updateTheme',    (_, id, color, mode)  => updateUserTheme(id, color, mode))
 ipcMain.handle('users:heartbeat',      (_, id)               => heartbeatUser(id))
+ipcMain.handle('users:logout',         (_, id)               => logoutUser(id))
 
 ipcMain.handle('db:wipeAll',           ()                    => wipeAllData())
 
@@ -217,30 +221,38 @@ ipcMain.handle('chat:deleteForMe', async (_, msgId, userId, isDm) => {
   const db = await import('./db.cjs')
   return await db.deleteMessageForMe(msgId, userId, isDm)
 })
-ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeType, msgId, msgType) => {
-  const buffer = Buffer.from(arrayBuffer)
+ipcMain.handle('chat:uploadAttachment', async (_, fileData, fileName, mimeType, msgId, msgType) => {
+  let buffer
+  if (typeof fileData === 'string') {
+    buffer = await fs.promises.readFile(fileData)
+  } else {
+    buffer = Buffer.from(fileData)
+  }
 
   // ── Step 1: Save locally first so the image shows IMMEDIATELY (even offline)
   const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads')
   if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
   const ext = path.extname(fileName) || ''
-  const localName = `${crypto.randomUUID()}${ext}`
+  const localName = `${Date.now()}-${crypto.randomUUID()}${ext}`
   const localPath = path.join(uploadsDir, localName)
-  fs.writeFileSync(localPath, buffer)
+  await fs.promises.writeFile(localPath, buffer)
 
-  // Return an attachment:// URL — works offline, displays instantly
-  const localUrl = `attachment://${localPath.replace(/\\/g, '/')}`
+  // Use the native r2:// protocol immediately so the UI optimistic cache handles it identically
+  const localUrl = `r2://${localName}`
 
   // ── Step 2: Upload to R2 in the background (fire-and-forget)
-  // Once done, patch the DB record with the real public URL so OTHER devices can see it
+  // Once done, patch the DB record with the r2:// internal URL
   setImmediate(async () => {
     try {
       const { updateChatFileUrl, updateDmFileUrl } = require('./db.cjs')
-      const publicUrl = await uploadFileToR2(buffer, localName, mimeType)
+      const { uploadFileToR2 } = require('./r2.cjs')
+      await uploadFileToR2(buffer, localName, mimeType)
+      
+      const r2Url = `r2://${localName}`
       if (msgType === 'dm') {
-        await updateDmFileUrl(msgId, publicUrl)
+        await updateDmFileUrl(msgId, r2Url)
       } else {
-        await updateChatFileUrl(msgId, publicUrl)
+        await updateChatFileUrl(msgId, r2Url)
       }
     } catch (err) {
       console.error('[R2] Background upload failed — local copy still works:', err)
@@ -252,6 +264,24 @@ ipcMain.handle('chat:uploadAttachment', async (_, arrayBuffer, fileName, mimeTyp
 
 ipcMain.handle('chat:openAttachment', async (_, filePath) => {
   await shell.openPath(filePath)
+})
+
+ipcMain.handle('chat:openR2File', async (_, fileName) => {
+  const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads')
+  const localPath = path.join(uploadsDir, fileName)
+  if (fs.existsSync(localPath)) {
+    await shell.openPath(localPath)
+  } else {
+    try {
+      const { downloadFileFromR2 } = require('./r2.cjs')
+      const fileBuffer = await downloadFileFromR2(fileName)
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+      fs.writeFileSync(localPath, fileBuffer)
+      await shell.openPath(localPath)
+    } catch (err) {
+      console.error(`[openR2File] Failed:`, err)
+    }
+  }
 })
 
 // ── AUTO UPDATER ──────────────────────────────────────────────────
@@ -342,6 +372,36 @@ app.whenReady().then(async () => {
     // Strip the scheme prefix to get the raw absolute file path
     const filePath = decodeURIComponent(request.url.slice('attachment://'.length))
     return net.fetch(`file:///${filePath}`)
+  })
+
+  // Register r2:// protocol handler — intelligent local cache proxy for cloud files
+  protocol.handle('r2', async (request) => {
+    // Chromium auto-appends a trailing slash to hostnames in custom protocols. Remove it.
+    let fileName = decodeURIComponent(request.url.slice('r2://'.length))
+    if (fileName.endsWith('/')) fileName = fileName.slice(0, -1)
+    
+    const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads')
+    const localPath = path.join(uploadsDir, fileName)
+
+    // 1. Check local cache first
+    if (fs.existsSync(localPath)) {
+      return net.fetch(`file:///${localPath.replace(/\\/g, '/')}`)
+    }
+
+    // 2. Not cached -> Download securely via AWS SDK (bypassing public domain blocks)
+    try {
+      const { downloadFileFromR2 } = require('./r2.cjs')
+      const fileBuffer = await downloadFileFromR2(fileName)
+      
+      // Save to cache for next time
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+      fs.writeFileSync(localPath, fileBuffer)
+      
+      return net.fetch(`file:///${localPath.replace(/\\/g, '/')}`)
+    } catch (err) {
+      console.error(`[r2:// proxy] Failed to download ${fileName}:`, err)
+      return new Response('File not found or network error', { status: 404 })
+    }
   })
 
   // ── Background sync in a dedicated worker thread ──────────────

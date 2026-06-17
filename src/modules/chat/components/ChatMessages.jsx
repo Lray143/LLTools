@@ -27,7 +27,6 @@ function formatDateLabel(iso) {
   return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 }
 
-// Split message text on @mentions and return styled spans
 function renderMessageText(text, currentUserName, isMyMessage) {
   if (!text) return null
   const parts = text.split(/(@\S+)/g)
@@ -64,7 +63,6 @@ function renderMessageText(text, currentUserName, isMyMessage) {
   })
 }
 
-// ── Image Lightbox ──────────────────────────────────────────────────────────
 function ImageLightbox({ src, onClose }) {
   if (!src) return null
   return (
@@ -81,14 +79,326 @@ function ImageLightbox({ src, onClose }) {
   )
 }
 
-const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeTab, selectedUser, readReceipts = [], setReplyTo }) {
+const areMessagesEqual = (prev, next) => {
+  return prev.msg.id === next.msg.id &&
+         prev.msg.message === next.msg.message &&
+         JSON.stringify(prev.msg.reactions) === JSON.stringify(next.msg.reactions) &&
+         prev.msg.isEdited === next.msg.isEdited &&
+         prev.msg.isUnsent === next.msg.isUnsent &&
+         JSON.stringify(prev.msg.deletedFor) === JSON.stringify(next.msg.deletedFor) &&
+         prev.isGrouped === next.isGrouped &&
+         prev.showDateSep === next.showDateSep &&
+         JSON.stringify(prev.seenBy) === JSON.stringify(next.seenBy)
+}
+
+const MessageItem = memo(function MessageItem({
+  msg, isMe, mySenderId, currentUser, activeTab, isGrouped, showDateSep, seenBy,
+  setLightboxSrc, setReplyTo, onToggleReaction, onEditMessage, onDeleteForMe, onUnsendMessage
+}) {
+  const [showReactionPicker, setShowReactionPicker] = useState(false)
+  const [showDeleteMenu, setShowDeleteMenu] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editInput, setEditInput] = useState('')
+
+  let messageText = msg.message || ''
+  let replyBlock = null
+  if (msg.isUnsent) {
+    messageText = "This message was unsent."
+  } else {
+    const replyMatch = messageText.match(/^\[reply\]([\s\S]*?)\[\/reply\]\n?/)
+    if (replyMatch) {
+      const [_, replyContent] = replyMatch
+      const [replyName, ...replyTextParts] = replyContent.split('|')
+      replyBlock = { name: replyName, text: replyTextParts.join('|') }
+      messageText = messageText.substring(replyMatch[0].length)
+    }
+  }
+
+  const currentUserName = currentUser.employeeName || currentUser.username
+
+  const handleEditSubmit = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      let finalMsg = editInput.trim()
+      if (!finalMsg) return
+      if (replyBlock) {
+        finalMsg = `[reply]${replyBlock.name}|${replyBlock.text}[/reply]\n${finalMsg}`
+      }
+      onEditMessage(msg.id, mySenderId, finalMsg, activeTab === 'dms')
+      setIsEditing(false)
+    } else if (e.key === 'Escape') {
+      setIsEditing(false)
+    }
+  }
+
+  return (
+    <div>
+      {/* Date separator */}
+      {showDateSep && (
+        <div className="chat-date-separator">
+          {formatDateLabel(msg.createdAt)}
+        </div>
+      )}
+
+      <div className={`chat-msg-wrapper flex ${isMe ? 'justify-end' : 'justify-start'} ${isGrouped && !showDateSep ? 'mt-0.5' : 'mt-3'}`}
+        style={{ animation: 'chatFadeIn 300ms ease forwards' }}>
+        <div className={`flex flex-col max-w-[70%] min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
+
+          {/* Sender name + time */}
+          {(!isGrouped || showDateSep) && (
+            <div className="flex items-baseline gap-2 mb-1 px-1">
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{msg.senderName}</span>
+              <span
+                className="text-[10px] cursor-default"
+                style={{ color: 'var(--text-secondary)' }}
+                title={formatFullDate(msg.createdAt)}
+              >
+                {formatTime(msg.createdAt)}
+              </span>
+            </div>
+          )}
+
+          {/* Message bubble */}
+          <div className="relative group">
+            <div
+              className="chat-bubble-hover px-4 py-2.5 rounded-2xl text-sm leading-relaxed min-w-0"
+              style={isMe
+                ? {
+                  background: 'var(--theme-500)',
+                  color: '#fff',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
+                }
+                : {
+                  background: 'var(--surface)',
+                  color: 'var(--text-primary)',
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                }
+              }
+            >
+              {msg.isUnsent ? (
+                <p className="whitespace-pre-wrap mt-0.5 italic opacity-80" style={{ fontSize: '13px' }}>
+                  This message was unsent.
+                </p>
+              ) : isEditing ? (
+                <div className="flex flex-col gap-1 w-full min-w-[200px] mt-0.5">
+                  <textarea autoFocus value={editInput} onChange={e => setEditInput(e.target.value)} 
+                    onKeyDown={handleEditSubmit}
+                    className="bg-black/10 dark:bg-black/20 border-none rounded px-2 py-1.5 text-sm outline-none text-inherit w-full resize-none focus:ring-1 focus:ring-white/30"
+                    rows={2}
+                  />
+                  <span className="text-[10px] opacity-70">Press Enter to save, Esc to cancel</span>
+                </div>
+              ) : (
+                <>
+                  {replyBlock && (
+                    <div className="mb-2 px-3 py-2 rounded-lg text-xs"
+                      style={{
+                        background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--page-bg-alt)',
+                        borderLeft: `3px solid ${isMe ? '#fff' : 'var(--theme-500)'}`,
+                        opacity: 0.9,
+                      }}>
+                      <div className="font-bold mb-0.5" style={{ color: isMe ? '#fff' : 'var(--theme-500)' }}>
+                        {replyBlock.name}
+                      </div>
+                      <div className="truncate opacity-90">{replyBlock.text}</div>
+                    </div>
+                  )}
+
+                  {messageText && (
+                    <p className="whitespace-pre-wrap break-all overflow-hidden mt-0.5">
+                      {renderMessageText(messageText, currentUserName, isMe)}
+                      {msg.isEdited && <span className="text-[10px] opacity-60 ml-1.5 italic">(edited)</span>}
+                    </p>
+                  )}
+                </>
+              )}
+              {(() => {
+                const renderUrl = msg.fileUrl ? msg.fileUrl.replace('https://pub-b12f4572a0004391ac727c63af4321b8.r2.dev/', 'r2://') : null
+                if (!renderUrl) return null
+                return (
+                  <div className="mt-2 p-2 rounded-lg flex flex-col items-start gap-2 max-w-[240px]"
+                    style={{
+                      background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--page-bg-alt)',
+                      border: isMe ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border)',
+                      borderRadius: '10px',
+                    }}>
+                    {renderUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) ? (
+                      <img
+                        src={renderUrl}
+                        alt="attachment"
+                        className="rounded-lg w-full object-cover max-h-48 cursor-zoom-in"
+                        style={{ transition: 'transform 150ms' }}
+                        onClick={() => setLightboxSrc(renderUrl)}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                      />
+                    ) : renderUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                      <video
+                        src={renderUrl}
+                        controls
+                        preload="metadata"
+                        className="rounded-lg w-full object-cover max-h-64"
+                      />
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <ImageIcon size={16} />
+                          <span className="text-xs truncate">Attachment</span>
+                        </div>
+                        {(renderUrl.startsWith('attachment://') || renderUrl.startsWith('r2://')) ? (
+                          <button
+                            onClick={() => {
+                              if (renderUrl.startsWith('attachment://')) {
+                                window.electronAPI?.openAttachment?.(renderUrl.replace('attachment://', ''))
+                              } else if (renderUrl.startsWith('r2://')) {
+                                window.electronAPI?.openR2File?.(renderUrl.replace('r2://', ''))
+                              }
+                            }}
+                            className="text-xs font-semibold underline hover:opacity-80 cursor-pointer bg-transparent border-none p-0 text-left"
+                            style={{ color: 'inherit' }}
+                          >
+                            Open File
+                          </button>
+                        ) : (
+                          <a href={renderUrl} target="_blank" rel="noreferrer"
+                            className="text-xs font-semibold underline hover:opacity-80">
+                            Open File
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* Hover action bar */}
+            <div className={`chat-msg-actions absolute ${isMe ? 'right-1' : 'left-1'} -top-8`}>
+              <div className="flex items-center gap-0.5 rounded-lg px-1 py-0.5"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
+                <div className="relative"
+                  onMouseEnter={() => setShowReactionPicker(true)}
+                  onMouseLeave={() => setShowReactionPicker(false)}>
+                  <button className="chat-action-btn p-1.5" title="React"
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    <Smile size={14} />
+                  </button>
+                  {showReactionPicker && (
+                    <div className={`absolute z-50 bottom-full pb-1 ${isMe ? 'right-0 sm:-right-8' : 'left-0 sm:-left-2'}`}>
+                      <div className="rounded-full shadow-lg"
+                        style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+                        <div className="flex px-1.5 py-1 gap-0.5">
+                        {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                          <button key={emoji} onClick={() => {
+                            onToggleReaction(msg.id, mySenderId, currentUserName, emoji, activeTab === 'dms')
+                            setShowReactionPicker(false)
+                          }} className="text-[22px] hover:bg-black/5 dark:hover:bg-white/10 w-9 h-9 flex items-center justify-center rounded-full transition-transform hover:scale-110 border-none bg-transparent cursor-pointer">
+                            {emoji}
+                          </button>
+                        ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {!msg.isUnsent && (
+                  <button className="chat-action-btn p-1.5" title="Reply" onClick={() => setReplyTo(msg)}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    <Reply size={14} />
+                  </button>
+                )}
+                {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
+                  <button className="chat-action-btn p-1.5" title="Edit" onClick={() => {
+                    setIsEditing(true)
+                    setEditInput(msg.message.replace(/^\[reply\].*?\[\/reply\]\n?/, ''))
+                  }}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    <Edit2 size={14} />
+                  </button>
+                )}
+                <div className="relative"
+                  onMouseLeave={() => setShowDeleteMenu(false)}>
+                  <button className="chat-action-btn p-1.5" title="Delete options" onClick={() => setShowDeleteMenu(true)}
+                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                    <Trash2 size={14} />
+                  </button>
+                  {showDeleteMenu && (
+                    <div className={`absolute z-50 bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} rounded-lg shadow-lg overflow-hidden flex flex-col text-sm w-48`}
+                      style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+                      {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
+                        <button className="px-3 py-2.5 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border-none bg-transparent cursor-pointer font-medium transition-colors"
+                          onClick={() => {
+                            onUnsendMessage(msg.id, mySenderId, activeTab === 'dms')
+                            setShowDeleteMenu(false)
+                          }}>
+                          Unsend for Everyone
+                        </button>
+                      )}
+                      <button className="px-3 py-2.5 text-left hover:bg-black/5 dark:hover:bg-white/5 border-none bg-transparent cursor-pointer transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                        onClick={() => {
+                          onDeleteForMe(msg.id, mySenderId, activeTab === 'dms')
+                          setShowDeleteMenu(false)
+                        }}>
+                        Remove for You
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Render Reactions */}
+          {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+            <div className={`flex flex-wrap gap-1 mt-1 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+              {Object.entries(msg.reactions).map(([emoji, users]) => {
+                const hasReacted = users.some(u => String(u.userId) === String(mySenderId))
+                return (
+                  <div key={emoji} className="relative group flex items-center">
+                    <button
+                      onClick={() => onToggleReaction(msg.id, mySenderId, currentUserName, emoji, activeTab === 'dms')}
+                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs transition-colors border ${hasReacted ? 'bg-black/5 dark:bg-white/10' : 'bg-transparent hover:bg-black/5 dark:hover:bg-white/5'}`}
+                      style={{
+                        borderColor: hasReacted ? 'var(--theme-500)' : 'var(--border)',
+                        color: hasReacted ? 'var(--theme-500)' : 'var(--text-secondary)',
+                        cursor: 'pointer'
+                      }}>
+                      <span className="text-[15px] leading-none">{emoji}</span>
+                      <span className="font-semibold">{users.length}</span>
+                    </button>
+                    {/* Custom Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] px-2 py-1 rounded shadow-lg">
+                      {users.map(u => u.userName).join(', ')}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Read receipts */}
+          {seenBy && (
+            <div className={`text-[10px] mt-1 w-full px-1 ${isMe ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text-secondary)' }}>
+              {activeTab === 'dms'
+                ? `Seen at ${formatTime(seenBy[0].time)}`
+                : `Seen by ${seenBy.map(u => u.name).join(', ')}`}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}, areMessagesEqual)
+
+const ChatMessages = memo(function ChatMessages({
+  messages, currentUser, activeTab, selectedUser, readReceipts = [], setReplyTo,
+  onToggleReaction, onEditMessage, onDeleteForMe, onUnsendMessage
+}) {
   const messagesEndRef = useRef(null)
   const [lightboxSrc, setLightboxSrc] = useState(null)
-  const [hoveredTime, setHoveredTime] = useState(null)
-  const [reactionPickerMsgId, setReactionPickerMsgId] = useState(null)
-  const [editingMsgId, setEditingMsgId] = useState(null)
-  const [editInput, setEditInput] = useState('')
-  const [deleteMenuMsgId, setDeleteMenuMsgId] = useState(null)
 
   if (activeTab === 'dms' && !selectedUser) {
     return (
@@ -158,275 +468,24 @@ const ChatMessages = memo(function ChatMessages({ messages, currentUser, activeT
             new Date(msg.createdAt) - new Date(prevMsg.createdAt) < 5 * 60000
           const showDateSep = needsDateSeparator(prevMsg, msg)
 
-          // Extract reply block if it exists
-          let messageText = msg.message || ''
-          let replyBlock = null
-          if (msg.isUnsent) {
-            messageText = "This message was unsent."
-          } else {
-            const replyMatch = messageText.match(/^\[reply\]([\s\S]*?)\[\/reply\]\n?/)
-            if (replyMatch) {
-              const [_, replyContent] = replyMatch
-              const [replyName, ...replyTextParts] = replyContent.split('|')
-              replyBlock = { name: replyName, text: replyTextParts.join('|') }
-              messageText = messageText.substring(replyMatch[0].length)
-            }
-          }
-
           return (
-            <div key={msg.id}>
-              {/* Date separator */}
-              {showDateSep && (
-                <div className="chat-date-separator">
-                  {formatDateLabel(msg.createdAt)}
-                </div>
-              )}
-
-              <div className={`chat-msg-wrapper flex ${isMe ? 'justify-end' : 'justify-start'} ${isGrouped && !showDateSep ? 'mt-0.5' : 'mt-3'}`}
-                style={{ animation: 'chatFadeIn 300ms ease forwards' }}>
-                <div className={`flex flex-col max-w-[70%] min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
-
-                  {/* Sender name + time (only for first message in a group) */}
-                  {(!isGrouped || showDateSep) && (
-                    <div className="flex items-baseline gap-2 mb-1 px-1">
-                      <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{msg.senderName}</span>
-                      <span
-                        className="text-[10px] cursor-default"
-                        style={{ color: 'var(--text-secondary)' }}
-                        title={formatFullDate(msg.createdAt)}
-                      >
-                        {formatTime(msg.createdAt)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Message bubble */}
-                  <div className="relative group">
-                    <div
-                      className="chat-bubble-hover px-4 py-2.5 rounded-2xl text-sm leading-relaxed min-w-0"
-                      style={isMe
-                        ? {
-                          background: 'var(--theme-500)',
-                          color: '#fff',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-                        }
-                        : {
-                          background: 'var(--surface)',
-                          color: 'var(--text-primary)',
-                          border: '1px solid var(--border)',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                        }
-                      }
-                    >
-                      {/* Render Reply Block */}
-                      {msg.isUnsent ? (
-                        <p className="whitespace-pre-wrap mt-0.5 italic opacity-80" style={{ fontSize: '13px' }}>
-                          This message was unsent.
-                        </p>
-                      ) : editingMsgId === msg.id ? (
-                        <div className="flex flex-col gap-1 w-full min-w-[200px] mt-0.5">
-                          <textarea autoFocus value={editInput} onChange={e => setEditInput(e.target.value)} 
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault()
-                                let finalMsg = editInput.trim()
-                                if (!finalMsg) return
-                                if (replyBlock) {
-                                  finalMsg = `[reply]${replyBlock.name}|${replyBlock.text}[/reply]\n${finalMsg}`
-                                }
-                                window.electronAPI?.editMessage?.(msg.id, mySenderId, finalMsg, activeTab === 'dms')
-                                setEditingMsgId(null)
-                              } else if (e.key === 'Escape') {
-                                setEditingMsgId(null)
-                              }
-                            }}
-                            className="bg-black/10 dark:bg-black/20 border-none rounded px-2 py-1.5 text-sm outline-none text-inherit w-full resize-none focus:ring-1 focus:ring-white/30"
-                            rows={2}
-                          />
-                          <span className="text-[10px] opacity-70">Press Enter to save, Esc to cancel</span>
-                        </div>
-                      ) : (
-                        <>
-                          {replyBlock && (
-                            <div className="mb-2 px-3 py-2 rounded-lg text-xs"
-                              style={{
-                                background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--page-bg-alt)',
-                                borderLeft: `3px solid ${isMe ? '#fff' : 'var(--theme-500)'}`,
-                                opacity: 0.9,
-                              }}>
-                              <div className="font-bold mb-0.5" style={{ color: isMe ? '#fff' : 'var(--theme-500)' }}>
-                                {replyBlock.name}
-                              </div>
-                              <div className="truncate opacity-90">{replyBlock.text}</div>
-                            </div>
-                          )}
-
-                          {messageText && (
-                            <p className="whitespace-pre-wrap break-all overflow-hidden mt-0.5">
-                              {renderMessageText(messageText, currentUser.employeeName || currentUser.username, isMe)}
-                              {msg.isEdited && <span className="text-[10px] opacity-60 ml-1.5 italic">(edited)</span>}
-                            </p>
-                          )}
-                        </>
-                      )}
-                      {msg.fileUrl && (
-                        <div className="mt-2 p-2 rounded-lg flex flex-col items-start gap-2 max-w-[240px]"
-                          style={{
-                            background: isMe ? 'rgba(255,255,255,0.15)' : 'var(--page-bg-alt)',
-                            border: isMe ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border)',
-                            borderRadius: '10px',
-                          }}>
-                          {msg.fileUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) ? (
-                            <img
-                              src={msg.fileUrl}
-                              alt="attachment"
-                              className="rounded-lg w-full object-cover max-h-48 cursor-zoom-in"
-                              style={{ transition: 'transform 150ms' }}
-                              onClick={() => setLightboxSrc(msg.fileUrl)}
-                              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                            />
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <ImageIcon size={16} />
-                              <span className="text-xs truncate">Attachment</span>
-                            </div>
-                          )}
-                          {msg.fileUrl.startsWith('attachment://') ? (
-                            <button
-                              onClick={() => window.electronAPI?.openAttachment?.(msg.fileUrl.replace('attachment://', ''))}
-                              className="text-xs font-semibold underline hover:opacity-80 cursor-pointer bg-transparent border-none p-0"
-                              style={{ color: 'inherit' }}
-                            >
-                              Open File
-                            </button>
-                          ) : (
-                            <a href={msg.fileUrl} target="_blank" rel="noreferrer"
-                              className="text-xs font-semibold underline hover:opacity-80">
-                              Open File
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Hover action bar */}
-                    <div className={`chat-msg-actions absolute ${isMe ? 'right-1' : 'left-1'} -top-8`}>
-                      <div className="flex items-center gap-0.5 rounded-lg px-1 py-0.5"
-                        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
-                        <div className="relative"
-                          onMouseEnter={() => setReactionPickerMsgId(msg.id)}
-                          onMouseLeave={() => setReactionPickerMsgId(null)}>
-                          <button className="chat-action-btn p-1.5" title="React"
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                            <Smile size={14} />
-                          </button>
-                          {reactionPickerMsgId === msg.id && (
-                            <div className={`absolute z-50 bottom-full pb-1 ${isMe ? 'right-0 sm:-right-8' : 'left-0 sm:-left-2'}`}>
-                              <div className="rounded-full shadow-lg"
-                                style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
-                                <div className="flex px-1.5 py-1 gap-0.5">
-                                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
-                                  <button key={emoji} onClick={() => {
-                                    window.electronAPI?.toggleReaction?.(msg.id, mySenderId, currentUser.employeeName || currentUser.username, emoji, activeTab === 'dms')
-                                    setReactionPickerMsgId(null)
-                                  }} className="text-[22px] hover:bg-black/5 dark:hover:bg-white/10 w-9 h-9 flex items-center justify-center rounded-full transition-transform hover:scale-110 border-none bg-transparent cursor-pointer">
-                                    {emoji}
-                                  </button>
-                                ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        {!msg.isUnsent && (
-                          <button className="chat-action-btn p-1.5" title="Reply" onClick={() => setReplyTo?.(msg)}
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                            <Reply size={14} />
-                          </button>
-                        )}
-                        {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
-                          <button className="chat-action-btn p-1.5" title="Edit" onClick={() => {
-                            setEditingMsgId(msg.id)
-                            setEditInput(msg.message.replace(/^\[reply\].*?\[\/reply\]\n?/, ''))
-                          }}
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                            <Edit2 size={14} />
-                          </button>
-                        )}
-                        <div className="relative"
-                          onMouseLeave={() => setDeleteMenuMsgId(null)}>
-                          <button className="chat-action-btn p-1.5" title="Delete options" onClick={() => setDeleteMenuMsgId(msg.id)}
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-secondary)' }}>
-                            <Trash2 size={14} />
-                          </button>
-                          {deleteMenuMsgId === msg.id && (
-                            <div className={`absolute z-50 bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} rounded-lg shadow-lg overflow-hidden flex flex-col text-sm w-48`}
-                              style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
-                              {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
-                                <button className="px-3 py-2.5 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border-none bg-transparent cursor-pointer font-medium transition-colors"
-                                  onClick={() => {
-                                    window.electronAPI?.unsendMessage?.(msg.id, mySenderId, activeTab === 'dms')
-                                    setDeleteMenuMsgId(null)
-                                  }}>
-                                  Unsend for Everyone
-                                </button>
-                              )}
-                              <button className="px-3 py-2.5 text-left hover:bg-black/5 dark:hover:bg-white/5 border-none bg-transparent cursor-pointer transition-colors"
-                                style={{ color: 'var(--text-primary)' }}
-                                onClick={() => {
-                                  window.electronAPI?.deleteForMe?.(msg.id, mySenderId, activeTab === 'dms')
-                                  setDeleteMenuMsgId(null)
-                                }}>
-                                Remove for You
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Render Reactions */}
-                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                    <div className={`flex flex-wrap gap-1 mt-1 px-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                      {Object.entries(msg.reactions).map(([emoji, users]) => {
-                        const hasReacted = users.some(u => String(u.userId) === String(mySenderId))
-                        return (
-                          <div key={emoji} className="relative group flex items-center">
-                            <button
-                              onClick={() => window.electronAPI?.toggleReaction?.(msg.id, mySenderId, currentUser.employeeName || currentUser.username, emoji, activeTab === 'dms')}
-                              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs transition-colors border ${hasReacted ? 'bg-black/5 dark:bg-white/10' : 'bg-transparent hover:bg-black/5 dark:hover:bg-white/5'}`}
-                              style={{
-                                borderColor: hasReacted ? 'var(--theme-500)' : 'var(--border)',
-                                color: hasReacted ? 'var(--theme-500)' : 'var(--text-secondary)',
-                                cursor: 'pointer'
-                              }}>
-                              <span className="text-[15px] leading-none">{emoji}</span>
-                              <span className="font-semibold">{users.length}</span>
-                            </button>
-                            {/* Custom Tooltip */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] px-2 py-1 rounded shadow-lg">
-                              {users.map(u => u.userName).join(', ')}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-
-                  {/* Read receipts */}
-                  {seenByMsgId[msg.id] && (
-                    <div className={`text-[10px] mt-1 w-full px-1 ${isMe ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text-secondary)' }}>
-                      {activeTab === 'dms'
-                        ? `Seen at ${formatTime(seenByMsgId[msg.id][0].time)}`
-                        : `Seen by ${seenByMsgId[msg.id].map(u => u.name).join(', ')}`}
-                    </div>
-                  )}
-
-                </div>
-              </div>
-            </div>
+            <MessageItem
+              key={msg.id}
+              msg={msg}
+              isMe={isMe}
+              mySenderId={mySenderId}
+              currentUser={currentUser}
+              activeTab={activeTab}
+              isGrouped={isGrouped}
+              showDateSep={showDateSep}
+              seenBy={seenByMsgId[msg.id]}
+              setLightboxSrc={setLightboxSrc}
+              setReplyTo={setReplyTo}
+              onToggleReaction={onToggleReaction}
+              onEditMessage={onEditMessage}
+              onDeleteForMe={onDeleteForMe}
+              onUnsendMessage={onUnsendMessage}
+            />
           )
         })}
         <div ref={messagesEndRef} />
