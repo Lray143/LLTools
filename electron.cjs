@@ -329,7 +329,11 @@ ipcMain.handle('attachments:open', async (_, filepath) => {
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────
 app.whenReady().then(async () => {
-  await initDb()
+  try {
+    await initDb()
+  } catch (err) {
+    console.error('[DB] Init failed (app will still open):', err.message)
+  }
   createWindow()
 
   // Register attachment:// protocol handler — serves local chat upload files
@@ -341,18 +345,30 @@ app.whenReady().then(async () => {
   })
 
   // ── Background sync in a dedicated worker thread ──────────────
-  // This completely offloads the heavy DB sync operations from the main
-  // thread, meaning the UI and typing will never lag!
+  // Only notify the renderer when the database actually changed
+  // (data_version check avoids a re-render storm on every poll cycle).
   const { Worker } = require('worker_threads')
   const syncWorker = new Worker(path.join(__dirname, 'sync-worker.cjs'), {
     workerData: { dbPath: path.join(app.getPath('userData'), 'lltools-turso.db') }
   })
-  
-  syncWorker.on('message', (msg) => {
-    if (msg === 'synced' && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('db:synced')
-    }
+
+  let lastKnownVersion = -1
+  syncWorker.on('message', async (msg) => {
+    if (msg !== 'synced' || !mainWindow || mainWindow.isDestroyed()) return
+    try {
+      const { queryOne } = require('./db.cjs')
+      const row = await queryOne('PRAGMA data_version')
+      const ver = row?.data_version ?? -1
+      if (lastKnownVersion === -1) { lastKnownVersion = ver; return }
+      if (ver !== lastKnownVersion) {
+        lastKnownVersion = ver
+        mainWindow.webContents.send('db:synced')
+      }
+    } catch (_) {}
   })
+
+  // Tell the worker it's safe to start syncing (initDb is done, schema is ready)
+  syncWorker.postMessage('start')
 })
 
 app.on('window-all-closed', () => {

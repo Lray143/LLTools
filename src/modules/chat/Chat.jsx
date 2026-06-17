@@ -73,8 +73,7 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
     loadSidebarData()
   }, [currentUser?.id, currentUser?.employeeId, currentUser?.username, loadSidebarData])
 
-  // Refresh sidebar on cloud sync
-  useEffect(() => { loadSidebarData() }, [refreshKey])
+  // Sidebar reloads are handled inside the refreshKey effect below (lines 133-140)
 
   // ── Mark current room as read when user switches rooms ───────────────────
   useEffect(() => {
@@ -139,18 +138,7 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
     }
   }, [refreshKey])
 
-  const refreshReceipts = useCallback(async () => {
-    const reqRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
-    if (!reqRoomId) return
-    try {
-      const receipts = await window.electronAPI.getRoomReceipts(reqRoomId)
-      setReadReceipts(receipts)
-    } catch (e) { }
-  }, [activeTab, selectedDept, selectedUser, myParticipantId])
-
-  useEffect(() => {
-    refreshReceipts()
-  }, [refreshKey, refreshReceipts])
+  // Receipts are already fetched inside loadMessages() — no separate effect needed
 
   // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = async (e, forcedFileUrl = null, forcedId = null) => {

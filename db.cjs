@@ -9,11 +9,27 @@ const bcrypt    = require('bcryptjs')
 // The SDK silently syncs that local file with Turso Cloud in the background.
 const LOCAL_DB_PATH = path.join(app.getPath('userData'), 'lltools-turso.db')
 
-const client = createClient({
-  url:       `file:${LOCAL_DB_PATH}`,
-  syncUrl:   process.env.TURSO_DATABASE_URL,
-  authToken: process.env.TURSO_AUTH_TOKEN,
-})
+// Lazily initialized — NOT created at require-time to avoid crashing Electron
+// when the Turso cloud server is unreachable (OS error 10060).
+let client = null
+
+function getClient() {
+  if (client) return client
+  try {
+    client = createClient({
+      url:       `file:${LOCAL_DB_PATH}`,
+      syncUrl:   process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    })
+    console.log('[DB] Client created (cloud sync enabled)')
+  } catch (err) {
+    console.warn('[DB] Cloud connection failed, falling back to local-only:', err.message)
+    client = createClient({
+      url: `file:${LOCAL_DB_PATH}`,
+    })
+  }
+  return client
+}
 
 // ── Helper wrappers ───────────────────────────────────────────────────────────
 // These mirror the old sql.js API so the rest of the code stays readable.
@@ -22,7 +38,7 @@ const executeWithRetry = async (sql, args = []) => {
   let retries = 20
   while (retries > 0) {
     try {
-      return await client.execute({ sql, args })
+      return await getClient().execute({ sql, args })
     } catch (err) {
       const msg = err.message || ''
       const code = err.code || ''
@@ -60,9 +76,9 @@ const syncCloud = async () => {
   if (isSyncing || isBulkOperating) return;
   isSyncing = true;
   try {
-    await client.sync();
+    await getClient().sync();
     // Check if the cloud sync actually brought in new data by checking the sqlite fingerprint
-    const result = await client.execute('PRAGMA data_version;');
+    const result = await getClient().execute('PRAGMA data_version;');
     const currentVersion = result.rows[0].data_version;
     
     if (lastDataVersion !== -1 && currentVersion !== lastDataVersion) {
@@ -81,8 +97,8 @@ const syncCloud = async () => {
   }
 }
 
-// Aggressive 3-second background polling for instant chats (0% idle CPU due to data_version check)
-setInterval(syncCloud, 3000);
+// Background sync interval is handled by sync-worker.cjs (separate thread).
+// The main thread no longer runs its own interval to avoid WAL contention.
 const SEED_PRODUCT_GROUPS = [
   {
     id: 'g-astringents', name: 'ASTRINGENTS', sortOrder: 0,
@@ -190,13 +206,16 @@ const initDb = async () => {
   await syncCloud()
 
   try {
-    await client.execute("ALTER TABLE users ADD COLUMN last_active TEXT DEFAULT NULL")
+    await getClient().execute("ALTER TABLE users ADD COLUMN last_active TEXT DEFAULT NULL")
   } catch (err) {
     // Column already exists or error
   }
 
-  // Create all tables
-  await client.executeMultiple(`
+  // Create all tables (with retry — syncCloud above may still hold WAL lock)
+  let schemaRetries = 20
+  while (schemaRetries > 0) {
+    try {
+      await getClient().executeMultiple(`
     CREATE TABLE IF NOT EXISTS users (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       username      TEXT UNIQUE NOT NULL,
@@ -414,6 +433,18 @@ const initDb = async () => {
     CREATE INDEX IF NOT EXISTS idx_outlets_name ON outlets(name);
     CREATE INDEX IF NOT EXISTS idx_products_sort ON products(group_id, sort_order, created_at);
   `)
+      break // success — exit retry loop
+    } catch (err) {
+      const msg = err.message || ''
+      if (msg.includes('SQLITE_BUSY') || msg.includes('database is locked') || msg.includes('WalConflict')) {
+        schemaRetries--
+        if (schemaRetries === 0) throw err
+        await new Promise(r => setTimeout(r, 500))
+      } else {
+        throw err
+      }
+    }
+  }
 
   // Migration: add leave_no to existing tables that don't have it yet
   try {
@@ -749,7 +780,7 @@ const importAttendance = async (records) => {
         let retries = 20
         while (retries > 0) {
           try {
-            await client.execute({ sql, args: chunkArgs })
+            await getClient().execute({ sql, args: chunkArgs })
             break
           } catch (err) {
             const msg = err.message || ''
