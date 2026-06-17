@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import Pusher from 'pusher-js'
 import './App.css'
 
 import LoginPage   from './components/ui/LoginPage'
@@ -26,10 +27,47 @@ function App() {
   // Increments every time a cloud sync completes — modules use this as a
   // useEffect dependency so they automatically re-fetch fresh data.
   const [refreshKey,  setRefreshKey]  = useState(0)
+  const [typingUsers, setTypingUsers] = useState({})
 
   useEffect(() => {
     applyThemeToDocument(getSavedTheme())
   }, [])
+
+  useEffect(() => {
+    if (!import.meta.env.VITE_PUSHER_KEY) return
+    const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
+      cluster: import.meta.env.VITE_PUSHER_CLUSTER
+    })
+    const channel = pusher.subscribe('lltools-updates')
+    
+    channel.bind('new-message', () => {
+      window.electronAPI?.forceSync?.()
+    })
+
+    channel.bind('typing', (data) => {
+      if (data.userId === currentUserRef.current?.id) return
+      
+      setTypingUsers(prev => {
+        const roomTyping = prev[data.roomId] ? new Set(prev[data.roomId]) : new Set()
+        roomTyping.add(data.userName)
+        return { ...prev, [data.roomId]: Array.from(roomTyping) }
+      })
+
+      setTimeout(() => {
+        setTypingUsers(prev => {
+          const roomTyping = prev[data.roomId] ? new Set(prev[data.roomId]) : new Set()
+          roomTyping.delete(data.userName)
+          return { ...prev, [data.roomId]: Array.from(roomTyping) }
+        })
+      }, 3000)
+    })
+
+    return () => {
+      pusher.unsubscribe('lltools-updates')
+      pusher.disconnect()
+    }
+  }, [])
+
 
   // Ping online heartbeat
   useEffect(() => {
@@ -123,7 +161,7 @@ function App() {
     if (activePage === 'leaves')     return <LeaveRequests currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
     if (activePage === 'reports')    return <Reports currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
     if (activePage === 'settings')   return <Settings currentUser={currentUser} />
-    if (activePage === 'chat')       return <Chat currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
+    if (activePage === 'chat')       return <Chat currentUser={currentUser} refreshKey={refreshKey} typingUsers={typingUsers} onNavigate={setActivePage} />
 
     // Static pages
     const STATIC_PAGES = {

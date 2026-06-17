@@ -402,8 +402,13 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                 // --- Text Formatting (Inline Flow) ---
                 let boldText, mainText
                 if (isChat) {
-                  boldText = item.isDept ? item.roomId : (item.lastSenderName?.split(' ')[0] || 'Someone')
-                  mainText = ` sent a message: "${item.lastMessage || 'Attachment'}"`
+                  if (item.isDept) {
+                    boldText = item.lastSenderName?.split(' ')[0] || 'Someone'
+                    mainText = ` sent a message in ${item.roomId}: "${item.lastMessage || 'Attachment'}"`
+                  } else {
+                    boldText = item.lastSenderName?.split(' ')[0] || 'Someone'
+                    mainText = ` sent a message: "${item.lastMessage || 'Attachment'}"`
+                  }
                 } else if (isInReport) {
                   boldText = item.employeeName || item.employeeNo || 'Employee'
                   mainText = ` submitted a new report: ${item.subject || 'Report'}`

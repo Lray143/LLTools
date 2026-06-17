@@ -134,24 +134,6 @@ export default function ChatInput({
 
       <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={onFileChange} />
 
-      {/* ── Typing indicator ── */}
-      {isComposing && (
-        <div className="absolute -top-6 left-5 flex items-center gap-2 px-3 py-1 rounded-full text-[10px]"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-          }}>
-          <div className="flex gap-1">
-            <div className="typing-dot" />
-            <div className="typing-dot" />
-            <div className="typing-dot" />
-          </div>
-          <span>Composing...</span>
-        </div>
-      )}
-
       {/* ── Mention Picker (redesigned to match app dropdowns) ── */}
       {showMentionPicker && filteredMentions.length > 0 && (
         <div

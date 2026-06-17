@@ -54,6 +54,8 @@
     "emoji-picker-react": "^4.19.1",
     "exceljs": "^4.4.0",
     "lucide-react": "^1.16.0",
+    "pusher": "^5.3.4",
+    "pusher-js": "^8.5.0",
     "radix-ui": "^1.4.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

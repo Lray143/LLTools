@@ -23,7 +23,7 @@ function getClient() {
 
 // Wait for the main thread to signal that initDb is done before starting syncs.
 // This prevents SQLITE_BUSY during schema creation.
-parentPort.once('message', (msg) => {
+parentPort.on('message', async (msg) => {
   if (msg === 'start') {
     setInterval(async () => {
       try {
@@ -33,5 +33,12 @@ parentPort.once('message', (msg) => {
         // Ignore sync errors (e.g. offline)
       }
     }, 5000)
+  }
+
+  if (msg === 'sync-now') {
+    try {
+      await getClient().sync()
+      parentPort.postMessage('synced')
+    } catch (err) {}
   }
 })

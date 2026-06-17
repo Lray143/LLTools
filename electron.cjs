@@ -18,6 +18,7 @@ const {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
+
   getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
@@ -30,6 +31,44 @@ const {
   markChatAsRead, getChatSidebarData, getRoomReceipts,
   refreshUser, heartbeatUser, logoutUser,
 } = require('./db.cjs')
+
+// ── Pusher REST trigger (no SDK — avoids ESM require issues) ────────────
+const https = require('https')
+
+function pusherTrigger(channelName, eventName, data) {
+  return new Promise((resolve) => {
+    const appId      = process.env.PUSHER_APP_ID
+    const key        = process.env.VITE_PUSHER_KEY
+    const secret     = process.env.PUSHER_SECRET
+    const cluster    = process.env.VITE_PUSHER_CLUSTER || 'ap1'
+    if (!appId || !key || !secret) return resolve({ ok: false })
+
+    const body      = JSON.stringify({ name: eventName, channel: channelName, data: JSON.stringify(data) })
+    const timestamp = Math.floor(Date.now() / 1000)
+    const nonce     = crypto.randomBytes(8).toString('hex')
+    const md5Body   = crypto.createHash('md5').update(body).digest('hex')
+    const reqPath   = `/apps/${appId}/events`
+    const toSign    = `POST\n${reqPath}\nauth_key=${key}&auth_timestamp=${timestamp}&auth_version=1.0&body_md5=${md5Body}&nonce=${nonce}`
+    const signature = crypto.createHmac('sha256', secret).update(toSign).digest('hex')
+    const queryStr  = `auth_key=${key}&auth_timestamp=${timestamp}&auth_version=1.0&body_md5=${md5Body}&nonce=${nonce}&auth_signature=${signature}`
+
+    const options = {
+      hostname: `api-${cluster}.pusher.com`,
+      path: `${reqPath}?${queryStr}`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }
+    const req = https.request(options, (res) => {
+      resolve({ ok: res.statusCode === 200, status: res.statusCode })
+    })
+    req.on('error', () => resolve({ ok: false }))
+    req.write(body)
+    req.end()
+  })
+}
+
+let pusherDisabled = false
+let syncWorkerRef = null
 
 const isDev = process.env.NODE_ENV === 'development'
 let mainWindow = null
@@ -190,6 +229,26 @@ ipcMain.handle('chat:sendDM', async (_, msgData) => {
   await db.sendDirectMessage(msgData)
   // Background worker handles the sync
 })
+
+ipcMain.handle('chat:sendPusherEvent', async (_, { channel, event, data }) => {
+  if (pusherDisabled) return { success: false, reason: 'Pusher disabled' }
+  try {
+    const result = await pusherTrigger(channel, event, data)
+    if (!result.ok && (result.status === 403 || result.status === 429)) {
+      pusherDisabled = true
+      console.warn('Pusher quota exceeded or forbidden, falling back to 5-second polling')
+    }
+    return result
+  } catch (err) {
+    console.error('Pusher trigger error:', err)
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('system:forceSync', () => {
+  if (syncWorkerRef) syncWorkerRef.postMessage('sync-now')
+})
+
 ipcMain.handle('chat:markAsRead', async (_, userId, roomId) => {
   const db = await import('./db.cjs')
   await db.markChatAsRead(userId, roomId)
@@ -411,20 +470,14 @@ app.whenReady().then(async () => {
   const syncWorker = new Worker(path.join(__dirname, 'sync-worker.cjs'), {
     workerData: { dbPath: path.join(app.getPath('userData'), 'lltools-turso.db') }
   })
+  syncWorkerRef = syncWorker
 
   let lastKnownVersion = -1
   syncWorker.on('message', async (msg) => {
     if (msg !== 'synced' || !mainWindow || mainWindow.isDestroyed()) return
-    try {
-      const { queryOne } = require('./db.cjs')
-      const row = await queryOne('PRAGMA data_version')
-      const ver = row?.data_version ?? -1
-      if (lastKnownVersion === -1) { lastKnownVersion = ver; return }
-      if (ver !== lastKnownVersion) {
-        lastKnownVersion = ver
-        mainWindow.webContents.send('db:synced')
-      }
-    } catch (_) {}
+    // Always notify frontend that a sync completed. 
+    // PRAGMA data_version is unreliable with libsql embedded replica syncs.
+    mainWindow.webContents.send('db:synced')
   })
 
   // Tell the worker it's safe to start syncing (initDb is done, schema is ready)

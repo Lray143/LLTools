@@ -13,7 +13,7 @@ const GLOBAL_ROLES = ['admin', 'hr']
 const getRoomId = (user1Id, user2Id) =>
   `DM_${[String(user1Id), String(user2Id)].sort().join('_')}`
 
-export default function Chat({ currentUser, refreshKey, onNavigate }) {
+export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavigate }) {
   const [activeTab, setActiveTab]         = useState('channels')
   const [messageCache, setMessageCache]   = useState({})
   const [inputMsg, setInputMsg]           = useState('')
@@ -26,6 +26,7 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
   const [selectedUser, setSelectedUser]   = useState(null)
   const [replyTo, setReplyTo]             = useState(null)
   const messagesEndRef = useRef(null)
+  const autoScrollNextRenderRef = useRef(false)
   const scrollContainerRef = useRef(null)
   // Track typing so background refreshes don't interrupt mid-keystroke
   const isTypingRef    = useRef(false)
@@ -109,20 +110,34 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
       const receipts = await window.electronAPI.getRoomReceipts(reqRoomId)
       setReadReceipts(receipts)
       
-      startTransition(() => {
-        setMessageCache(prev => ({ ...prev, [reqRoomId]: msgs || [] }))
-      })
-      
-      // Only auto-scroll if user was already near the bottom or we're switching rooms
+      // Mark that we need to scroll after the next render completes
       if (forceScroll || wasNearBottom) {
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: forceScroll ? 'auto' : 'smooth' })
-        }, 50)
+        autoScrollNextRenderRef.current = true
       }
+
+      startTransition(() => {
+        setMessageCache(prev => {
+          const oldStr = JSON.stringify(prev[reqRoomId] || [])
+          const newStr = JSON.stringify(msgs || [])
+          if (oldStr === newStr) return prev
+          return { ...prev, [reqRoomId]: msgs || [] }
+        })
+      })
     } catch (err) {
       console.error('Failed to load messages', err)
     }
   }, [activeTab, selectedDept, selectedUser, myParticipantId, isNearBottom])
+
+  // Handle the actual scrolling AFTER React commits the new messages to the DOM
+  const activeRoomId = activeTab === 'channels' ? selectedDept : getRoomId(myParticipantId, selectedUser?.id)
+  useEffect(() => {
+    if (autoScrollNextRenderRef.current) {
+      autoScrollNextRenderRef.current = false
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }, 50)
+    }
+  }, [messageCache[activeRoomId]])
 
   // Room switch → always scroll to bottom
   useEffect(() => {
@@ -190,6 +205,12 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
 
       window.electronAPI.markChatAsRead(myParticipantId, roomId).catch(console.error)
       loadSidebarData()
+      // Notify other clients instantly via Pusher
+      window.electronAPI?.sendPusherEvent?.({
+        channel: 'lltools-updates',
+        event: 'new-message',
+        data: { roomId }
+      }).catch(() => {})
     } catch (err) {
       console.error('Failed to send message', err)
     } finally {
@@ -198,6 +219,7 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
   }
 
   // ── Typing detection ─ pauses background refresh mid-keystroke ───────────
+  const lastTypingPusherSent = useRef(0)
   const handleTyping = useCallback(() => {
     isTypingRef.current = true
     clearTimeout(typingTimer.current)
@@ -209,7 +231,22 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
         loadSidebarData()
       }
     }, 1500)
-  }, [loadMessages, loadSidebarData])
+    // Broadcast typing event via Pusher at most once every 2 seconds
+    const now = Date.now()
+    if (now - lastTypingPusherSent.current < 2000) return
+    lastTypingPusherSent.current = now
+    const roomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser?.id) : null)
+    if (!roomId) return
+    window.electronAPI?.sendPusherEvent?.({
+      channel: 'lltools-updates',
+      event: 'typing',
+      data: {
+        roomId,
+        userId: myParticipantId,
+        userName: (currentUser.employeeName || currentUser.username || '').split(' ')[0]
+      }
+    }).catch(() => {})
+  }, [loadMessages, loadSidebarData, activeTab, selectedDept, selectedUser, myParticipantId, currentUser])
 
   // ── File upload ───────────────────────────────────────────────────────────
   const handleFileChange = async (e) => {
@@ -465,6 +502,27 @@ export default function Chat({ currentUser, refreshKey, onNavigate }) {
             />
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Typing indicator */}
+          {(() => {
+            const typers = currentRoomId ? (typingUsers[currentRoomId] || []) : []
+            if (typers.length === 0) return null
+            let label
+            if (typers.length === 1) label = `${typers[0]} is typing...`
+            else if (typers.length === 2) label = `${typers[0]} and ${typers[1]} are typing...`
+            else label = 'Several people are typing...'
+            return (
+              <div className="flex items-center gap-2 px-5 py-1.5 shrink-0"
+                style={{ borderTop: '1px solid var(--border)', background: 'var(--surface)', minHeight: 28 }}>
+                <div className="flex gap-0.5">
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
+                  <div className="typing-dot" />
+                </div>
+                <span className="text-[11px]" style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>{label}</span>
+              </div>
+            )
+          })()}
 
           {/* Input */}
           <ChatInput
