@@ -37,20 +37,21 @@ const https = require('https')
 
 function pusherTrigger(channelName, eventName, data) {
   return new Promise((resolve) => {
-    const appId      = process.env.PUSHER_APP_ID
-    const key        = process.env.VITE_PUSHER_KEY
-    const secret     = process.env.PUSHER_SECRET
-    const cluster    = process.env.VITE_PUSHER_CLUSTER || 'ap1'
-    if (!appId || !key || !secret) return resolve({ ok: false })
+    const appId   = process.env.PUSHER_APP_ID
+    const key     = process.env.VITE_PUSHER_KEY
+    const secret  = process.env.PUSHER_SECRET
+    const cluster = process.env.VITE_PUSHER_CLUSTER || 'ap1'
+    if (!appId || !key || !secret) return resolve({ ok: false, reason: 'No Pusher credentials' })
 
     const body      = JSON.stringify({ name: eventName, channel: channelName, data: JSON.stringify(data) })
     const timestamp = Math.floor(Date.now() / 1000)
-    const nonce     = crypto.randomBytes(8).toString('hex')
     const md5Body   = crypto.createHash('md5').update(body).digest('hex')
     const reqPath   = `/apps/${appId}/events`
-    const toSign    = `POST\n${reqPath}\nauth_key=${key}&auth_timestamp=${timestamp}&auth_version=1.0&body_md5=${md5Body}&nonce=${nonce}`
+    // Parameters MUST be in alphabetical order per Pusher spec
+    const paramStr  = `auth_key=${key}&auth_timestamp=${timestamp}&auth_version=1.0&body_md5=${md5Body}`
+    const toSign    = `POST\n${reqPath}\n${paramStr}`
     const signature = crypto.createHmac('sha256', secret).update(toSign).digest('hex')
-    const queryStr  = `auth_key=${key}&auth_timestamp=${timestamp}&auth_version=1.0&body_md5=${md5Body}&nonce=${nonce}&auth_signature=${signature}`
+    const queryStr  = `${paramStr}&auth_signature=${signature}`
 
     const options = {
       hostname: `api-${cluster}.pusher.com`,
@@ -59,9 +60,16 @@ function pusherTrigger(channelName, eventName, data) {
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
     }
     const req = https.request(options, (res) => {
-      resolve({ ok: res.statusCode === 200, status: res.statusCode })
+      let raw = ''
+      res.on('data', d => { raw += d })
+      res.on('end', () => {
+        if (res.statusCode !== 200) {
+          console.error(`[Pusher] HTTP ${res.statusCode}:`, raw)
+        }
+        resolve({ ok: res.statusCode === 200, status: res.statusCode })
+      })
     })
-    req.on('error', () => resolve({ ok: false }))
+    req.on('error', (e) => { console.error('[Pusher] request error:', e.message); resolve({ ok: false }) })
     req.write(body)
     req.end()
   })

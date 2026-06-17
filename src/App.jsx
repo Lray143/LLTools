@@ -40,12 +40,19 @@ function App() {
     })
     const channel = pusher.subscribe('lltools-updates')
     
-    channel.bind('new-message', () => {
+    channel.bind('new-message', (data) => {
+      const me = currentUserRef.current
+      const myId = String(me?.employeeId || me?.id || '')
+      // Don't force-sync for messages we sent ourselves (already in optimistic cache)
+      if (data?.senderId && data.senderId === myId) return
       window.electronAPI?.forceSync?.()
     })
 
     channel.bind('typing', (data) => {
-      if (data.userId === currentUserRef.current?.id) return
+      const me = currentUserRef.current
+      // Filter out own typing events — userId is employeeId || String(id)
+      const myId = String(me?.employeeId || me?.id || '')
+      if (data.userId === myId) return
       
       setTypingUsers(prev => {
         const roomTyping = prev[data.roomId] ? new Set(prev[data.roomId]) : new Set()
@@ -59,7 +66,7 @@ function App() {
           roomTyping.delete(data.userName)
           return { ...prev, [data.roomId]: Array.from(roomTyping) }
         })
-      }, 3000)
+      }, 4000)
     })
 
     return () => {
