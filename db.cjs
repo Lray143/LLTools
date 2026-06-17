@@ -574,6 +574,7 @@ function deptToRole(dept) {
 }
 
 const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
+  const strNo = String(employeeNo)
   const role = deptToRole(dept)
   const existing = await queryOne('SELECT id, role FROM users WHERE employee_id = ?', [employeeId])
   
@@ -582,19 +583,19 @@ const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
     if (hasDept) {
       await run(
         `UPDATE users SET username = ?, role = ?, sync_status = 'pending' WHERE employee_id = ?`,
-        [employeeNo, role, employeeId]
+        [strNo, role, employeeId]
       )
     } else {
       await run(
         `UPDATE users SET username = ?, sync_status = 'pending' WHERE employee_id = ?`,
-        [employeeNo, employeeId]
+        [strNo, employeeId]
       )
     }
   } else {
-    const hash = await bcrypt.hash(employeeNo, 10)
+    const hash = await bcrypt.hash(strNo, 10)
     await run(
       `INSERT OR IGNORE INTO users (username, password_hash, role, employee_id) VALUES (?, ?, ?, ?)`,
-      [employeeNo, hash, role, employeeId]
+      [strNo, hash, role, employeeId]
     )
   }
 }
@@ -723,7 +724,7 @@ const importAttendance = async (records) => {
     // 1. Fetch all existing employees into memory to avoid per-record queries
     const allEmps = await queryAll('SELECT id, employee_no FROM employees')
     const empMap = new Map() // employee_no -> id
-    for (const e of allEmps) empMap.set(e.employee_no, e.id)
+    for (const e of allEmps) empMap.set(String(e.employee_no), e.id)
 
     // 2. Fetch all attendance composite keys into a Set to avoid per-record queries
     const allAtt = await queryAll('SELECT employee_id, date FROM attendance')
@@ -735,11 +736,11 @@ const importAttendance = async (records) => {
     const missingAccounts = [] // Store info to create user accounts after batch
 
     for (const rec of records) {
-      let empId = empMap.get(rec.employee_no)
+      let empId = empMap.get(String(rec.employee_no))
       
       if (!empId) {
         empId = crypto.randomUUID()
-        empMap.set(rec.employee_no, empId)
+        empMap.set(String(rec.employee_no), empId)
         empInsertArgs.push(
           empId, rec.employee_no, rec.employee_no, 
           'Active', '07:00', '17:30', 'Saturday,Sunday', 'pending'
