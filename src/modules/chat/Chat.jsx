@@ -46,6 +46,15 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }, [myParticipantId])
 
+  // Helper: fire a Pusher event so other clients sync instantly
+  const pusherNotify = useCallback((roomId) => {
+    window.electronAPI?.sendPusherEvent?.({
+      channel: 'lltools-updates',
+      event: 'new-message',
+      data: { roomId, senderId: '' } // empty senderId so receivers always sync
+    }).catch(() => {})
+  }, [])
+
   // ── Load employees once ───────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
@@ -119,10 +128,13 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         setMessageCache(prev => {
           const oldMsgs = prev[reqRoomId] || []
           const newMsgs = msgs || []
-          // Fast equality check: same length + same last message id = no change
+          // Check length, last message id, AND last message content (catches edits/reactions/unsends)
+          const last = (arr) => arr[arr.length - 1]
           if (
             oldMsgs.length === newMsgs.length &&
-            oldMsgs[oldMsgs.length - 1]?.id === newMsgs[newMsgs.length - 1]?.id
+            last(oldMsgs)?.id === last(newMsgs)?.id &&
+            last(oldMsgs)?.message === last(newMsgs)?.message &&
+            JSON.stringify(last(oldMsgs)?.reactions) === JSON.stringify(last(newMsgs)?.reactions)
           ) return prev
           return { ...prev, [reqRoomId]: newMsgs }
         })
@@ -169,8 +181,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     
     let finalMsgText = inputMsg.trim() || (forcedFileUrl ? 'Sent an attachment' : '')
     if (replyTo && finalMsgText) {
-      // Strip any existing [reply] tags from the message we are replying to
-      const cleanReplyMsg = (replyTo.message || 'Attachment').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/, '')
+      // Strip ALL [reply] tags from the quoted message so reply-to-reply renders cleanly
+      const cleanReplyMsg = (replyTo.message || 'Attachment').replace(/\[reply\][\s\S]*?\[\/reply\]\n?/g, '').trim()
       const replySnippet = cleanReplyMsg.replace(/\n/g, ' ').substring(0, 80)
       finalMsgText = `[reply]${replyTo.senderName}|${replySnippet}[/reply]\n${finalMsgText}`
     }
@@ -354,7 +366,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       }
     })
     window.electronAPI?.toggleReaction?.(msgId, senderId, userName, emoji, isDm)
-  }, [selectedDept, selectedUser, myParticipantId])
+    pusherNotify(roomId)
+  }, [selectedDept, selectedUser, myParticipantId, pusherNotify])
 
   const handleEditMessage = useCallback((msgId, senderId, newMsg, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
@@ -363,7 +376,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       [roomId]: (prev[roomId] || []).map(m => m.id === msgId ? { ...m, message: newMsg, isEdited: true } : m)
     }))
     window.electronAPI?.editMessage?.(msgId, senderId, newMsg, isDm)
-  }, [selectedDept, selectedUser, myParticipantId])
+    pusherNotify(roomId)
+  }, [selectedDept, selectedUser, myParticipantId, pusherNotify])
 
   const handleUnsendMessage = useCallback((msgId, senderId, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
@@ -372,7 +386,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       [roomId]: (prev[roomId] || []).map(m => m.id === msgId ? { ...m, isUnsent: true } : m)
     }))
     window.electronAPI?.unsendMessage?.(msgId, senderId, isDm)
-  }, [selectedDept, selectedUser, myParticipantId])
+    pusherNotify(roomId)
+  }, [selectedDept, selectedUser, myParticipantId, pusherNotify])
 
   const handleDeleteForMe = useCallback((msgId, senderId, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
