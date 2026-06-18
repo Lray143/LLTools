@@ -5,7 +5,7 @@ const ChatSidebar = memo(function ChatSidebar({
   activeTab, setActiveTab,
   sortedDepts, selectedDept, setSelectedDept, isUnread,
   sortedEmployees, selectedUser, setSelectedUser,
-  currentUser, getRoomId, sidebarData
+  currentUser, getRoomId, sidebarData, onlineUsers = new Set()
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
@@ -192,7 +192,7 @@ const ChatSidebar = memo(function ChatSidebar({
                         {emp.name?.charAt(0).toUpperCase() || '?'}
                       </div>
                       <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-zinc-900 ${
-                        emp.last_active && (Date.now() - new Date(emp.last_active + 'Z').getTime()) < 3 * 60 * 1000
+                        onlineUsers.has(String(emp.id))
                           ? 'bg-green-500' 
                           : 'bg-zinc-400 dark:bg-zinc-600'
                       }`} />

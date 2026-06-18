@@ -78,7 +78,7 @@ const ROLE_MODULES = {
   admin: [
     'dashboard', 'employees', 'biometrics', 'my-attendance', 'clinic',
     'products', 'outlets', 'calculations',
-    'reports', 'leaves', 'chat', 'settings',
+    'reports', 'leaves', 'chat', 'app-links', 'settings',
   ],
   hr: [
     'dashboard', 'employees', 'biometrics', 'my-attendance',
@@ -122,4 +122,10 @@ export const canManageReports = (user) => {
   if (REPORT_MANAGER_ROLES.includes(user.role))             return true
   if (REPORT_MANAGER_DEPARTMENTS.includes(user.department)) return true
   return false
+}
+
+// Only the system administrator account can manage app-wide links.
+export const canManageAppLinks = (user) => {
+  if (!user) return false
+  return user.role === 'admin'
 }

@@ -1,4 +1,5 @@
 // src/modules/calculations/components/CalculationsMonthlySummary.jsx
+import { logModuleActivity, buildActivityDetails } from '../../../lib/activityLog'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   ChevronDown, ChevronRight, Trash2, Receipt,
@@ -466,6 +467,55 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
     }
   }
 
+  // ── SIGNATURE FOOTER ──────────────────────────────────────
+  // 2 blank rows, then the signature block (matches original template)
+  currentRow += 2  // skip 2 rows after totals
+
+  const sigRow1 = currentRow      // "PREPARED BY:" / "CHECKED BY:" / "VERIFIED BY:"
+  const sigRow2 = currentRow + 1  // Name row
+  const sigRow3 = currentRow + 2  // Title row
+
+  ws.getRow(sigRow1).height = 15
+  ws.getRow(sigRow2).height = 15
+  ws.getRow(sigRow3).height = 15
+
+  // ── Row 1: Labels ─────────────────────────────────────────
+  // "PREPARED BY:" starts at col B (2), "CHECKED BY:" at col E (5), "VERIFIED BY:" at col H (8)
+  const labelStyle = { bold: true, size: 10, name: 'Calibri' }
+
+  ws.getCell(sigRow1, 2).value = 'PREPARED BY:'
+  ws.getCell(sigRow1, 2).font  = labelStyle
+
+  ws.getCell(sigRow1, 5).value = 'CHECKED BY:'
+  ws.getCell(sigRow1, 5).font  = labelStyle
+
+  ws.getCell(sigRow1, 8).value = 'VERIFIED BY:'
+  ws.getCell(sigRow1, 8).font  = labelStyle
+
+  // ── Row 2: Names (underlined bold) ────────────────────────
+  const nameStyle = { bold: true, size: 10, name: 'Calibri', underline: true }
+
+  ws.getCell(sigRow2, 2).value = 'Marjun S. Mallanao'
+  ws.getCell(sigRow2, 2).font  = nameStyle
+
+  ws.getCell(sigRow2, 5).value = 'Krizia A. Guerrero'
+  ws.getCell(sigRow2, 5).font  = nameStyle
+
+  ws.getCell(sigRow2, 8).value = 'Rubilyn A. Omega'
+  ws.getCell(sigRow2, 8).font  = nameStyle
+
+  // ── Row 3: Titles (italic) ────────────────────────────────
+  const titleStyle = { italic: true, size: 10, name: 'Calibri' }
+
+  ws.getCell(sigRow3, 2).value = 'Inventory Staff'
+  ws.getCell(sigRow3, 2).font  = titleStyle
+
+  ws.getCell(sigRow3, 5).value = 'Jr. Acctg. Supervisor'
+  ws.getCell(sigRow3, 5).font  = titleStyle
+
+  ws.getCell(sigRow3, 8).value = 'Sr. Acctg. Supervisor'
+  ws.getCell(sigRow3, 8).font  = titleStyle
+
   // ── DOWNLOAD ───────────────────────────────────────────────
   const buffer = await wb.xlsx.writeBuffer()
   const blob   = new Blob([buffer], {
@@ -616,7 +666,7 @@ function TrendBadge({ current, previous }) {
 }
 
 // ── Main component ────────────────────────────────────────────────
-export default function CalculationsMonthlySummary() {
+export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0 }) {
   const [orders,         setOrders]         = useState([])
   const [loading,        setLoading]        = useState(true)
   const [expandedMonths, setExpandedMonths] = useState({})
@@ -627,11 +677,24 @@ export default function CalculationsMonthlySummary() {
       .then((data) => setOrders(data ?? []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [refreshKey])
 
   const handleDelete = async (id) => {
+    const order = orders.find(o => o.id === id)
     try {
       await window.electronAPI.deleteOrder(id)
+      await logModuleActivity(currentUser, 'calculations', 'permanent_delete', order ? `Order ${order.seriesNumber}` : 'Saved order', id, buildActivityDetails({
+        recordType: 'Saved order',
+        recordId: id,
+        table: 'saved_orders',
+        removedSnapshot: order ? {
+          'Series #': order.seriesNumber ?? '—',
+          Outlet: order.outletName ?? 'Default prices',
+          Date: order.orderDate ? formatDate(order.orderDate) : '—',
+          'Grand total': order.grandTotal != null ? `₱${fmt(order.grandTotal)}` : '—',
+        } : { ID: id },
+        note: 'Deleted saved order',
+      }))
       setOrders((prev) => prev.filter((o) => o.id !== id))
     } catch (e) {
       console.error(e)
@@ -639,9 +702,22 @@ export default function CalculationsMonthlySummary() {
   }
 
   const handleDateChange = async (id, dateStr) => {
+    const order = orders.find(o => o.id === id)
     try {
       const isoDate = `${dateStr}T00:00:00`
+      const oldDate = order?.orderDate ? order.orderDate.slice(0, 10) : '—'
       await window.electronAPI.updateOrderDate(id, isoDate)
+      await logModuleActivity(currentUser, 'calculations', 'edit', order ? `Order ${order.seriesNumber}` : 'Saved order', id, buildActivityDetails({
+        recordType: 'Saved order',
+        recordId: id,
+        table: 'saved_orders',
+        changes: [{
+          field: 'orderDate',
+          label: 'Order date',
+          before: oldDate,
+          after: dateStr,
+        }],
+      }))
       // Re-fetch so the monthly grouping reflects the new date
       const data = await window.electronAPI.getAllOrders()
       setOrders(data ?? [])

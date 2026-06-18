@@ -2,6 +2,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Search, User } from 'lucide-react'
 import NotificationBell from '../../components/ui/NotificationBell'
+import ModuleActivityLog from '../../components/ui/ModuleActivityLog'
+import { logModuleActivity, buildActivityDetails, diffFields, snapshotFromFields, OUTLET_LOG_FIELDS } from '../../lib/activityLog'
 
 import OutletToolbar       from './components/OutletToolbar'
 import OutletCardGrid      from './components/OutletCardGrid'
@@ -48,13 +50,56 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
   useEffect(() => { load(refreshKey === 0) }, [refreshKey])
 
   const handleSave = async (payload) => {
+    const isNew = !editTarget?.id
+    const afterLog = {
+      name: payload.name,
+      address: payload.address,
+      region: payload.region,
+      status: payload.status,
+      discounts: payload.discounts,
+    }
     await window.electronAPI.upsertOutlet(payload)
+    if (isNew) {
+      await logModuleActivity(currentUser, 'outlets', 'add', payload.name, payload.id, buildActivityDetails({
+        recordType: 'Outlet',
+        recordId: payload.id,
+        table: 'outlets',
+        snapshot: snapshotFromFields(afterLog, OUTLET_LOG_FIELDS),
+      }))
+    } else {
+      const beforeLog = {
+        name: editTarget.name,
+        address: editTarget.address,
+        region: editTarget.region,
+        status: editTarget.status,
+        discounts: editTarget.discounts,
+      }
+      await logModuleActivity(currentUser, 'outlets', 'edit', payload.name, payload.id, buildActivityDetails({
+        recordType: 'Outlet',
+        recordId: payload.id,
+        table: 'outlets',
+        changes: diffFields(beforeLog, afterLog, OUTLET_LOG_FIELDS),
+      }))
+    }
     setEditTarget(null)
     await load()
   }
 
   const handleArchive = async (id) => {
+    const outlet = outlets.find(o => o.id === id) ?? deleteTarget
     await window.electronAPI.archiveOutlet(id)
+    await logModuleActivity(currentUser, 'outlets', 'archive', outlet?.name ?? 'Outlet', id, buildActivityDetails({
+      recordType: 'Outlet',
+      recordId: id,
+      table: 'outlets',
+      removedSnapshot: outlet ? snapshotFromFields({
+        name: outlet.name,
+        address: outlet.address,
+        region: outlet.region,
+        status: outlet.status,
+        discounts: outlet.discounts,
+      }, OUTLET_LOG_FIELDS) : null,
+    }))
     setDeleteTarget(null)
     await load()
   }
@@ -65,7 +110,21 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
   }
 
   const handlePermDelete = async (id) => {
+    const outlet = archivedOutlets.find(o => o.id === id)
     await window.electronAPI.permanentDeleteOutlet(id)
+    await logModuleActivity(currentUser, 'outlets', 'permanent_delete', outlet?.name ?? 'Outlet', id, buildActivityDetails({
+      recordType: 'Outlet',
+      recordId: id,
+      table: 'outlets',
+      removedSnapshot: outlet ? snapshotFromFields({
+        name: outlet.name,
+        address: outlet.address,
+        region: outlet.region,
+        status: outlet.status,
+        discounts: outlet.discounts,
+      }, OUTLET_LOG_FIELDS) : null,
+      note: 'Permanently deleted from archive',
+    }))
     await load()
   }
 
@@ -111,6 +170,7 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
+          <ModuleActivityLog module="outlets" refreshKey={refreshKey} />
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
           <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />

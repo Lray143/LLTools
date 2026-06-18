@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useRef, useState, useEffect } from 'react'
-import { Upload, Download, ChevronDown, ChevronLeft, ChevronRight, Calendar, Check } from 'lucide-react'
+import { Upload, Download, ChevronDown, ChevronLeft, ChevronRight, Calendar, Check, Table2, BarChart2 } from 'lucide-react'
 
 const MODES = ['Daily', 'Monthly', 'Yearly']
 
@@ -123,6 +123,7 @@ function CustomSelect({ value, onChange, options }) {
 
 // ── Main filter bar ───────────────────────────────────────────
 export function BiometricFilterBar({
+  pageMode, setPageMode,
   viewMode, setViewMode,
   selectedDate, setSelectedDate,
   selectedMonth, setSelectedMonth,
@@ -135,6 +136,7 @@ export function BiometricFilterBar({
   isImporting,
 }) {
   const hiddenDateRef = useRef(null)
+  const isSummary = pageMode === 'summary'
 
   function stepDay(delta) {
     const d = new Date(selectedDate)
@@ -161,36 +163,74 @@ export function BiometricFilterBar({
       {/* ── LEFT ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
-        {/* Segmented mode toggle */}
+        {/* Attendance / Summary page toggle */}
         <div style={{
           display: 'flex', alignItems: 'center',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '10px', padding: '3px', gap: '2px',
         }}>
-          {MODES.map(mode => (
+          {[
+            { id: 'attendance', label: 'Attendance', icon: Table2 },
+            { id: 'summary',    label: 'Manhours Summary', icon: BarChart2 },
+          ].map(({ id, label, icon: Icon }) => (
             <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
+              key={id}
+              onClick={() => setPageMode(id)}
               style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
                 padding: '5px 16px', borderRadius: '8px',
-                fontSize: '13px', fontWeight: viewMode === mode ? 600 : 400,
-                background: viewMode === mode ? 'var(--theme-500)' : 'transparent',
-                color: viewMode === mode ? '#fff' : 'var(--text-secondary)',
+                fontSize: '13px', fontWeight: pageMode === id ? 600 : 400,
+                background: pageMode === id ? 'var(--theme-500)' : 'transparent',
+                color: pageMode === id ? '#fff' : 'var(--text-secondary)',
                 border: 'none', cursor: 'pointer',
                 transition: 'background 150ms, color 150ms',
                 whiteSpace: 'nowrap', lineHeight: '1.4',
               }}
             >
-              {mode}
+              <Icon size={13} />
+              {label}
             </button>
           ))}
         </div>
 
-        {/* Divider */}
-        <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
+        {!isSummary && (
+          <>
+            {/* Segmented Daily / Monthly / Yearly toggle */}
+            <div style={{
+              display: 'flex', alignItems: 'center',
+              background: 'var(--surface)', border: '1px solid var(--border)',
+              borderRadius: '10px', padding: '3px', gap: '2px',
+            }}>
+              {MODES.map(mode => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    padding: '5px 16px', borderRadius: '8px',
+                    fontSize: '13px', fontWeight: viewMode === mode ? 600 : 400,
+                    background: viewMode === mode ? 'var(--theme-500)' : 'transparent',
+                    color: viewMode === mode ? '#fff' : 'var(--text-secondary)',
+                    border: 'none', cursor: 'pointer',
+                    transition: 'background 150ms, color 150ms',
+                    whiteSpace: 'nowrap', lineHeight: '1.4',
+                  }}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
+          </>
+        )}
+
+        {isSummary && (
+          <div style={{ width: '1px', height: '24px', background: 'var(--border)', flexShrink: 0 }} />
+        )}
 
         {/* DAILY */}
-        {viewMode === 'Daily' && (
+        {!isSummary && viewMode === 'Daily' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button style={navBtn} onClick={() => stepDay(-1)}>
               <ChevronLeft size={14} strokeWidth={2.5} />
@@ -220,7 +260,7 @@ export function BiometricFilterBar({
         )}
 
         {/* MONTHLY */}
-        {viewMode === 'Monthly' && (
+        {!isSummary && viewMode === 'Monthly' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button style={navBtn} onClick={() => stepMonth(-1)}>
               <ChevronLeft size={14} strokeWidth={2.5} />
@@ -236,7 +276,7 @@ export function BiometricFilterBar({
         )}
 
         {/* YEARLY */}
-        {viewMode === 'Yearly' && (
+        {!isSummary && viewMode === 'Yearly' && (
           <CustomSelect
             value={yearValue}
             onChange={val => setSelectedYearOnly(Number(val.replace('All of ', '')))}
@@ -255,48 +295,52 @@ export function BiometricFilterBar({
 
       {/* ── RIGHT ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button
-          onClick={onImportClick}
-          disabled={isImporting}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '7px 16px', borderRadius: '10px',
-            border: '1px solid var(--border)',
-            background: isImporting ? 'var(--surface-hover)' : 'var(--surface)',
-            color: isImporting ? 'var(--text-secondary)' : 'var(--text-primary)',
-            fontSize: '13px', fontWeight: 500,
-            cursor: isImporting ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s',
-          }}
-        >
-          {isImporting ? (
-            <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="2" x2="12" y2="6"></line>
-              <line x1="12" y1="18" x2="12" y2="22"></line>
-              <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-              <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-              <line x1="2" y1="12" x2="6" y2="12"></line>
-              <line x1="18" y1="12" x2="22" y2="12"></line>
-              <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-              <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-            </svg>
-          ) : (
-            <Upload size={14} />
-          )}
-          {isImporting ? 'Importing...' : 'Import'}
-        </button>
-        <button
-          onClick={onExport}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '7px 16px', borderRadius: '10px',
-            border: 'none', background: 'var(--theme-500)',
-            color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          <Download size={14} />
-          Export Report
-        </button>
+        {!isSummary && (
+          <>
+            <button
+              onClick={onImportClick}
+              disabled={isImporting}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '7px 16px', borderRadius: '10px',
+                border: '1px solid var(--border)',
+                background: isImporting ? 'var(--surface-hover)' : 'var(--surface)',
+                color: isImporting ? 'var(--text-secondary)' : 'var(--text-primary)',
+                fontSize: '13px', fontWeight: 500,
+                cursor: isImporting ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {isImporting ? (
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="2" x2="12" y2="6"></line>
+                  <line x1="12" y1="18" x2="12" y2="22"></line>
+                  <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                  <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                  <line x1="2" y1="12" x2="6" y2="12"></line>
+                  <line x1="18" y1="12" x2="22" y2="12"></line>
+                  <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                  <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+                </svg>
+              ) : (
+                <Upload size={14} />
+              )}
+              {isImporting ? 'Importing...' : 'Import'}
+            </button>
+            <button
+              onClick={onExport}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                padding: '7px 16px', borderRadius: '10px',
+                border: 'none', background: 'var(--theme-500)',
+                color: '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              <Download size={14} />
+              Export Report
+            </button>
+          </>
+        )}
       </div>
 
     </div>

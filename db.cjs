@@ -72,11 +72,31 @@ let lastDataVersion = -1;
 let isSyncing = false;
 let isBulkOperating = false;
 
+const syncWithRetry = async (maxAttempts = 3) => {
+  let attempts = 0
+  while (attempts < maxAttempts) {
+    try {
+      await getClient().execute('PRAGMA busy_timeout = 5000')
+      await getClient().sync()
+      return
+    } catch (err) {
+      const msg = err.message || ''
+      const code = err.code || ''
+      if ((msg.includes('WalConflict') || msg.includes('SQLITE_BUSY') || code === 'SQLITE_BUSY') && attempts < maxAttempts - 1) {
+        await new Promise(r => setTimeout(r, 250))
+        attempts += 1
+        continue
+      }
+      throw err
+    }
+  }
+}
+
 const syncCloud = async () => {
   if (isSyncing || isBulkOperating) return;
   isSyncing = true;
   try {
-    await getClient().sync();
+    await syncWithRetry()
     // Check if the cloud sync actually brought in new data by checking the sqlite fingerprint
     const result = await getClient().execute('PRAGMA data_version;');
     const currentVersion = result.rows[0].data_version;
@@ -202,8 +222,8 @@ const SEED_PRODUCT_GROUPS = [
 
 // ── DB Init ────────────────────────────────────────────────────────────────────
 const initDb = async () => {
-  // Pull latest data from cloud before we do anything
-  await syncCloud()
+  // Do NOT call syncCloud() here — let the background worker handle syncing.
+  // This prevents WAL lock conflicts during schema creation.
 
   try {
     await getClient().execute("ALTER TABLE users ADD COLUMN last_active TEXT DEFAULT NULL")
@@ -211,7 +231,13 @@ const initDb = async () => {
     // Column already exists or error
   }
 
-  // Create all tables (with retry — syncCloud above may still hold WAL lock)
+  try {
+    await getClient().execute("ALTER TABLE products ADD COLUMN product_no TEXT")
+  } catch (err) {
+    // Column already exists or error
+  }
+
+  // Create all tables (with retry — schema is created locally without cloud contention)
   let schemaRetries = 20
   while (schemaRetries > 0) {
     try {
@@ -296,6 +322,7 @@ const initDb = async () => {
     CREATE TABLE IF NOT EXISTS products (
       id            TEXT PRIMARY KEY,
       group_id      TEXT,
+      product_no    TEXT,
       case_barcode  TEXT,
       item_barcode  TEXT,
       description   TEXT,
@@ -417,6 +444,27 @@ const initDb = async () => {
       last_read_at TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (user_id, room_id)
     );
+    CREATE TABLE IF NOT EXISTS app_links (
+      key          TEXT PRIMARY KEY,
+      label        TEXT NOT NULL,
+      url          TEXT NOT NULL,
+      description  TEXT DEFAULT NULL,
+      updated_at   TEXT DEFAULT (datetime('now')),
+      updated_by   TEXT DEFAULT NULL,
+      sync_status  TEXT DEFAULT 'pending'
+    );
+    CREATE TABLE IF NOT EXISTS module_activity_logs (
+      id           TEXT PRIMARY KEY,
+      module       TEXT NOT NULL,
+      action       TEXT NOT NULL,
+      entity_label TEXT NOT NULL,
+      entity_id    TEXT DEFAULT NULL,
+      user_id      TEXT DEFAULT NULL,
+      user_name    TEXT NOT NULL,
+      details      TEXT DEFAULT NULL,
+      created_at   TEXT DEFAULT (datetime('now')),
+      sync_status  TEXT DEFAULT 'pending'
+    );
     CREATE UNIQUE INDEX IF NOT EXISTS uq_attendance_emp_date ON attendance(employee_id, date);
     CREATE INDEX IF NOT EXISTS idx_chat_dept ON department_chats(department);
     CREATE INDEX IF NOT EXISTS idx_dm_room ON direct_messages(room_id);
@@ -432,6 +480,7 @@ const initDb = async () => {
     CREATE INDEX IF NOT EXISTS idx_clinic_date_time ON clinic_logs(date DESC, time DESC);
     CREATE INDEX IF NOT EXISTS idx_outlets_name ON outlets(name);
     CREATE INDEX IF NOT EXISTS idx_products_sort ON products(group_id, sort_order, created_at);
+    CREATE INDEX IF NOT EXISTS idx_activity_module ON module_activity_logs(module, created_at DESC);
   `)
       break // success — exit retry loop
     } catch (err) {
@@ -490,14 +539,25 @@ const initDb = async () => {
         const p = group.rows[i]
         await run(
           `INSERT OR IGNORE INTO products
-            (id, group_id, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)`,
-          [p.id, group.id, p.caseBarcode ?? null, p.itemBarcode ?? null,
+            (id, group_id, product_no, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)`,
+          [p.id, group.id, p.productNo ?? null, p.caseBarcode ?? null, p.itemBarcode ?? null,
            p.description ?? null, p.qty ?? null, p.size ?? null, p.price ?? null, i]
         )
       }
     }
   }
+
+  // ── Seed default app links ────────────────────────────────────────────────
+  await run(`
+    INSERT OR IGNORE INTO app_links (key, label, url, description)
+    VALUES (?, ?, ?, ?)
+  `, [
+    'leave_gform',
+    'Leave Request Form',
+    'https://docs.google.com/forms/d/e/1FAIpQLSfSBRl4zYfbTMCJzOfYz_bEK4y6LuV2cpu518K-xPbjWKibnA/viewform?embedded=true',
+    'Google Form shown when employees file a leave request',
+  ])
 
   // Push seed data up to cloud
   await syncCloud()
@@ -854,6 +914,7 @@ const importAttendanceRawText = async (text) => {
 const mapProduct = (p) => ({
   id:          p.id,
   groupId:     p.group_id,
+  productNo:   p.product_no   ?? '',
   caseBarcode: p.case_barcode ?? '',
   itemBarcode: p.item_barcode ?? '',
   description: p.description  ?? '',
@@ -899,13 +960,13 @@ const deleteProductGroup = async (id) => {
 }
 
 const upsertProduct = async (p) => run(`
-  INSERT INTO products (id, group_id, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)
+  INSERT INTO products (id, group_id, product_no, case_barcode, item_barcode, description, qty, size, price, status, sort_order)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)
   ON CONFLICT(id) DO UPDATE SET
-    group_id=excluded.group_id, case_barcode=excluded.case_barcode, item_barcode=excluded.item_barcode,
-    description=excluded.description, qty=excluded.qty, size=excluded.size, price=excluded.price,
-    sort_order=excluded.sort_order, sync_status='pending'
-`, [p.id, p.groupId, p.caseBarcode ?? null, p.itemBarcode ?? null, p.description ?? null,
+    group_id=excluded.group_id, product_no=excluded.product_no, case_barcode=excluded.case_barcode,
+    item_barcode=excluded.item_barcode, description=excluded.description, qty=excluded.qty,
+    size=excluded.size, price=excluded.price, sort_order=excluded.sort_order, sync_status='pending'
+`, [p.id, p.groupId, p.productNo ?? null, p.caseBarcode ?? null, p.itemBarcode ?? null, p.description ?? null,
     p.qty ?? null, p.size ?? null, p.price ?? null, p.sortOrder ?? 0])
 
 const archiveProduct = async (id) => run(`UPDATE products SET status='Archived', sync_status='pending' WHERE id=?`, [id])
@@ -1206,6 +1267,7 @@ const sendDepartmentChat = async ({ id, department, senderId, senderName, messag
     INSERT INTO department_chats (id, department, sender_id, sender_name, message, file_url)
     VALUES (?, ?, ?, ?, ?, ?)
   `, [id, department, senderId, senderName, message || null, fileUrl || null])
+  try { await syncCloud() } catch (_) {}
 }
 
 const getDirectMessages = async (roomId) => {
@@ -1235,6 +1297,7 @@ const sendDirectMessage = async ({ id, roomId, senderId, senderName, message, fi
     INSERT INTO direct_messages (id, room_id, sender_id, sender_name, message, file_url)
     VALUES (?, ?, ?, ?, ?, ?)
   `, [id, roomId, senderId, senderName, message || null, fileUrl || null])
+  try { await syncCloud() } catch (_) {}
 }
 
 // Patches the file_url after a background cloud upload completes
@@ -1248,6 +1311,7 @@ const editMessage = async (msgId, userId, newText, isDm = false) => {
   const diffMs = Date.now() - new Date(row.created_at.replace(' ', 'T') + 'Z').getTime()
   if (diffMs > 15 * 60 * 1000) return { success: false, error: 'Message is too old to edit' }
   await run(`UPDATE ${table} SET message = ?, is_edited = 1 WHERE id = ?`, [newText, msgId])
+  try { await syncCloud() } catch (_) {}
   return { success: true }
 }
 
@@ -1258,6 +1322,7 @@ const unsendMessage = async (msgId, userId, isDm = false) => {
   const diffMs = Date.now() - new Date(row.created_at.replace(' ', 'T') + 'Z').getTime()
   if (diffMs > 15 * 60 * 1000) return { success: false, error: 'Message is too old to unsend' }
   await run(`UPDATE ${table} SET message = NULL, is_unsent = 1, file_url = NULL WHERE id = ?`, [msgId])
+  try { await syncCloud() } catch (_) {}
   return { success: true }
 }
 
@@ -1299,6 +1364,9 @@ const toggleReaction = async (msgId, userId, userName, emoji, isDm = false) => {
   }
 
   await run(`UPDATE ${table} SET reactions = ? WHERE id = ?`, [JSON.stringify(reactions), msgId])
+  // Push reaction change to Turso before other clients are notified via Pusher.
+  try { await syncCloud() } catch (_) {}
+  return reactions
 }
 
 const markChatAsRead = async (userId, roomId) => {
@@ -1380,6 +1448,88 @@ const getRoomReceipts = async (roomId) => {
     userName: r.employee_name || r.username
   }))
 }
+// ── APP LINKS (admin-configurable URLs) ───────────────────────────────────────
+// Column is named `key` in SQLite but aliased on read — libsql Row objects
+// can shadow `.key`, so never read r.key directly.
+const mapAppLink = (r) => ({
+  key:         r.link_key ?? '',
+  label:       r.label    ?? '',
+  url:         r.url      ?? '',
+  description: r.description ?? null,
+  updatedAt:   r.updated_at  ?? '',
+  updatedBy:   r.updated_by  ?? null,
+})
+
+const getAppLinks = async () => {
+  const rows = await queryAll(`
+    SELECT key AS link_key, label, url, description, updated_at, updated_by
+    FROM app_links ORDER BY label
+  `)
+  return rows.map(mapAppLink)
+}
+
+const getAppLink = async (key) => {
+  const row = await queryOne(`
+    SELECT key AS link_key, label, url, description, updated_at, updated_by
+    FROM app_links WHERE key = ?
+  `, [key])
+  return row ? mapAppLink(row) : null
+}
+
+// ── MODULE ACTIVITY LOGS ──────────────────────────────────────────────────────
+const mapActivityLog = (r) => ({
+  id:          r.id,
+  module:      r.module,
+  action:      r.action,
+  entityLabel: r.entity_label,
+  entityId:    r.entity_id ?? null,
+  userId:      r.user_id ?? null,
+  userName:    r.user_name,
+  details:     r.details ?? null,
+  createdAt:   r.created_at ? r.created_at.replace(' ', 'T') + 'Z' : '',
+})
+
+const addModuleActivityLog = async ({ module, action, entityLabel, entityId, userId, userName, details }) => {
+  if (!module || !action || !entityLabel || !userName) {
+    throw new Error('Activity log requires module, action, entityLabel, and userName')
+  }
+  const id = crypto.randomUUID()
+  await run(`
+    INSERT INTO module_activity_logs (id, module, action, entity_label, entity_id, user_id, user_name, details)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `, [id, module, action, entityLabel, entityId ?? null, userId ?? null, userName, details ?? null])
+  syncCloud().catch(() => {})
+  return mapActivityLog(await queryOne(`SELECT * FROM module_activity_logs WHERE id = ?`, [id]))
+}
+
+const getModuleActivityLogs = async (module, limit = 200) => {
+  const rows = await queryAll(`
+    SELECT * FROM module_activity_logs
+    WHERE module = ?
+    ORDER BY datetime(created_at) DESC
+    LIMIT ?
+  `, [module, limit])
+  return rows.map(mapActivityLog)
+}
+
+const upsertAppLink = async ({ key, label, url, description, updatedBy }) => {
+  if (!key || !url) throw new Error('Link key and URL are required.')
+  await run(`
+    INSERT INTO app_links (key, label, url, description, updated_at, updated_by, sync_status)
+    VALUES (?, ?, ?, ?, datetime('now'), ?, 'pending')
+    ON CONFLICT(key) DO UPDATE SET
+      label       = excluded.label,
+      url         = excluded.url,
+      description = excluded.description,
+      updated_at  = datetime('now'),
+      updated_by  = excluded.updated_by,
+      sync_status = 'pending'
+  `, [String(key), label ?? '', String(url), description ?? null, updatedBy ?? null])
+  // Push in background — local write is already committed; don't block the UI.
+  syncCloud().catch(() => {})
+  return getAppLink(key)
+}
+
 const wipeAllData = async () => {
   // Wait if a background sync is currently running to prevent SQLITE_BUSY errors
   while (isSyncing) {
@@ -1390,7 +1540,7 @@ const wipeAllData = async () => {
     const tables = [
       'attendance', 'clinic_logs', 'saved_orders', 'leave_requests', 'reports',
       'report_comments', 'report_status_logs', 'department_chats',
-      'direct_messages', 'chat_read_receipts', 'outlet_product_prices', 'outlets',
+      'direct_messages', 'chat_read_receipts', 'module_activity_logs', 'outlet_product_prices', 'outlets',
       'products', 'product_groups', 'employees'
     ];
     for (const t of tables) {
@@ -1437,5 +1587,7 @@ module.exports = {
   getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
   updateChatFileUrl, updateDmFileUrl, toggleReaction,
   editMessage, unsendMessage, deleteMessageForMe,
-  markChatAsRead, getChatSidebarData, getRoomReceipts
+  markChatAsRead, getChatSidebarData, getRoomReceipts,
+  getAppLinks, getAppLink, upsertAppLink,
+  addModuleActivityLog, getModuleActivityLogs,
 }

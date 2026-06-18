@@ -5,6 +5,7 @@ import { BiometricHeader }                from './components/BiometricHeader'
 import { BiometricStatCards }             from './components/BiometricStatCards'
 import { BiometricFilterBar }             from './components/BiometricFilterBar'
 import { BiometricTable }                 from './components/BiometricTable'
+import BiometricManhoursSummary           from './components/BiometricManhoursSummary'
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -156,6 +157,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
   const [debouncedSearch,  setDebouncedSearch]  = useState('')
   const [selectedDept,     setSelectedDept]     = useState('All Departments')
   const [viewMode,         setViewMode]         = useState('Daily')
+  const [pageMode,         setPageMode]         = useState('attendance')
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchQuery), 300)
@@ -337,11 +339,10 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
         <BiometricHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
       </div>
 
-      <div className="px-8 py-6 flex flex-col gap-6 flex-1 min-h-0">
-
-        <BiometricStatCards stats={stats} />
+      <div className="px-8 py-6 flex flex-col gap-6 flex-1 min-h-0 overflow-y-auto">
 
         <BiometricFilterBar
+          pageMode={pageMode}                   setPageMode={setPageMode}
           viewMode={viewMode}                   setViewMode={setViewMode}
           selectedDate={selectedDate}           setSelectedDate={setSelectedDate}
           selectedMonth={selectedMonth}         setSelectedMonth={setSelectedMonth}
@@ -378,13 +379,20 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
         )}
 
-        {/* key forces full remount on search/dept/viewMode change — fixes stale pagination bug */}
-        <BiometricTable
-          key={debouncedSearch + '|' + selectedDept + '|' + viewMode}
-          records={filteredRecords}
-          total={filteredRecords.length}
-          viewMode={viewMode}
-        />
+        {pageMode === 'summary' ? (
+          <BiometricManhoursSummary records={records} selectedDept={selectedDept} refreshKey={refreshKey} />
+        ) : (
+          <>
+            <BiometricStatCards stats={stats} />
+
+            <BiometricTable
+              key={debouncedSearch + '|' + selectedDept + '|' + viewMode}
+              records={filteredRecords}
+              total={filteredRecords.length}
+              viewMode={viewMode}
+            />
+          </>
+        )}
 
       </div>
     </div>

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { Plus, Search, User, Archive, ChevronDown, Check } from "lucide-react"
 import { v4 as uuidv4 } from 'uuid'
 import NotificationBell from '../../components/ui/NotificationBell'
+import ModuleActivityLog from '../../components/ui/ModuleActivityLog'
+import { logModuleActivity, buildActivityDetails, diffFields, snapshotFromFields, EMPLOYEE_LOG_FIELDS } from '../../lib/activityLog'
 
 import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS, DEFAULT_DAY_SCHEDULE, DAYS_OF_WEEK } from "./employeeConstants"
 import { EmployeeCardGrid } from "./components/EmployeeCardGrid"
@@ -202,12 +204,59 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
       ...form,
     }
     await window.electronAPI.upsertEmployee(toDb(emp))
+    const afterLog = {
+      employee_no: emp.employee_no,
+      name: emp.name,
+      dept: emp.dept,
+      role: emp.role,
+      contact: emp.contact,
+      daySchedule: emp.daySchedule,
+    }
+    if (isNew) {
+      await logModuleActivity(currentUser, 'employees', 'add', emp.name, emp.id, buildActivityDetails({
+        recordType: 'Employee',
+        recordId: emp.id,
+        employeeNo: emp.employee_no,
+        table: 'employees',
+        snapshot: snapshotFromFields(afterLog, EMPLOYEE_LOG_FIELDS),
+      }))
+    } else {
+      const beforeLog = {
+        employee_no: modal.employee.employee_no,
+        name: modal.employee.name,
+        dept: modal.employee.dept,
+        role: modal.employee.role,
+        contact: modal.employee.contact,
+        daySchedule: modal.employee.daySchedule,
+      }
+      await logModuleActivity(currentUser, 'employees', 'edit', emp.name, emp.id, buildActivityDetails({
+        recordType: 'Employee',
+        recordId: emp.id,
+        employeeNo: emp.employee_no,
+        table: 'employees',
+        changes: diffFields(beforeLog, afterLog, EMPLOYEE_LOG_FIELDS),
+      }))
+    }
     await loadEmployees()
     setModal(null)
   }
 
   async function handleDelete() {
     await window.electronAPI.archiveEmployee(modal.employee.id)
+    await logModuleActivity(currentUser, 'employees', 'archive', modal.employee.name, modal.employee.id, buildActivityDetails({
+      recordType: 'Employee',
+      recordId: modal.employee.id,
+      employeeNo: modal.employee.employee_no,
+      table: 'employees',
+      removedSnapshot: snapshotFromFields({
+        employee_no: modal.employee.employee_no,
+        name: modal.employee.name,
+        dept: modal.employee.dept,
+        role: modal.employee.role,
+        contact: modal.employee.contact,
+        daySchedule: modal.employee.daySchedule,
+      }, EMPLOYEE_LOG_FIELDS),
+    }))
     await loadEmployees()
     setModal(null)
   }
@@ -218,7 +267,23 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   }
 
   async function handlePermanentDelete(id) {
+    const emp = archived.find(e => e.id === id)
     await window.electronAPI.permanentDeleteEmployee(id)
+    await logModuleActivity(currentUser, 'employees', 'permanent_delete', emp?.name ?? 'Employee', id, buildActivityDetails({
+      recordType: 'Employee',
+      recordId: id,
+      employeeNo: emp?.employee_no,
+      table: 'employees',
+      removedSnapshot: emp ? snapshotFromFields({
+        employee_no: emp.employee_no,
+        name: emp.name,
+        dept: emp.dept,
+        role: emp.role,
+        contact: emp.contact,
+        daySchedule: emp.daySchedule,
+      }, EMPLOYEE_LOG_FIELDS) : { Name: emp?.name ?? '—' },
+      note: 'Permanently deleted from archive',
+    }))
     await loadEmployees()
   }
 
@@ -262,6 +327,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
+          <ModuleActivityLog module="employees" refreshKey={refreshKey} />
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
           <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
             <User className="w-4 h-4" />

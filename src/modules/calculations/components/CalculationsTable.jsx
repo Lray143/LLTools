@@ -9,6 +9,7 @@ import CalculationsSummary      from './CalculationsSummary'
 import CalculationsReceiptModal from './CalculationsReceiptModal'
 import CalculationsMonthlySummary from './CalculationsMonthlySummary'
 import OutletModal from '../../outlets/components/OutletModal'
+import { logModuleActivity, buildActivityDetails, snapshotFromFields, OUTLET_LOG_FIELDS } from '../../../lib/activityLog'
 
 const COLUMNS = [
   { label: 'Item Description', width: 'w-auto'                },
@@ -56,7 +57,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
       .then((data) => setGroups(data?.length ? data : INITIAL_GROUPS))
       .catch(() => setGroups(INITIAL_GROUPS))
       .finally(() => setLoading(false))
-  }, [])
+  }, [refreshKey])
 
   // ── Load outlets ──────────────────────────────────────────────────
   const loadOutlets = () =>
@@ -64,7 +65,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
       .then((data) => setOutlets(data ?? []))
       .catch(() => setOutlets([]))
 
-  useEffect(() => { loadOutlets() }, [])
+  useEffect(() => { loadOutlets() }, [refreshKey])
 
   // ── Load outlet prices + discounts when outlet changes ────────────
   useEffect(() => {
@@ -89,6 +90,19 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
 
   const handleAddOutletSave = async (payload) => {
     await window.electronAPI.upsertOutlet(payload)
+    await logModuleActivity(currentUser, 'calculations', 'add', `Outlet: ${payload.name}`, payload.id, buildActivityDetails({
+      recordType: 'Outlet',
+      recordId: payload.id,
+      table: 'outlets',
+      snapshot: snapshotFromFields({
+        name: payload.name,
+        address: payload.address,
+        region: payload.region,
+        status: payload.status,
+        discounts: payload.discounts,
+      }, OUTLET_LOG_FIELDS),
+      note: 'Added from Calculations page',
+    }))
     await loadOutlets()
     setSelectedOutletId(payload.id)
     setShowAddOutlet(false)
@@ -179,7 +193,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
       {mode === 'summary' && (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-8 pb-8">
-            <CalculationsMonthlySummary />
+            <CalculationsMonthlySummary currentUser={currentUser} refreshKey={refreshKey} />
           </div>
         </div>
       )}
@@ -285,6 +299,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
               qtys={qtys}
               outletPrices={outletPrices}
               discounts={outletDiscounts}
+              currentUser={currentUser}
               onClose={() => setShowReceipt(false)}
             />
           )}

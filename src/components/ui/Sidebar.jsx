@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
-  SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck, MessageSquare
+  SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck, MessageSquare, Link2
 } from 'lucide-react'
 
 const ROLE_LABELS = {
@@ -27,6 +27,7 @@ const ALL_NAV_ITEMS = [
 ]
 
 const CHAT_ITEM     = { id: 'chat',     label: 'Chats',           icon: MessageSquare }
+const APP_LINKS_ITEM = { id: 'app-links', label: 'App Links',      icon: Link2 }
 const SETTINGS_ITEM = { id: 'settings', label: 'Settings', icon: Settings }
 
 // ── Canvas-based background removal for mascot images ────────────────────────
@@ -224,6 +225,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
             System
           </p>
           {allowedModules.includes('chat') && <NavButton item={CHAT_ITEM} />}
+          {allowedModules.includes('app-links') && <NavButton item={APP_LINKS_ITEM} />}
           <NavButton item={SETTINGS_ITEM} />
         </div>
 

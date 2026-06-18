@@ -1,6 +1,7 @@
 // src/modules/calculations/components/CalculationsReceiptModal.jsx
 import { useState } from 'react'
 import { X, Printer, Store, Tag, Save, CheckCircle, AlertCircle } from 'lucide-react'
+import { logModuleActivity, buildActivityDetails } from '../../../lib/activityLog'
 
 const fmt = (n) =>
   n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -12,6 +13,7 @@ export default function CalculationsReceiptModal({
   qtys,             // { productId: string }
   outletPrices,     // { productId: price }
   discounts,        // [{ id, name, value }]
+  currentUser,
   onClose,
 }) {
   // Collect ordered lines
@@ -73,6 +75,22 @@ export default function CalculationsReceiptModal({
         // Convert local date string to ISO datetime (midnight local → stored as-is)
         orderDate:    orderDate ? `${orderDate}T00:00:00` : null,
       })
+      if (currentUser) {
+        const label = `Order ${series.trim()}`
+        const lineSummary = lines.flatMap(g => g.items).map(i => `${i.description} ×${i.qty}`).join(', ')
+        await logModuleActivity(currentUser, 'calculations', 'add', label, null, buildActivityDetails({
+          recordType: 'Saved order',
+          table: 'saved_orders',
+          snapshot: {
+            'Series #': series.trim(),
+            'Order date': orderDate || '—',
+            Outlet: outletName ?? 'Default prices',
+            Subtotal: `₱${fmt(subtotal)}`,
+            'Grand total': `₱${fmt(grandTotal)}`,
+            'Line items': lineSummary || '—',
+          },
+        }))
+      }
       setSaveStatus('saved')
     } catch (e) {
       console.error(e)
@@ -254,4 +272,4 @@ export default function CalculationsReceiptModal({
       </div>
     </div>
   )
-}
+}

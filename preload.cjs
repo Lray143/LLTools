@@ -7,6 +7,15 @@ window.electronAPI = {
   refreshUser:             (id)                 => ipcRenderer.invoke('auth:refresh', id),
   wipeAllData:             ()                   => ipcRenderer.invoke('db:wipeAll'),
 
+  // ── App Links ───────────────────────────────────────────────────
+  getAppLinks:             ()                   => ipcRenderer.invoke('appLinks:getAll'),
+  getAppLink:              (key)                => ipcRenderer.invoke('appLinks:get', key),
+  upsertAppLink:           (link)               => ipcRenderer.invoke('appLinks:upsert', link),
+
+  // ── Module Activity Logs ──────────────────────────────────────────
+  addModuleActivityLog:    (entry)              => ipcRenderer.invoke('activityLog:add', entry),
+  getModuleActivityLogs:   (module, limit)      => ipcRenderer.invoke('activityLog:get', module, limit),
+
   // ── Employees ───────────────────────────────────────────────────
   getEmployees:            ()        => ipcRenderer.invoke('employees:getAll'),
   getArchivedEmployees:    ()        => ipcRenderer.invoke('employees:getArchived'),

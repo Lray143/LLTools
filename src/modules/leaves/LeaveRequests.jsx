@@ -10,6 +10,18 @@ import { HR_ROLES }          from './components/leaveConstants'
 import { Button }            from '../../components/ui/button'
 import NotificationBell      from '../../components/ui/NotificationBell'
 
+const DEFAULT_LEAVE_GFORM =
+  'https://docs.google.com/forms/d/e/1FAIpQLSfSBRl4zYfbTMCJzOfYz_bEK4y6LuV2cpu518K-xPbjWKibnA/viewform?embedded=true'
+
+function normalizeFormUrl(url) {
+  const trimmed = (url || '').trim()
+  if (!trimmed) return DEFAULT_LEAVE_GFORM
+  if (!trimmed.includes('docs.google.com/forms')) return trimmed
+  if (trimmed.includes('embedded=true')) return trimmed
+  const sep = trimmed.includes('?') ? '&' : '?'
+  return `${trimmed}${sep}embedded=true`
+}
+
 // ── CustomSelect (matches BiometricFilterBar and Employees) ──────────────────
 function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
   const [open, setOpen] = useState(false)
@@ -108,6 +120,28 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
   const [search,       setSearch]       = useState('')
   const [successMsg,   setSuccessMsg]   = useState('')
   const [errorMsg,     setErrorMsg]     = useState('')
+  const [gformUrl,     setGformUrl]     = useState(DEFAULT_LEAVE_GFORM)
+
+  const gformUrlRef = useRef(gformUrl)
+
+  // ── Load leave form URL — only update state when the URL actually changed ─
+  useEffect(() => {
+    window.electronAPI?.getAppLink?.('leave_gform')
+      .then(link => {
+        if (!link?.url) return
+        const next = normalizeFormUrl(link.url)
+        if (next !== gformUrlRef.current) {
+          gformUrlRef.current = next
+          setGformUrl(next)
+        }
+      })
+      .catch(() => {
+        if (gformUrlRef.current !== DEFAULT_LEAVE_GFORM) {
+          gformUrlRef.current = DEFAULT_LEAVE_GFORM
+          setGformUrl(DEFAULT_LEAVE_GFORM)
+        }
+      })
+  }, [refreshKey])
 
   // ── Data loading ──────────────────────────────────────────────────────────
   const loadMine = useCallback(async () => {
@@ -375,7 +409,7 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
       </div>
 
       {/* Google Form modal — employee new request */}
-      {!isHR && <GFormModal open={showGForm} onClose={() => setShowGForm(false)} />}
+      {!isHR && <GFormModal open={showGForm} onClose={() => setShowGForm(false)} formUrl={gformUrl} />}
 
       {/* Legacy LeaveModal — HR only (kept for HR's own leave filing if needed) */}
       <LeaveModal
@@ -401,10 +435,9 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
 }
 
 // ── Google Form Modal ──────────────────────────────────────────────────────
-const GFORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfSBRl4zYfbTMCJzOfYz_bEK4y6LuV2cpu518K-xPbjWKibnA/viewform?embedded=true'
-
-function GFormModal({ open, onClose }) {
+function GFormModal({ open, onClose, formUrl }) {
   if (!open) return null
+  const src = formUrl || DEFAULT_LEAVE_GFORM
   return (
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
@@ -463,7 +496,8 @@ function GFormModal({ open, onClose }) {
 
         {/* Webview */}
         <webview
-          src={GFORM_URL}
+          key={src}
+          src={src}
           style={{ flex: 1, width: '100%', border: 'none' }}
         />
       </div>

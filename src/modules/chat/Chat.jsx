@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo, useCallback, startTransition } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, startTransition } from 'react'
+import Pusher from 'pusher-js'
 import { Hash, User, Users, MessageSquare, Wifi } from 'lucide-react'
 import ChatSidebar from './components/ChatSidebar'
 import ChatMessages from './components/ChatMessages'
@@ -13,6 +14,12 @@ const GLOBAL_ROLES = ['admin', 'hr']
 const getRoomId = (user1Id, user2Id) =>
   `DM_${[String(user1Id), String(user2Id)].sort().join('_')}`
 
+function chatMessagesFingerprint(msgs) {
+  return (msgs || []).map(m =>
+    `${m.id}|${m.message}|${m.isUnsent ? 1 : 0}|${m.isEdited ? 1 : 0}|${JSON.stringify(m.reactions || {})}`
+  ).join('\n')
+}
+
 export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavigate }) {
   const [activeTab, setActiveTab]         = useState('channels')
   const [messageCache, setMessageCache]   = useState({})
@@ -25,8 +32,10 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
   const [selectedDept, setSelectedDept]   = useState(currentUser?.department || 'Admin')
   const [selectedUser, setSelectedUser]   = useState(null)
   const [replyTo, setReplyTo]             = useState(null)
+  const [onlineUsers, setOnlineUsers]     = useState(new Set())
   const messagesEndRef = useRef(null)
-  const autoScrollNextRenderRef = useRef(false)
+  const pendingScrollRef = useRef(null) // 'instant' | 'smooth' | null
+  const lastScrolledRoomRef = useRef(null)
   const scrollContainerRef = useRef(null)
   // Track typing so background refreshes don't interrupt mid-keystroke
   const isTypingRef    = useRef(false)
@@ -46,12 +55,11 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }, [myParticipantId])
 
-  // Helper: fire a Pusher event so other clients sync instantly
-  const pusherNotify = useCallback((roomId) => {
+  const pusherMessageUpdated = useCallback((data) => {
     window.electronAPI?.sendPusherEvent?.({
       channel: 'lltools-updates',
-      event: 'new-message',
-      data: { roomId, senderId: '' } // empty senderId so receivers always sync
+      event: 'message-updated',
+      data,
     }).catch(() => {})
   }, [])
 
@@ -85,6 +93,98 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
   // Sidebar reloads are handled inside the refreshKey effect below (lines 133-140)
 
+  // ── Pusher: instant updates on other clients (reactions, messages, edits) ─
+  const myParticipantIdRef = useRef(myParticipantId)
+  const loadSidebarDataRef = useRef(loadSidebarData)
+  useEffect(() => { myParticipantIdRef.current = myParticipantId }, [myParticipantId])
+  useEffect(() => { loadSidebarDataRef.current = loadSidebarData }, [loadSidebarData])
+
+  useEffect(() => {
+    if (!import.meta.env.VITE_PUSHER_KEY) return
+
+    const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
+      cluster: import.meta.env.VITE_PUSHER_CLUSTER,
+    })
+    const channel = pusher.subscribe('lltools-updates')
+
+    channel.bind('user-online', (data) => {
+      if (data?.userId) {
+        setOnlineUsers(prev => new Set([...prev, String(data.userId)]))
+      }
+    })
+
+    channel.bind('user-offline', (data) => {
+      if (data?.userId) {
+        setOnlineUsers(prev => {
+          const next = new Set(prev)
+          next.delete(String(data.userId))
+          return next
+        })
+      }
+    })
+
+    channel.bind('reaction-updated', (data) => {
+      const myId = String(myParticipantIdRef.current)
+      if (String(data?.actorId) === myId) return
+      if (!data?.roomId || !data?.msgId) return
+
+      setMessageCache(prev => {
+        const msgs = prev[data.roomId]
+        if (!msgs) return prev
+        return {
+          ...prev,
+          [data.roomId]: msgs.map(m =>
+            m.id === data.msgId ? { ...m, reactions: data.reactions ?? {} } : m
+          ),
+        }
+      })
+    })
+
+    channel.bind('new-message', (data) => {
+      const myId = String(myParticipantIdRef.current)
+      if (data?.senderId && String(data.senderId) === myId) return
+      if (!data?.roomId || !data?.message?.id) return
+
+      setMessageCache(prev => {
+        const existing = prev[data.roomId] || []
+        if (existing.some(m => m.id === data.message.id)) return prev
+        return { ...prev, [data.roomId]: [...existing, data.message] }
+      })
+      loadSidebarDataRef.current()
+    })
+
+    channel.bind('message-updated', (data) => {
+      const myId = String(myParticipantIdRef.current)
+      if (String(data?.actorId) === myId) return
+      if (!data?.roomId || !data?.msgId) return
+
+      setMessageCache(prev => {
+        const msgs = prev[data.roomId]
+        if (!msgs) return prev
+        return {
+          ...prev,
+          [data.roomId]: msgs.map(m => {
+            if (m.id !== data.msgId) return m
+            if (data.type === 'edit') return { ...m, message: data.message, isEdited: true }
+            if (data.type === 'unsend') return { ...m, isUnsent: true, message: null, fileUrl: null }
+            return m
+          }),
+        }
+      })
+      loadSidebarDataRef.current()
+    })
+
+    return () => {
+      channel.unbind('user-online')
+      channel.unbind('user-offline')
+      channel.unbind('reaction-updated')
+      channel.unbind('new-message')
+      channel.unbind('message-updated')
+      pusher.unsubscribe('lltools-updates')
+      pusher.disconnect()
+    }
+  }, [])
+
   // ── Mark current room as read when user switches rooms ───────────────────
   useEffect(() => {
     const roomId = activeTab === 'channels'
@@ -96,11 +196,60 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       .catch(console.error)
   }, [selectedDept, selectedUser, activeTab])
 
+  // ── Broadcast online/offline on app startup and close (NOT on focus/blur) ─
+  useEffect(() => {
+    const broadcastOnline = () => {
+      window.electronAPI?.sendPusherEvent?.({
+        channel: 'lltools-updates',
+        event: 'user-online',
+        data: { userId: myParticipantId },
+      }).catch(() => {})
+    }
+
+    const broadcastOffline = () => {
+      window.electronAPI?.sendPusherEvent?.({
+        channel: 'lltools-updates',
+        event: 'user-offline',
+        data: { userId: myParticipantId },
+      }).catch(() => {})
+    }
+
+    // Broadcast online once when app loads (only once on mount)
+    broadcastOnline()
+
+    // Broadcast offline when window closes or app unloads
+    const handleBeforeUnload = () => {
+      // Use sendBeacon for reliable delivery on app close
+      const data = new FormData()
+      data.append('event', 'user-offline')
+      data.append('userId', myParticipantId)
+      navigator.sendBeacon('broadcast-offline', data)
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Optional: Send heartbeat every 5 minutes to confirm still online
+    // This helps if Pusher connection drops without triggering offline
+    const heartbeatInterval = setInterval(() => {
+      broadcastOnline()
+    }, 5 * 60 * 1000) // 5 minutes
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      clearInterval(heartbeatInterval)
+      broadcastOffline()
+    }
+  }, [myParticipantId])
+
   // Check if user is scrolled near the bottom of the messages container
   const isNearBottom = useCallback(() => {
     const el = scrollContainerRef.current
     if (!el) return true
     return el.scrollHeight - el.scrollTop - el.clientHeight < 150
+  }, [])
+
+  const scrollToBottomInstant = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (el) el.scrollTop = el.scrollHeight
   }, [])
 
   // ── Load messages when room changes ──────────────────────────────────────
@@ -119,23 +268,17 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
       setReadReceipts(receipts)
 
-      // Mark that we need to scroll after the next render completes
-      if (forceScroll || wasNearBottom) {
-        autoScrollNextRenderRef.current = true
+      if (forceScroll) {
+        pendingScrollRef.current = 'instant'
+      } else if (wasNearBottom) {
+        pendingScrollRef.current = 'smooth'
       }
 
       startTransition(() => {
         setMessageCache(prev => {
           const oldMsgs = prev[reqRoomId] || []
           const newMsgs = msgs || []
-          // Check length, last message id, AND last message content (catches edits/reactions/unsends)
-          const last = (arr) => arr[arr.length - 1]
-          if (
-            oldMsgs.length === newMsgs.length &&
-            last(oldMsgs)?.id === last(newMsgs)?.id &&
-            last(oldMsgs)?.message === last(newMsgs)?.message &&
-            JSON.stringify(last(oldMsgs)?.reactions) === JSON.stringify(last(newMsgs)?.reactions)
-          ) return prev
+          if (chatMessagesFingerprint(oldMsgs) === chatMessagesFingerprint(newMsgs)) return prev
           return { ...prev, [reqRoomId]: newMsgs }
         })
       })
@@ -144,20 +287,29 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }, [activeTab, selectedDept, selectedUser, myParticipantId, isNearBottom])
 
-  // Handle the actual scrolling AFTER React commits the new messages to the DOM
   const activeRoomId = activeTab === 'channels' ? selectedDept : getRoomId(myParticipantId, selectedUser?.id)
-  useEffect(() => {
-    if (autoScrollNextRenderRef.current) {
-      autoScrollNextRenderRef.current = false
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-      }, 50)
-    }
-  }, [messageCache[activeRoomId]])
 
-  // Room switch → always scroll to bottom
+  // Room switch → jump to bottom instantly (before paint, no scroll animation)
+  useLayoutEffect(() => {
+    const roomChanged = lastScrolledRoomRef.current !== activeRoomId
+    if (roomChanged) {
+      lastScrolledRoomRef.current = activeRoomId
+      scrollToBottomInstant()
+      return
+    }
+
+    const mode = pendingScrollRef.current
+    if (!mode) return
+    pendingScrollRef.current = null
+
+    if (mode === 'instant') scrollToBottomInstant()
+    else messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [activeRoomId, messageCache[activeRoomId], scrollToBottomInstant])
+
+  // Room switch → load messages for the new room
   useEffect(() => {
     setReplyTo(null)
+    pendingScrollRef.current = 'instant'
     loadMessages(true)
   }, [selectedDept, selectedUser, activeTab])
 
@@ -187,16 +339,20 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       finalMsgText = `[reply]${replyTo.senderName}|${replySnippet}[/reply]\n${finalMsgText}`
     }
 
+    const msgId = forcedId || crypto.randomUUID()
+    const createdAt = new Date().toISOString()
+    const senderName = currentUser.employeeName || currentUser.username
+
     try {
       if (activeTab === 'channels') {
         const msgData = {
-          id: forcedId || crypto.randomUUID(), department: selectedDept,
+          id: msgId, department: selectedDept,
           senderId: myParticipantId,
-          senderName: currentUser.employeeName || currentUser.username,
-          message: finalMsgText, fileUrl: forcedFileUrl
+          senderName,
+          message: finalMsgText, fileUrl: forcedFileUrl,
         }
         setMessageCache(prev => ({
-          ...prev, [roomId]: [...(prev[roomId] || []), { ...msgData, createdAt: new Date().toISOString() }]
+          ...prev, [roomId]: [...(prev[roomId] || []), { ...msgData, createdAt }]
         }))
         setInputMsg('')
         setReplyTo(null)
@@ -204,13 +360,13 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         await window.electronAPI.sendChatMessage(msgData)
       } else if (activeTab === 'dms' && selectedUser) {
         const msgData = {
-          id: forcedId || crypto.randomUUID(), roomId,
+          id: msgId, roomId,
           senderId: myParticipantId,
-          senderName: currentUser.employeeName || currentUser.username,
-          message: finalMsgText, fileUrl: forcedFileUrl
+          senderName,
+          message: finalMsgText, fileUrl: forcedFileUrl,
         }
         setMessageCache(prev => ({
-          ...prev, [roomId]: [...(prev[roomId] || []), { ...msgData, createdAt: new Date().toISOString() }]
+          ...prev, [roomId]: [...(prev[roomId] || []), { ...msgData, createdAt }]
         }))
         setInputMsg('')
         setReplyTo(null)
@@ -220,11 +376,26 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
       window.electronAPI.markChatAsRead(myParticipantId, roomId).catch(console.error)
       loadSidebarData()
-      // Notify other clients instantly via Pusher
       window.electronAPI?.sendPusherEvent?.({
         channel: 'lltools-updates',
         event: 'new-message',
-        data: { roomId, senderId: myParticipantId }
+        data: {
+          roomId,
+          senderId: myParticipantId,
+          message: {
+            id: msgId,
+            senderId: myParticipantId,
+            senderName,
+            message: finalMsgText,
+            fileUrl: forcedFileUrl,
+            createdAt,
+            reactions: {},
+            isUnsent: false,
+            isEdited: false,
+            deletedFor: [],
+            ...(activeTab === 'channels' ? { department: selectedDept } : { roomId }),
+          },
+        },
       }).catch(() => {})
     } catch (err) {
       console.error('Failed to send message', err)
@@ -344,50 +515,76 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
   }, [activeTab, selectedDept, selectedUser, employees])
 
   // ── Optimistic Action Handlers ────────────────────────────────────────────
-  const handleToggleReaction = useCallback((msgId, senderId, userName, emoji, isDm) => {
+  const handleToggleReaction = useCallback(async (msgId, senderId, userName, emoji, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
+
     setMessageCache(prev => {
       const msgs = prev[roomId] || []
       return {
         ...prev,
         [roomId]: msgs.map(m => {
           if (m.id !== msgId) return m
-          const reactions = { ...m.reactions }
-          const users = reactions[emoji] || []
-          const idx = users.findIndex(u => String(u.userId) === String(senderId))
-          if (idx !== -1) {
-            users.splice(idx, 1)
-            if (users.length === 0) delete reactions[emoji]
-          } else {
-            reactions[emoji] = [...users, { userId: senderId, userName }]
+          const reactions = { ...(m.reactions || {}) }
+          let wasSameEmoji = false
+
+          for (const [existingEmoji, users] of Object.entries(reactions)) {
+            const filtered = (users || []).filter(u => String(u.userId) !== String(senderId))
+            if (filtered.length !== (users || []).length && existingEmoji === emoji) wasSameEmoji = true
+            if (filtered.length === 0) delete reactions[existingEmoji]
+            else reactions[existingEmoji] = filtered
           }
+
+          if (!wasSameEmoji) {
+            reactions[emoji] = [...(reactions[emoji] || []), { userId: senderId, userName }]
+          }
+
           return { ...m, reactions }
         })
       }
     })
-    window.electronAPI?.toggleReaction?.(msgId, senderId, userName, emoji, isDm)
-    pusherNotify(roomId)
-  }, [selectedDept, selectedUser, myParticipantId, pusherNotify])
 
-  const handleEditMessage = useCallback((msgId, senderId, newMsg, isDm) => {
+    try {
+      const reactions = await window.electronAPI.toggleReaction(msgId, senderId, userName, emoji, isDm)
+      window.electronAPI?.sendPusherEvent?.({
+        channel: 'lltools-updates',
+        event: 'reaction-updated',
+        data: { roomId, msgId, reactions: reactions ?? {}, actorId: String(senderId) },
+      }).catch(() => {})
+    } catch (err) {
+      console.error('Failed to toggle reaction', err)
+      loadMessages(false)
+    }
+  }, [selectedDept, selectedUser, myParticipantId, loadMessages])
+
+  const handleEditMessage = useCallback(async (msgId, senderId, newMsg, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
     setMessageCache(prev => ({
       ...prev,
       [roomId]: (prev[roomId] || []).map(m => m.id === msgId ? { ...m, message: newMsg, isEdited: true } : m)
     }))
-    window.electronAPI?.editMessage?.(msgId, senderId, newMsg, isDm)
-    pusherNotify(roomId)
-  }, [selectedDept, selectedUser, myParticipantId, pusherNotify])
+    try {
+      await window.electronAPI?.editMessage?.(msgId, senderId, newMsg, isDm)
+      pusherMessageUpdated({ roomId, msgId, type: 'edit', message: newMsg, actorId: String(senderId) })
+    } catch (err) {
+      console.error('Failed to edit message', err)
+      loadMessages(false)
+    }
+  }, [selectedDept, selectedUser, myParticipantId, pusherMessageUpdated, loadMessages])
 
-  const handleUnsendMessage = useCallback((msgId, senderId, isDm) => {
+  const handleUnsendMessage = useCallback(async (msgId, senderId, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
     setMessageCache(prev => ({
       ...prev,
       [roomId]: (prev[roomId] || []).map(m => m.id === msgId ? { ...m, isUnsent: true } : m)
     }))
-    window.electronAPI?.unsendMessage?.(msgId, senderId, isDm)
-    pusherNotify(roomId)
-  }, [selectedDept, selectedUser, myParticipantId, pusherNotify])
+    try {
+      await window.electronAPI?.unsendMessage?.(msgId, senderId, isDm)
+      pusherMessageUpdated({ roomId, msgId, type: 'unsend', actorId: String(senderId) })
+    } catch (err) {
+      console.error('Failed to unsend message', err)
+      loadMessages(false)
+    }
+  }, [selectedDept, selectedUser, myParticipantId, pusherMessageUpdated, loadMessages])
 
   const handleDeleteForMe = useCallback((msgId, senderId, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
@@ -445,6 +642,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
           sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
           isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
+          onlineUsers={onlineUsers}
         />
 
         {/* ── MAIN CHAT AREA ── */}

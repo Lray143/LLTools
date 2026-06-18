@@ -17,6 +17,7 @@ import Reports        from './modules/reports/Reports'
 import Settings       from './modules/settings/Settings'
 import LeaveRequests  from './modules/leaves/LeaveRequests'
 import Chat           from './modules/chat/Chat'
+import AppLinks       from './modules/app-links/AppLinks'
 
 import { getAllowedModules } from './lib/permissions'
 import { getSavedTheme, applyThemeToDocument, saveTheme } from './lib/theme'
@@ -45,6 +46,15 @@ function App() {
       const myId = String(me?.employeeId || me?.id || '')
       // Don't force-sync for messages we sent ourselves (already in optimistic cache)
       if (data?.senderId && data.senderId === myId) return
+      window.electronAPI?.forceSync?.()
+    })
+
+    channel.bind('reaction-updated', () => {
+      // Keep local DB in sync; Chat applies the payload instantly via its own listener.
+      window.electronAPI?.forceSync?.()
+    })
+
+    channel.bind('message-updated', () => {
       window.electronAPI?.forceSync?.()
     })
 
@@ -169,6 +179,7 @@ function App() {
     if (activePage === 'reports')    return <Reports currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />
     if (activePage === 'settings')   return <Settings currentUser={currentUser} />
     if (activePage === 'chat')       return <Chat currentUser={currentUser} refreshKey={refreshKey} typingUsers={typingUsers} onNavigate={setActivePage} />
+    if (activePage === 'app-links')  return <AppLinks currentUser={currentUser} refreshKey={refreshKey} />
 
     // Static pages
     const STATIC_PAGES = {
@@ -200,4 +211,4 @@ function App() {
   )
 }
 
-export default App
+export default App

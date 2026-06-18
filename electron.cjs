@@ -30,6 +30,8 @@ const {
   updateChatFileUrl, updateDmFileUrl,
   markChatAsRead, getChatSidebarData, getRoomReceipts,
   refreshUser, heartbeatUser, logoutUser,
+  getAppLinks, getAppLink, upsertAppLink,
+  addModuleActivityLog, getModuleActivityLogs,
 } = require('./db.cjs')
 
 // ── Pusher REST trigger (no SDK — avoids ESM require issues) ────────────
@@ -190,6 +192,15 @@ ipcMain.handle('users:logout',         (_, id)               => logoutUser(id))
 
 ipcMain.handle('db:wipeAll',           ()                    => wipeAllData())
 
+// ── APP LINKS ─────────────────────────────────────────────────────
+ipcMain.handle('appLinks:getAll',      ()                    => getAppLinks())
+ipcMain.handle('appLinks:get',         (_, key)              => getAppLink(key))
+ipcMain.handle('appLinks:upsert',      (_, link)             => upsertAppLink(link))
+
+// ── MODULE ACTIVITY LOGS ──────────────────────────────────────────
+ipcMain.handle('activityLog:add',      (_, entry)            => addModuleActivityLog(entry))
+ipcMain.handle('activityLog:get',      (_, module, limit)    => getModuleActivityLogs(module, limit ?? 200))
+
 // ── SAVED ORDERS ──────────────────────────────────────────────────
 ipcMain.handle('orders:save',          (_, order)    => saveOrder(order))
 ipcMain.handle('orders:getByOutlet',   (_, outletId) => getOrdersByOutlet(outletId))
@@ -275,7 +286,7 @@ ipcMain.handle('chat:getRoomReceipts', async (_, roomId) => {
 })
 ipcMain.handle('chat:toggleReaction', async (_, msgId, userId, userName, emoji, isDm) => {
   const db = await import('./db.cjs')
-  await db.toggleReaction(msgId, userId, userName, emoji, isDm)
+  return await db.toggleReaction(msgId, userId, userName, emoji, isDm)
 })
 ipcMain.handle('chat:editMessage', async (_, msgId, userId, newText, isDm) => {
   const db = await import('./db.cjs')

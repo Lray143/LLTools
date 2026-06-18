@@ -1,7 +1,24 @@
 // src/modules/products/components/ProductsTable.jsx
-import { useState, useMemo, useEffect, Fragment } from 'react'
+import { useState, useMemo, useEffect, Fragment, useRef } from 'react'
 import { Archive } from 'lucide-react'
 import { INITIAL_GROUPS } from '../productData'
+import {
+  logModuleActivity,
+  logFieldEditDebounced,
+  buildActivityDetails,
+  snapshotFromFields,
+  emptyDisplay,
+  PRODUCT_ROW_FIELDS,
+} from '../../../lib/activityLog'
+
+const PRODUCT_CELL_LABELS = {
+  caseBarcode: 'Case barcode',
+  itemBarcode: 'Item barcode',
+  description: 'Description',
+  qty: 'QTY / case',
+  size: 'Item size',
+  price: 'Price',
+}
 
 import ProductsToolbar        from './ProductsToolbar'
 import GroupHeaderRow         from './GroupHeaderRow'
@@ -35,7 +52,7 @@ const matchesSearch = (row, term) => {
   )
 }
 
-export default function ProductsTable({ search = '', onSearchChange, refreshKey = 0 }) {
+export default function ProductsTable({ search = '', onSearchChange, refreshKey = 0, currentUser = null }) {
   const [groups,         setGroups]         = useState([])
   const [loading,        setLoading]        = useState(true)
   const [collapsed,      setCollapsed]      = useState({})
@@ -49,6 +66,7 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
   const [outlets,          setOutlets]          = useState([])
   const [selectedOutletId, setSelectedOutletId] = useState(null)
   const [outletPrices,     setOutletPrices]     = useState({})
+  const newRowIdsRef = useRef(new Set())
 
   useEffect(() => {
     window.electronAPI.getProductGroups()
@@ -120,26 +138,69 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
 
   const handleBulkArchive = () => {
     if (!window.confirm(`Archive ${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}? You can restore them from the Archive.`)) return
-    selectedRows.forEach((id) => window.electronAPI.archiveProduct(id))
-    removeFromGroups([...selectedRows])
+    const ids = [...selectedRows]
+    ids.forEach((id) => window.electronAPI.archiveProduct(id))
+    removeFromGroups(ids)
+    if (currentUser) {
+      const names = ids.map(id => {
+        const row = groups.flatMap(g => g.rows).find(r => r.id === id)
+        return row?.description?.trim() || id
+      })
+      logModuleActivity(currentUser, 'products', 'archive', `${ids.length} product${ids.length !== 1 ? 's' : ''}`, null, buildActivityDetails({
+        recordType: 'Product',
+        table: 'products',
+        note: `Bulk archive: ${names.join(', ')}`,
+      }))
+    }
   }
 
   const handleAddGroup = (name) => {
     const newGroup = { id: crypto.randomUUID(), name, rows: [] }
     window.electronAPI.upsertProductGroup({ id: newGroup.id, name, sortOrder: groups.length })
     setGroups((prev) => [...prev, newGroup])
+    if (currentUser) {
+      logModuleActivity(currentUser, 'products', 'add', `Group: ${name}`, newGroup.id, buildActivityDetails({
+        recordType: 'Product group',
+        recordId: newGroup.id,
+        table: 'product_groups',
+        snapshot: { 'Group name': name },
+      }))
+    }
   }
 
   const handleRenameGroup = (groupId, newName) => {
     const idx = groups.findIndex((g) => g.id === groupId)
+    const oldName = groups[idx]?.name ?? '—'
     window.electronAPI.upsertProductGroup({ id: groupId, name: newName, sortOrder: idx })
     setGroups((prev) => prev.map((g) => g.id === groupId ? { ...g, name: newName } : g))
+    if (currentUser) {
+      logModuleActivity(currentUser, 'products', 'edit', `Group: ${newName}`, groupId, buildActivityDetails({
+        recordType: 'Product group',
+        recordId: groupId,
+        table: 'product_groups',
+        changes: [{ field: 'name', label: 'Group name', before: oldName, after: newName }],
+      }))
+    }
   }
 
   const handleDeleteGroup = (groupId) => {
     if (!window.confirm('Archive this entire group and all its rows? You can restore individual rows from the Archive.')) return
+    const group = groups.find(g => g.id === groupId)
     window.electronAPI.deleteProductGroup(groupId)
     setGroups((prev) => prev.filter((g) => g.id !== groupId))
+    if (currentUser) {
+      const rowNames = (group?.rows ?? []).map(r => r.description?.trim() || r.id).join(', ')
+      logModuleActivity(currentUser, 'products', 'archive', `Group: ${group?.name ?? 'Unknown'}`, groupId, buildActivityDetails({
+        recordType: 'Product group',
+        recordId: groupId,
+        table: 'product_groups',
+        removedSnapshot: {
+          'Group name': group?.name ?? '—',
+          'Products in group': rowNames || 'None',
+        },
+        note: 'Archived group and all active rows inside it',
+      }))
+    }
   }
 
   const handleToggleCollapse = (groupId) =>
@@ -147,6 +208,7 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
 
   const handleAddRow = (groupId) => {
     const newRow = makeBlankRow()
+    newRowIdsRef.current.add(newRow.id)
     window.electronAPI.upsertProduct({ ...newRow, groupId, sortOrder: 9999 })
     setGroups((prev) =>
       prev.map((g) => g.id === groupId ? { ...g, rows: [...g.rows, newRow] } : g)
@@ -155,6 +217,7 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
   }
 
   const handleUpdateCell = (groupId, rowId, field, value) => {
+    const group = groups.find(g => g.id === groupId)
     setGroups((prev) =>
       prev.map((g) => {
         if (g.id !== groupId) return g
@@ -162,8 +225,36 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
           ...g,
           rows: g.rows.map((r, i) => {
             if (r.id !== rowId) return r
+            const beforeVal = r[field]
             const updated = { ...r, [field]: value }
             window.electronAPI.upsertProduct({ ...updated, groupId, sortOrder: i })
+
+            const isNewRow = newRowIdsRef.current.has(rowId)
+            const descriptionFilled = field === 'description' && String(value).trim() !== ''
+            if (currentUser && isNewRow && descriptionFilled) {
+              const label = updated.description?.trim() || updated.itemBarcode?.trim() || 'Product'
+              logModuleActivity(currentUser, 'products', 'add', label, rowId, buildActivityDetails({
+                recordType: 'Product',
+                recordId: rowId,
+                table: 'products',
+                snapshot: snapshotFromFields(updated, PRODUCT_ROW_FIELDS),
+                note: group ? `Group: ${group.name}` : null,
+              }))
+              newRowIdsRef.current.delete(rowId)
+            } else if (currentUser && !isNewRow) {
+              const label = updated.description?.trim() || updated.itemBarcode?.trim() || 'Product'
+              logFieldEditDebounced(currentUser, 'products', label, rowId, {
+                field,
+                label: PRODUCT_CELL_LABELS[field] || field,
+                before: emptyDisplay(beforeVal),
+                after: emptyDisplay(value),
+              }, {
+                recordType: 'Product',
+                table: 'products',
+                note: group ? `Group: ${group.name}` : null,
+              })
+            }
+
             return updated
           }),
         }
@@ -172,13 +263,40 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
   }
 
   const handleArchiveRow = (groupId, rowId) => {
+    const group = groups.find(g => g.id === groupId)
+    const row = group?.rows.find(r => r.id === rowId)
     window.electronAPI.archiveProduct(rowId)
     removeFromGroups([rowId])
+    if (currentUser && row) {
+      logModuleActivity(currentUser, 'products', 'archive', row.description?.trim() || 'Product', rowId, buildActivityDetails({
+        recordType: 'Product',
+        recordId: rowId,
+        table: 'products',
+        removedSnapshot: snapshotFromFields(row, PRODUCT_ROW_FIELDS),
+        note: group ? `Group: ${group.name}` : null,
+      }))
+    }
   }
 
   const handleUpdateOutletPrice = (productId, price) => {
+    const outlet = outlets.find(o => o.id === selectedOutletId)
+    const row = groups.flatMap(g => g.rows).find(r => r.id === productId)
+    const beforePrice = outletPrices[productId] ?? row?.price ?? '—'
     window.electronAPI.upsertOutletProductPrice(selectedOutletId, productId, price)
     setOutletPrices((prev) => ({ ...prev, [productId]: price }))
+    if (currentUser) {
+      const label = row?.description?.trim() || 'Product'
+      logFieldEditDebounced(currentUser, 'products', label, productId, {
+        field: 'outletPrice',
+        label: `Outlet price (${outlet?.name ?? 'outlet'})`,
+        before: emptyDisplay(beforePrice),
+        after: emptyDisplay(price),
+      }, {
+        recordType: 'Product',
+        table: 'outlet_product_prices',
+        note: `Default price: ${emptyDisplay(row?.price)}`,
+      })
+    }
   }
 
   const handleResetOutletPrice = (productId) => {
@@ -199,8 +317,26 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
 
   const handlePermanentDelete = (id) => {
     if (!window.confirm('Permanently delete this product? This cannot be undone.')) return
+    const row = archivedRows.find(r => r.id === id)
     window.electronAPI.permanentDeleteProduct(id)
     setArchivedRows((prev) => prev.filter((r) => r.id !== id))
+    if (currentUser && row) {
+      logModuleActivity(currentUser, 'products', 'permanent_delete', row.description?.trim() || 'Product', id, buildActivityDetails({
+        recordType: 'Product',
+        recordId: id,
+        table: 'products',
+        removedSnapshot: {
+          Description: row.description ?? '—',
+          'Case barcode': row.caseBarcode ?? '—',
+          'Item barcode': row.itemBarcode ?? '—',
+          'QTY / case': row.qty ?? '—',
+          'Item size': row.size ?? '—',
+          Price: row.price ?? '—',
+          Group: row.groupName ?? '—',
+        },
+        note: 'Permanently deleted from archive',
+      }))
+    }
   }
 
   if (loading) {
