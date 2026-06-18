@@ -31,6 +31,7 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
     if (search.trim()) {
       const t = search.toLowerCase()
       result = result.filter((r) =>
+        r.productNo?.toLowerCase().includes(t) ||
         r.description?.toLowerCase().includes(t) ||
         r.caseBarcode?.toLowerCase().includes(t)  ||
         r.itemBarcode?.toLowerCase().includes(t)  ||
@@ -205,9 +206,9 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
                               row.price ? `₱${Number(row.price).toFixed(2)}`  : null,
                             ].filter(Boolean).join(' · ')}
                           </p>
-                          {(row.caseBarcode || row.itemBarcode) && (
+                          {(row.productNo || row.caseBarcode || row.itemBarcode) && (
                             <p className="text-xs text-gray-300 mt-0.5 font-mono">
-                              {row.caseBarcode} / {row.itemBarcode}
+                              {[row.productNo, row.caseBarcode, row.itemBarcode].filter(Boolean).join(' / ')}
                             </p>
                           )}
                         </div>

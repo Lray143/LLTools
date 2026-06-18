@@ -37,6 +37,11 @@ export default function CalculationsRow({
       className={`border-b border-gray-100 transition-colors ${isEven ? 'bg-white' : 'bg-white'}`}
       style={lineTotal !== null ? { backgroundColor: 'color-mix(in srgb, var(--accent-bg) 8%, var(--surface))' } : {}}
     >
+      {/* No# */}
+      <td className="px-3 py-2 text-xs text-gray-700 w-24">
+        {row.productNo || '—'}
+      </td>
+
       {/* Item Description */}
       <td className="px-3 py-2 text-xs text-gray-700 w-auto">
         <p className="font-medium text-gray-800">{row.description || '—'}</p>

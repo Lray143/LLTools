@@ -12,6 +12,7 @@ import OutletModal from '../../outlets/components/OutletModal'
 import { logModuleActivity, buildActivityDetails, snapshotFromFields, OUTLET_LOG_FIELDS } from '../../../lib/activityLog'
 
 const COLUMNS = [
+  { label: 'No#',              width: 'w-24',  align: 'left'   },
   { label: 'Item Description', width: 'w-auto'                },
   { label: 'Case Barcode',     width: 'w-36',  hidden: true   },
   { label: 'Item Barcode',     width: 'w-36',  hidden: true   },
@@ -24,6 +25,7 @@ const COLUMNS = [
 const matchesSearch = (row, term) => {
   const t = term.toLowerCase()
   return (
+    row.productNo?.toLowerCase().includes(t) ||
     row.description?.toLowerCase().includes(t) ||
     row.caseBarcode?.toLowerCase().includes(t)  ||
     row.itemBarcode?.toLowerCase().includes(t)

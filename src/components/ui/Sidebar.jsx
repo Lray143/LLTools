@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, Users, ClipboardList, Calculator,
+  Megaphone, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
   SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck, MessageSquare, Link2
 } from 'lucide-react'
@@ -14,7 +14,7 @@ const ROLE_LABELS = {
 }
 
 const ALL_NAV_ITEMS = [
-  { id: 'dashboard',    label: 'Dashboard',       icon: LayoutDashboard      },
+  { id: 'announcements',    label: 'Announcements',   icon: Megaphone            },
   { id: 'employees',    label: 'Employees',       icon: Users                },
   { id: 'biometrics',   label: 'Biometrics',      icon: Fingerprint          },
   { id: 'my-attendance',label: 'My Attendance',   icon: CalendarCheck        },

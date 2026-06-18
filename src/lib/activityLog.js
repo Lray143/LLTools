@@ -50,6 +50,7 @@ export const OUTLET_LOG_FIELDS = [
 ]
 
 export const PRODUCT_ROW_FIELDS = [
+  { key: 'productNo', label: 'No#' },
   { key: 'caseBarcode', label: 'Case barcode' },
   { key: 'itemBarcode', label: 'Item barcode' },
   { key: 'description', label: 'Description' },

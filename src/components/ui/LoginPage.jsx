@@ -7,6 +7,7 @@ function LoginPage({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error,        setError]        = useState("");
   const [isLoading,    setIsLoading]    = useState(false);
+  const [keepLogged,   setKeepLogged]   = useState(false);
 
   const handleSubmit = async () => {
     setError("");
@@ -21,7 +22,7 @@ function LoginPage({ onLogin }) {
     setIsLoading(false);
 
     if (result.success) {
-      onLogin(result.user);
+      onLogin(result.user, keepLogged);
     } else {
       setError(result.message);
     }
@@ -329,6 +330,33 @@ function LoginPage({ onLogin }) {
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
+          </div>
+
+          {/* Keep me logged in */}
+          <div style={{ marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              id="checkbox-keep-logged"
+              type="checkbox"
+              checked={keepLogged}
+              onChange={(e) => setKeepLogged(e.target.checked)}
+              style={{
+                width: "14px",
+                height: "14px",
+                cursor: "pointer",
+                accentColor: "#f97316"
+              }}
+            />
+            <label
+              htmlFor="checkbox-keep-logged"
+              style={{
+                fontSize: "12px",
+                color: "#4b5563",
+                cursor: "pointer",
+                userSelect: "none"
+              }}
+            >
+              Keep me logged in
+            </label>
           </div>
 
           {/* Error message */}

@@ -298,20 +298,46 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
             </div>
           )}
 
-          <Button 
-            className="border-0 text-sm h-9 px-4 rounded-lg flex items-center gap-1.5"
-            style={{ background: 'var(--theme-500)', color: '#fff' }}
-            onClick={() => isHR ? setShowModal(true) : setShowGForm(true)}
-          >
-            <Plus size={14} />
-            New Request
-          </Button>
+          {(!showGForm || isHR) && (
+            <Button 
+              className="border-0 text-sm h-9 px-4 rounded-lg flex items-center gap-1.5"
+              style={{ background: 'var(--theme-500)', color: '#fff' }}
+              onClick={() => isHR ? setShowModal(true) : setShowGForm(true)}
+            >
+              <Plus size={14} />
+              New Request
+            </Button>
+          )}
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
       </div>
 
       {/* ── CONTENT ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-8 flex flex-col gap-5 pt-6">
+      {showGForm && !isHR ? (
+        <div className="flex-1 min-h-0 px-8 pb-8 flex flex-col pt-6 gap-5">
+          <div className="flex items-center justify-between">
+             <div className="flex flex-col">
+               <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>File a Leave Request</h2>
+               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Complete the form below to submit your leave request</p>
+             </div>
+             <Button 
+               onClick={() => setShowGForm(false)} 
+               className="border-0 text-sm h-9 px-4 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+             >
+               ✕ Back to Requests
+             </Button>
+          </div>
+          <div className="flex-1 rounded-xl shadow-sm overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)', position: 'relative' }}>
+             <webview 
+               allowpopups="true" 
+               useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0"
+               src={gformUrl || DEFAULT_LEAVE_GFORM} 
+               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }} 
+             />
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-8 flex flex-col gap-5 pt-6">
         {/* Banners */}
         {successMsg && <Banner type="success">{successMsg}</Banner>}
         {errorMsg   && <Banner type="error">{errorMsg}</Banner>}
@@ -406,10 +432,8 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
             />
           )}
         </div>
-      </div>
-
-      {/* Google Form modal — employee new request */}
-      {!isHR && <GFormModal open={showGForm} onClose={() => setShowGForm(false)} formUrl={gformUrl} />}
+        </div>
+      )}
 
       {/* Legacy LeaveModal — HR only (kept for HR's own leave filing if needed) */}
       <LeaveModal
@@ -434,76 +458,6 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
   )
 }
 
-// ── Google Form Modal ──────────────────────────────────────────────────────
-function GFormModal({ open, onClose, formUrl }) {
-  if (!open) return null
-  const src = formUrl || DEFAULT_LEAVE_GFORM
-  return (
-    <div
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(4px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px',
-      }}
-    >
-      <div style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: '16px',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
-        width: '100%',
-        maxWidth: '780px',
-        height: '88vh',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px',
-          borderBottom: '1px solid var(--border)',
-          flexShrink: 0,
-        }}>
-          <div>
-            <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-              File a Leave Request
-            </p>
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
-              Complete the form below to submit your leave request
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'var(--page-bg-alt)',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              padding: '6px 12px',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: 'var(--text-secondary)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: '6px',
-            }}
-          >
-            ✕ Close
-          </button>
-        </div>
-
-        {/* Webview */}
-        <webview
-          key={src}
-          src={src}
-          style={{ flex: 1, width: '100%', border: 'none' }}
-        />
-      </div>
-    </div>
-  )
-}
 
 // ── Banner helper ─────────────────────────────────────────────────────────
 function Banner({ type, children }) {

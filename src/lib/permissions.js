@@ -6,13 +6,13 @@
 // To change a department's access, just edit its array below.
 //
 // Available modules:
-//   'dashboard', 'employees', 'biometrics', 'clinic',
+//   'announcements', 'employees', 'biometrics', 'clinic',
 //   'products', 'outlets', 'calculations', 'reports',
 //   'leaves', 'settings'
 //
-// Note: 'biometrics', 'reports', 'leaves', and 'settings' are
+// Note: 'announcements', 'reports', 'leaves', and 'settings' are
 // included for every department:
-//   - biometrics: all employees can view their own attendance
+//   - announcements: all employees receive company announcements
 //   - reports/leaves/settings: standard self-service access
 //
 // REPORTS MODULE RBAC:
@@ -27,44 +27,44 @@ export const REPORT_MANAGER_DEPARTMENTS = ['Admin', 'HR']
 
 export const DEPT_MODULES = {
   'HR': [
-    'dashboard', 'employees', 'biometrics', 'my-attendance',
+    'announcements', 'employees', 'biometrics', 'my-attendance',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Admin': [
-    'dashboard', 'employees', 'biometrics', 'my-attendance', 'clinic',
+    'announcements', 'employees', 'biometrics', 'my-attendance', 'clinic',
     'products', 'outlets', 'calculations',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Accounting': [
-    'dashboard', 'my-attendance', 'products', 'outlets', 'calculations',
+    'announcements', 'my-attendance', 'products', 'outlets', 'calculations',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Finance': [
-    'dashboard', 'my-attendance', 'calculations', 'products',
+    'announcements', 'my-attendance', 'calculations', 'products',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Sales': [
-    'dashboard', 'my-attendance', 'outlets',
+    'announcements', 'my-attendance', 'outlets',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Marketing': [
-    'dashboard', 'my-attendance', 'outlets',
+    'announcements', 'my-attendance', 'outlets',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Warehouse': [
-    'dashboard', 'my-attendance', 'products',
+    'announcements', 'my-attendance', 'products',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Production': [
-    'dashboard', 'my-attendance', 'products', 'calculations',
+    'announcements', 'my-attendance', 'products', 'calculations',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'IT': [
-    'dashboard', 'my-attendance',
+    'announcements', 'my-attendance',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Intern': [
-    'dashboard', 'my-attendance', 'reports', 'leaves', 'chat', 'settings',
+    'announcements', 'my-attendance', 'reports', 'leaves', 'chat', 'settings',
   ],
 }
 
@@ -76,23 +76,23 @@ export const DEPT_MODULES = {
 // ─────────────────────────────────────────────────────────────
 const ROLE_MODULES = {
   admin: [
-    'dashboard', 'employees', 'biometrics', 'my-attendance', 'clinic',
+    'announcements', 'employees', 'biometrics', 'my-attendance', 'clinic',
     'products', 'outlets', 'calculations',
     'reports', 'leaves', 'chat', 'app-links', 'settings',
   ],
   hr: [
-    'dashboard', 'employees', 'biometrics', 'my-attendance',
+    'announcements', 'employees', 'biometrics', 'my-attendance',
     'reports', 'leaves', 'chat', 'settings',
   ],
   clinic: [
-    'dashboard', 'my-attendance', 'clinic', 'reports', 'leaves', 'chat', 'settings',
+    'announcements', 'my-attendance', 'clinic', 'reports', 'leaves', 'chat', 'settings',
   ],
   inventory: [
-    'dashboard', 'my-attendance', 'products', 'calculations',
+    'announcements', 'my-attendance', 'products', 'calculations',
     'reports', 'leaves', 'chat', 'settings',
   ],
   outlets: [
-    'dashboard', 'my-attendance', 'outlets', 'reports', 'leaves', 'chat', 'settings',
+    'announcements', 'my-attendance', 'outlets', 'reports', 'leaves', 'chat', 'settings',
   ],
 }
 
@@ -128,4 +128,12 @@ export const canManageReports = (user) => {
 export const canManageAppLinks = (user) => {
   if (!user) return false
   return user.role === 'admin'
+}
+
+// HR and Admin can post announcements.
+export const canPostAnnouncements = (user) => {
+  if (!user) return false
+  if (REPORT_MANAGER_ROLES.includes(user.role))             return true
+  if (REPORT_MANAGER_DEPARTMENTS.includes(user.department)) return true
+  return false
 }

@@ -1,9 +1,10 @@
 // src/modules/products/components/ProductRow.jsx
-import { useRef, useState } from 'react'
+import { useRef, useState, memo } from 'react'
 import { Trash2, RotateCcw } from 'lucide-react'
 
 const BASE_FIELDS = [
-  { key: 'caseBarcode', label: 'Case Barcode',    type: 'text',   align: 'left'   },
+  { key: 'productNo',   label: 'No#',              type: 'text',   align: 'left'   },
+  { key: 'caseBarcode', label: 'Case Barcode',     type: 'text',   align: 'left'   },
   { key: 'itemBarcode', label: 'Item Barcode',     type: 'text',   align: 'left'   },
   { key: 'description', label: 'Item Description', type: 'text',   align: 'left'   },
   { key: 'qty',         label: 'QTY / Case',       type: 'number', align: 'center' },
@@ -59,8 +60,13 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          className="w-full px-2 py-1 text-xs rounded-md border border-orange-500 outline-none bg-orange-50 text-orange-900"
-          style={{ textAlign }}
+          className="w-full px-2 py-1 text-xs rounded-md border outline-none font-medium"
+          style={{ 
+            textAlign, 
+            borderColor: 'var(--accent-bg)', 
+            backgroundColor: 'color-mix(in srgb, var(--accent-bg) 10%, var(--surface))',
+            color: 'var(--text-primary)'
+          }}
         />
       </td>
     )
@@ -70,7 +76,7 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
     <td
       onClick={startEdit}
       title={editMode ? 'Click to edit' : undefined}
-      className={`px-3 py-2 text-xs align-middle select-none transition-colors ${editMode ? 'cursor-pointer hover:bg-orange-50' : 'cursor-default'}`}
+      className={`px-3 py-2 text-xs align-middle select-none transition-colors ${editMode ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : 'cursor-default'}`}
       style={{ textAlign }}
     >
       <span className="transition-colors text-gray-700">
@@ -123,7 +129,12 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={handleKeyDown}
-          className="w-full text-right px-2 py-1 text-xs rounded-md border border-orange-500 outline-none bg-orange-50 text-orange-900"
+          className="w-full text-right px-2 py-1 text-xs rounded-md border outline-none font-medium"
+          style={{ 
+            borderColor: 'var(--accent-bg)', 
+            backgroundColor: 'color-mix(in srgb, var(--accent-bg) 10%, var(--surface))',
+            color: 'var(--text-primary)'
+          }}
         />
       </td>
     )
@@ -132,9 +143,9 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
   return (
     <td
       onClick={startEdit}
-      className={`px-3 py-2 text-xs text-right align-middle select-none relative transition-colors ${editMode ? 'cursor-pointer hover:bg-orange-50' : 'cursor-default'}`}
+      className={`px-3 py-2 text-xs text-right align-middle select-none relative transition-colors ${editMode ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800' : 'cursor-default'}`}
     >
-      <span className={isOutletMode && hasOverride ? 'text-orange-600 font-semibold' : 'text-gray-700'}>
+      <span className={isOutletMode && hasOverride ? 'font-semibold' : 'text-gray-700'} style={isOutletMode && hasOverride ? { color: 'var(--accent-bg)' } : {}}>
         {formatted}
       </span>
       {/* Reset button — outlet override hover */}
@@ -152,7 +163,7 @@ function PriceCell({ basePrice, outletPrice, onCommitBase, onCommitOutlet, onRes
 }
 
 // ── Main ProductRow ────────────────────────────────────────────────
-export default function ProductRow({
+const ProductRow = memo(function ProductRow({
   row, rowIndex, groupId,
   onUpdateCell, onDeleteRow,
   editMode, selected, onToggleSelect,
@@ -163,7 +174,7 @@ export default function ProductRow({
   return (
     <tr
       className={`group border-b border-gray-100 transition-colors
-                  ${selected ? 'bg-orange-50/30' : isEven ? 'bg-white' : 'bg-white'}`}
+                  ${selected ? 'bg-[color-mix(in_srgb,var(--accent-bg)_20%,transparent)]' : isEven ? 'bg-white' : 'bg-white'}`}
     >
       {/* Checkbox */}
       <td className="px-3 py-2 w-8 align-middle">
@@ -172,7 +183,8 @@ export default function ProductRow({
             type="checkbox"
             checked={selected}
             onChange={() => onToggleSelect(row.id)}
-            className="cursor-pointer accent-orange-500"
+            className="cursor-pointer"
+            style={{ accentColor: 'var(--accent-bg)' }}
           />
         )}
       </td>
@@ -212,4 +224,6 @@ export default function ProductRow({
       </td>
     </tr>
   )
-}
+})
+
+export default ProductRow

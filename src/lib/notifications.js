@@ -6,12 +6,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Admin/HR: track pending items that need their attention
-export const SEEN_REPORTS_KEY = 'lltools-seen-reports'
-export const SEEN_LEAVES_KEY  = 'lltools-seen-leaves'
+export const SEEN_REPORTS_KEY        = 'lltools-seen-reports'
+export const SEEN_LEAVES_KEY         = 'lltools-seen-leaves'
+export const SEEN_ANNOUNCEMENTS_KEY  = 'lltools-seen-announcements'
 
 // Employee: track status-change updates on their own items (per-user)
-export const myReportUpdatesKey = (userId) => `lltools-my-report-updates-${userId}`
-export const myLeaveUpdatesKey  = (userId) => `lltools-my-leave-updates-${userId}`
+export const myReportUpdatesKey      = (userId) => `lltools-my-report-updates-${userId}`
+export const myLeaveUpdatesKey       = (userId) => `lltools-my-leave-updates-${userId}`
+export const myAnnouncementsKey      = (userId) => `lltools-my-announcements-${userId}`
 
 /** Read the set of seen IDs from localStorage for a given key. */
 function getSeenSet(key) {

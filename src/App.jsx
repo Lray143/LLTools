@@ -5,7 +5,7 @@ import './App.css'
 import LoginPage   from './components/ui/LoginPage'
 import Sidebar     from './components/ui/Sidebar'
 
-import Dashboard      from './modules/dashboard/Dashboard'
+import Announcements  from './modules/announcements/Announcements'
 import Employees      from './modules/hrms/Employees'
 import Biometrics     from './modules/biometrics/Biometrics'
 import MyAttendance   from './modules/my-attendance/MyAttendance'
@@ -24,7 +24,7 @@ import { getSavedTheme, applyThemeToDocument, saveTheme } from './lib/theme'
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
-  const [activePage,  setActivePage]  = useState('dashboard')
+  const [activePage,  setActivePage]  = useState('announcements')
   // Increments every time a cloud sync completes — modules use this as a
   // useEffect dependency so they automatically re-fetch fresh data.
   const [refreshKey,  setRefreshKey]  = useState(0)
@@ -32,6 +32,17 @@ function App() {
 
   useEffect(() => {
     applyThemeToDocument(getSavedTheme())
+    
+    const savedId = localStorage.getItem('savedSessionId')
+    if (savedId && window.electronAPI?.refreshUser) {
+      window.electronAPI.refreshUser(savedId)
+        .then(user => {
+          if (user) {
+            handleLogin(user, true)
+          }
+        })
+        .catch(console.error)
+    }
   }, [])
 
   useEffect(() => {
@@ -134,8 +145,14 @@ function App() {
     return cleanup
   }, [])
 
-  const handleLogin = (user) => {
+  const handleLogin = (user, keepLogged = false) => {
     setCurrentUser(user)
+    
+    if (keepLogged) {
+      localStorage.setItem('savedSessionId', user.id)
+    } else {
+      localStorage.removeItem('savedSessionId')
+    }
     
     let targetTheme = user.themeColor
     if (!targetTheme || targetTheme.startsWith('#')) {
@@ -145,15 +162,16 @@ function App() {
     saveTheme(targetTheme)
     applyThemeToDocument(targetTheme)
     
-    setActivePage('dashboard')
+    setActivePage('announcements')
   }
 
   const handleLogout = () => {
     if (currentUser) {
       window.electronAPI.logoutUser(currentUser.id).catch(console.error)
     }
+    localStorage.removeItem('savedSessionId')
     setCurrentUser(null)
-    setActivePage('dashboard')
+    setActivePage('announcements')
   }
 
   if (!currentUser) {
@@ -183,7 +201,7 @@ function App() {
 
     // Static pages
     const STATIC_PAGES = {
-      dashboard:    <Dashboard   refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
+      announcements:    <Announcements refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
       employees:    <Employees   refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
       biometrics:   <Biometrics  refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
       clinic:       <ClinicLog   refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,

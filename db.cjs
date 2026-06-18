@@ -444,6 +444,44 @@ const initDb = async () => {
       last_read_at TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (user_id, room_id)
     );
+    CREATE TABLE IF NOT EXISTS announcements (
+      id              TEXT PRIMARY KEY,
+      subject         TEXT NOT NULL,
+      content         TEXT NOT NULL,
+      author_id       TEXT NOT NULL,
+      author_name     TEXT NOT NULL,
+      is_urgent       INTEGER DEFAULT 0,
+      require_ack     INTEGER DEFAULT 0,
+      allow_comments  INTEGER DEFAULT 1,
+      target_audience TEXT DEFAULT '[]', -- JSON array of employee IDs, or '[]' for all
+      status          TEXT DEFAULT 'Active', -- 'Active' or 'Archived'
+      created_at      TEXT DEFAULT (datetime('now')),
+      updated_at      TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS announcement_acknowledgements (
+      id              TEXT PRIMARY KEY,
+      announcement_id TEXT NOT NULL,
+      employee_id     TEXT NOT NULL,
+      employee_name   TEXT NOT NULL,
+      acknowledged_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS announcement_comments (
+      id              TEXT PRIMARY KEY,
+      announcement_id TEXT NOT NULL,
+      employee_id     TEXT NOT NULL,
+      employee_name   TEXT NOT NULL,
+      content         TEXT NOT NULL,
+      parent_id       TEXT DEFAULT NULL, -- For threaded replies
+      created_at      TEXT DEFAULT (datetime('now')),
+      updated_at      TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS announcement_reactions (
+      id              TEXT PRIMARY KEY,
+      comment_id      TEXT NOT NULL,
+      employee_id     TEXT NOT NULL,
+      reaction        TEXT NOT NULL, -- The emoji
+      created_at      TEXT DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS app_links (
       key          TEXT PRIMARY KEY,
       label        TEXT NOT NULL,
@@ -547,6 +585,28 @@ const initDb = async () => {
       }
     }
   }
+
+  // ── Backfill product No# from reference list (runs on every startup, skips already-set values) ──
+  // const productNoMap = {
+  //   'r-a1':'1','r-a2':'2','r-a3':'3','r-a4':'4','r-a5':'5','r-a6':'6','r-a7':'104',
+  //   'r-c1':'7','r-c2':'8','r-c3':'9','r-c4':'10','r-c5':'11','r-c6':'12','r-c7':'13','r-c8':'14',
+  //   'r-t1':'15','r-t2':'16',
+  //   'r-s1':'19','r-s2':'21','r-s3':'24','r-s4':'22','r-s5':'29','r-s6':'26','r-s7':'27',
+  //   'r-s8':'34','r-s9':'20','r-s10':'32','r-s11':'25',
+  //   'r-s13':'31','r-s14':'33','r-s15':'38','r-s16':'39','r-s17':'37','r-s18':'36','r-s19':'28',
+  //   'r-l1':'87','r-l2':'88','r-l3':'109','r-l4':'17','r-l5':'18',
+  //   'r-cl1':'57','r-cl2':'58','r-cl3':'59','r-cl4':'60','r-cl5':'61','r-cl6':'62',
+  //   'r-cl7':'63','r-cl8':'64','r-cl9':'65','r-cl10':'66','r-cl11':'67','r-cl12':'68',
+  //   'r-cl13':'101','r-cl14':'102','r-cl15':'103',
+  //   'r-cl16':'69','r-cl17':'70','r-cl18':'71','r-cl19':'89','r-cl20':'90',
+  //   'r-tw1':'45','r-tw2':'46',
+  // }
+  // for (const [id, no] of Object.entries(productNoMap)) {
+  //   await run(
+  //     `UPDATE products SET product_no = ?, sync_status = 'pending' WHERE id = ? AND (product_no IS NULL OR product_no = '')`,
+  //     [no, id]
+  //   )
+  // }
 
   // ── Seed default app links ────────────────────────────────────────────────
   await run(`
@@ -1541,7 +1601,8 @@ const wipeAllData = async () => {
       'attendance', 'clinic_logs', 'saved_orders', 'leave_requests', 'reports',
       'report_comments', 'report_status_logs', 'department_chats',
       'direct_messages', 'chat_read_receipts', 'module_activity_logs', 'outlet_product_prices', 'outlets',
-      'products', 'product_groups', 'employees'
+      'products', 'product_groups', 'employees',
+      'announcements', 'announcement_acknowledgements', 'announcement_comments', 'announcement_reactions'
     ];
     for (const t of tables) {
       try { await run(`DELETE FROM ${t}`) } catch(e){}
@@ -1562,6 +1623,139 @@ const wipeAllData = async () => {
     isBulkOperating = false;
   }
 }
+
+// ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────────
+
+const getAnnouncements = async (employeeId = null, includeArchived = false) => {
+  const statusCondition = includeArchived ? '' : "WHERE a.status = 'Active'";
+  const sql = `
+    SELECT 
+      a.*,
+      (SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id) as ack_count,
+      ${employeeId ? `(SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id AND ack.employee_id = ?) as has_acknowledged,` : ''}
+      (SELECT count(*) FROM announcement_comments ac WHERE ac.announcement_id = a.id) as comment_count
+    FROM announcements a
+    ${statusCondition}
+    ORDER BY a.created_at DESC
+  `;
+  const params = employeeId ? [employeeId] : [];
+  const results = await queryAll(sql, params);
+  
+  // Also fetch acknowledgements if they are needed (usually only HR needs the full list, but we can fetch them per announcement later)
+  return results;
+}
+
+const getArchivedAnnouncements = async (employeeId = null) => {
+  const sql = `
+    SELECT 
+      a.*,
+      (SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id) as ack_count,
+      ${employeeId ? `(SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id AND ack.employee_id = ?) as has_acknowledged,` : ''}
+      (SELECT count(*) FROM announcement_comments ac WHERE ac.announcement_id = a.id) as comment_count
+    FROM announcements a
+    WHERE a.status = 'Archived'
+    ORDER BY a.created_at DESC
+  `;
+  const params = employeeId ? [employeeId] : [];
+  return await queryAll(sql, params);
+}
+
+const upsertAnnouncement = async (announcement) => {
+  const id = announcement.id || require('crypto').randomUUID();
+  await run(`
+    INSERT INTO announcements (id, subject, content, author_id, author_name, is_urgent, require_ack, allow_comments, target_audience, status, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(id) DO UPDATE SET
+      subject=excluded.subject,
+      content=excluded.content,
+      is_urgent=excluded.is_urgent,
+      require_ack=excluded.require_ack,
+      allow_comments=excluded.allow_comments,
+      target_audience=excluded.target_audience,
+      status=excluded.status,
+      updated_at=datetime('now')
+  `, [
+    id, announcement.subject, announcement.content, announcement.author_id, announcement.author_name,
+    announcement.is_urgent ? 1 : 0, announcement.require_ack ? 1 : 0, announcement.allow_comments ? 1 : 0,
+    announcement.target_audience || '[]', announcement.status || 'Active'
+  ]);
+  
+  if (global.pusherTrigger) {
+    global.pusherTrigger('lltools-updates', 'new-announcement', { id });
+  }
+  return await queryOne(`SELECT * FROM announcements WHERE id = ?`, [id]);
+}
+
+const archiveAnnouncement = async (id) => {
+  await run(`UPDATE announcements SET status = 'Archived', updated_at = datetime('now') WHERE id = ?`, [id]);
+}
+
+const permanentDeleteAnnouncement = async (id) => {
+  await run(`DELETE FROM announcement_acknowledgements WHERE announcement_id = ?`, [id]);
+  await run(`DELETE FROM announcement_reactions WHERE comment_id IN (SELECT id FROM announcement_comments WHERE announcement_id = ?)`, [id]);
+  await run(`DELETE FROM announcement_comments WHERE announcement_id = ?`, [id]);
+  await run(`DELETE FROM announcements WHERE id = ?`, [id]);
+}
+
+const acknowledgeAnnouncement = async (announcementId, employeeId, employeeName) => {
+  const id = require('crypto').randomUUID();
+  await run(`
+    INSERT OR IGNORE INTO announcement_acknowledgements (id, announcement_id, employee_id, employee_name)
+    VALUES (?, ?, ?, ?)
+  `, [id, announcementId, employeeId, employeeName]);
+}
+
+const getAnnouncementAcknowledgements = async (announcementId) => {
+  return await queryAll(`SELECT * FROM announcement_acknowledgements WHERE announcement_id = ? ORDER BY acknowledged_at DESC`, [announcementId]);
+}
+
+const getAnnouncementComments = async (announcementId) => {
+  const comments = await queryAll(`SELECT * FROM announcement_comments WHERE announcement_id = ? ORDER BY created_at ASC`, [announcementId]);
+  const reactions = await queryAll(`
+    SELECT r.* FROM announcement_reactions r
+    JOIN announcement_comments c ON r.comment_id = c.id
+    WHERE c.announcement_id = ?
+  `, [announcementId]);
+
+  // Attach reactions to comments
+  for (const c of comments) {
+    const cReactions = reactions.filter(r => r.comment_id === c.id);
+    const reactionObj = {};
+    for (const r of cReactions) {
+      if (!reactionObj[r.reaction]) reactionObj[r.reaction] = [];
+      reactionObj[r.reaction].push(r.employee_name);
+    }
+    c.reactions = JSON.stringify(reactionObj); // Store as JSON string to match chat style
+  }
+  return comments;
+}
+
+const addAnnouncementComment = async (announcementId, employeeId, employeeName, content, parentId = null) => {
+  const id = require('crypto').randomUUID();
+  await run(`
+    INSERT INTO announcement_comments (id, announcement_id, employee_id, employee_name, content, parent_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [id, announcementId, employeeId, employeeName, content, parentId]);
+  
+  if (global.pusherTrigger) {
+    global.pusherTrigger('lltools-updates', 'new-announcement-comment', { announcementId, id, content, employeeName });
+  }
+  return await queryOne(`SELECT * FROM announcement_comments WHERE id = ?`, [id]);
+}
+
+const reactToAnnouncementComment = async (commentId, employeeId, employeeName, reaction) => {
+  const existing = await queryOne(`SELECT id FROM announcement_reactions WHERE comment_id = ? AND employee_id = ? AND reaction = ?`, [commentId, employeeId, reaction]);
+  if (existing) {
+    await run(`DELETE FROM announcement_reactions WHERE id = ?`, [existing.id]);
+  } else {
+    const id = require('crypto').randomUUID();
+    await run(`INSERT INTO announcement_reactions (id, comment_id, employee_id, reaction) VALUES (?, ?, ?, ?)`, [id, commentId, employeeId, reaction]);
+  }
+  if (global.pusherTrigger) {
+    global.pusherTrigger('lltools-updates', 'new-announcement-comment', { commentId }); // triggering same event string to prompt refresh
+  }
+}
+
 
 // ── Exports ───────────────────────────────────────────────────────────────────
 module.exports = {
@@ -1590,4 +1784,6 @@ module.exports = {
   markChatAsRead, getChatSidebarData, getRoomReceipts,
   getAppLinks, getAppLink, upsertAppLink,
   addModuleActivityLog, getModuleActivityLogs,
+  getAnnouncements, getArchivedAnnouncements, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
+  acknowledgeAnnouncement, getAnnouncementAcknowledgements, getAnnouncementComments, addAnnouncementComment, reactToAnnouncementComment,
 }

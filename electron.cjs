@@ -32,6 +32,8 @@ const {
   refreshUser, heartbeatUser, logoutUser,
   getAppLinks, getAppLink, upsertAppLink,
   addModuleActivityLog, getModuleActivityLogs,
+  getAnnouncements, getArchivedAnnouncements, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
+  acknowledgeAnnouncement, getAnnouncementAcknowledgements, getAnnouncementComments, addAnnouncementComment, reactToAnnouncementComment,
 } = require('./db.cjs')
 
 // ── Pusher REST trigger (no SDK — avoids ESM require issues) ────────────
@@ -82,6 +84,12 @@ let syncWorkerRef = null
 
 const isDev = process.env.NODE_ENV === 'development'
 let mainWindow = null
+
+// Disable WebAuthentication to stop Windows Security "Choose a passkey" dialog from popping up
+// app.commandLine.appendSwitch('disable-features', 'WebAuthentication,WebAuthenticationUI')
+
+// Fix Google Sign-In inside Electron by completely spoofing a Firefox User Agent
+const FIREFOX_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0";
 
 // MUST be called before app is ready — tells Electron to treat attachment://
 // as a secure, standard scheme (same trust level as https://)
@@ -191,6 +199,18 @@ ipcMain.handle('users:heartbeat',      (_, id)               => heartbeatUser(id
 ipcMain.handle('users:logout',         (_, id)               => logoutUser(id))
 
 ipcMain.handle('db:wipeAll',           ()                    => wipeAllData())
+
+// ── ANNOUNCEMENTS ──────────────────────────────────────────────────
+ipcMain.handle('announcements:getAll',       (_, empId, incArch) => getAnnouncements(empId, incArch))
+ipcMain.handle('announcements:getArchived',  (_, empId)          => getArchivedAnnouncements(empId))
+ipcMain.handle('announcements:upsert',       (_, ann)            => upsertAnnouncement(ann))
+ipcMain.handle('announcements:archive',      (_, id)             => archiveAnnouncement(id))
+ipcMain.handle('announcements:permDelete',   (_, id)             => permanentDeleteAnnouncement(id))
+ipcMain.handle('announcements:acknowledge',  (_, annId, empId, empName) => acknowledgeAnnouncement(annId, empId, empName))
+ipcMain.handle('announcements:getAcks',      (_, annId)          => getAnnouncementAcknowledgements(annId))
+ipcMain.handle('announcements:getComments',  (_, annId)          => getAnnouncementComments(annId))
+ipcMain.handle('announcements:addComment',   (_, annId, empId, empName, content, parentId) => addAnnouncementComment(annId, empId, empName, content, parentId))
+ipcMain.handle('announcements:reactComment', (_, commentId, empId, empName, reaction) => reactToAnnouncementComment(commentId, empId, empName, reaction))
 
 // ── APP LINKS ─────────────────────────────────────────────────────
 ipcMain.handle('appLinks:getAll',      ()                    => getAppLinks())
@@ -438,6 +458,50 @@ ipcMain.handle('attachments:open', async (_, filepath) => {
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────
 app.whenReady().then(async () => {
+  const { session } = require('electron')
+  // session.defaultSession.webRequest.onBeforeSendHeaders(
+  //   { urls: ['*://*.google.com/*', '*://*.googleapis.com/*', '*://accounts.google.com/*'] },
+  //   (details, callback) => {
+  //     details.requestHeaders['User-Agent'] = FIREFOX_UA;
+  //     callback({ cancel: false, requestHeaders: details.requestHeaders });
+  //   }
+  // )
+
+  app.on('web-contents-created', (event, contents) => {
+    if (contents.getType() === 'webview') {
+      contents.setWindowOpenHandler(({ url }) => {
+        if (url.includes('accounts.google.com') || url.includes('google.com')) {
+          return {
+            action: 'allow',
+            overrideBrowserWindowOptions: { autoHideMenuBar: true, width: 500, height: 600 }
+          }
+        }
+        shell.openExternal(url)
+        return { action: 'deny' }
+      })
+
+      contents.on('did-create-window', (newWindow) => {
+        // Immediately spoof UA on the popup window so Google doesn't detect Electron
+        newWindow.webContents.setUserAgent(FIREFOX_UA)
+
+        // Only auto-close the auth popup once Google has redirected BACK to the form
+        // (i.e. sign-in is complete). Don't close it while still on accounts.google.com
+        // so that "Switch account" and multi-step auth flows work normally.
+        const checkUrlAndClose = (e, navigatedUrl) => {
+          const isGoogleAuth = navigatedUrl.includes('accounts.google.com')
+          const isBackToForm = navigatedUrl.includes('docs.google.com/forms')
+          if (isBackToForm && !isGoogleAuth) {
+            if (e && e.preventDefault) e.preventDefault()
+            newWindow.close()
+            contents.reload()
+          }
+        }
+        newWindow.webContents.on('will-navigate', checkUrlAndClose)
+        newWindow.webContents.on('did-redirect-navigation', checkUrlAndClose)
+      })
+    }
+  })
+
   try {
     await initDb()
   } catch (err) {

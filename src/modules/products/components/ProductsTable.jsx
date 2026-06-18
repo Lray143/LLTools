@@ -12,6 +12,7 @@ import {
 } from '../../../lib/activityLog'
 
 const PRODUCT_CELL_LABELS = {
+  productNo: 'No#',
   caseBarcode: 'Case barcode',
   itemBarcode: 'Item barcode',
   description: 'Description',
@@ -28,6 +29,7 @@ import ArchivedProductsDrawer from './ArchivedProductsDrawer'
 
 const COLUMNS = [
   { label: '',                 width: '32px'                     },
+  { label: 'No#',              width: '80px',  align: 'left'     },
   { label: 'Case Barcode',     width: '140px', align: 'left'     },
   { label: 'Item Barcode',     width: '140px', align: 'left'     },
   { label: 'Item Description', width: 'auto',  align: 'left'     },
@@ -39,13 +41,14 @@ const COLUMNS = [
 
 const makeBlankRow = () => ({
   id: crypto.randomUUID(),
-  caseBarcode: '', itemBarcode: '', description: '',
+  productNo: '', caseBarcode: '', itemBarcode: '', description: '',
   qty: '', size: '', price: '',
 })
 
 const matchesSearch = (row, term) => {
   const t = term.toLowerCase()
   return (
+    row.productNo?.toLowerCase().includes(t) ||
     row.description?.toLowerCase().includes(t) ||
     row.caseBarcode?.toLowerCase().includes(t)  ||
     row.itemBarcode?.toLowerCase().includes(t)

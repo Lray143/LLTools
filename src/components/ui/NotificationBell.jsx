@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, FileText, CalendarClock, CheckCheck, CheckCircle, XCircle, Clock, Eye, Loader, MessageSquare } from 'lucide-react'
+import { Bell, FileText, CalendarClock, CheckCheck, CheckCircle, XCircle, Clock, Eye, Loader, MessageSquare, Megaphone } from 'lucide-react'
 import {
   getUnseenItems, markSeen, markAllSeen,
   SEEN_REPORTS_KEY, SEEN_LEAVES_KEY,
   myReportUpdatesKey, myLeaveUpdatesKey,
+  myAnnouncementsKey,
 } from '../../lib/notifications'
 import { canManageReports } from '../../lib/permissions'
 
@@ -57,9 +58,13 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
 
   // Personal status-update streams (all users)
   const [myReports,          setMyReports]          = useState([])
-  const [myLeaves,           setMyLeaves]           = useState([])
+  const [myLeaves,           setMyLeaves]           = useState([]  )
   const [unseenMyReports,    setUnseenMyReports]    = useState([])
   const [unseenMyLeaves,     setUnseenMyLeaves]     = useState([])
+
+  // Announcements (all users)
+  const [myAnnouncements,    setMyAnnouncements]    = useState([])
+  const [unseenAnnouncements,setUnseenAnnouncements]= useState([])
 
   const [unseenChats,        setUnseenChats]        = useState([])
   const [filter,             setFilter]             = useState('all') // 'all' | 'unread'
@@ -72,6 +77,8 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
   const userId     = currentUser?.id ?? currentUser?.username ?? 'anon'
   const myRepKey   = myReportUpdatesKey(userId)
   const myLeavKey  = myLeaveUpdatesKey(userId)
+  const myAnnKey   = myAnnouncementsKey(userId)
+  const empId      = String(currentUser?.employeeId || currentUser?.id || '')
 
   // ── Data fetch ────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -130,11 +137,25 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
             }
           } catch (_) {}
         })(),
+
+        // ── All users: new announcements ─────────────────────────────────
+        (async () => {
+          try {
+            const rows = (await window.electronAPI.getAnnouncements(empId)) ?? []
+            // Filter to only announcements targeted to this user or everyone
+            const relevant = rows.filter(ann => {
+              const target = (() => { try { return JSON.parse(ann.target_audience || '[]') } catch { return [] } })()
+              return target.length === 0 || target.includes(empId)
+            })
+            setMyAnnouncements(relevant)
+            setUnseenAnnouncements(getUnseenItems(relevant, myAnnKey))
+          } catch (_) {}
+        })(),
       ])
     } catch (e) {
       console.error('[NotificationBell] fetch error:', e)
     }
-  }, [currentUser, isAdmin, isHR, myRepKey, myLeavKey])
+  }, [currentUser, isAdmin, isHR, myRepKey, myLeavKey, myAnnKey, empId])
 
   useEffect(() => { fetchData() }, [fetchData, refreshKey])
 
@@ -168,6 +189,12 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
       setUnseenChats(prev => prev.filter(c => c.roomId !== item.roomId))
       if (onNavigate) onNavigate('chat')
       return // skip the report/leave navigation below
+    } else if (stream === 'announcement') {
+      markSeen(myAnnKey, item.id)
+      setUnseenAnnouncements(prev => prev.filter(a => a.id !== item.id))
+      if (onNavigate) onNavigate('announcements')
+      setOpen(false)
+      return
     }
     
     // Navigate to the relevant module if onNavigate is provided
@@ -185,6 +212,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     markAllSeen(SEEN_LEAVES_KEY,  incomingLeaves.map(l => l.id))
     markAllSeen(myRepKey, myReports.map(r => r.id))
     markAllSeen(myLeavKey, myLeaves.map(l => l.id))
+    markAllSeen(myAnnKey, myAnnouncements.map(a => a.id))
     
     // Mark chats as read
     const chatUserId = currentUser?.employeeId || String(currentUser?.id)
@@ -197,14 +225,16 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     setUnseenMyReports([])
     setUnseenMyLeaves([])
     setUnseenChats([])
+    setUnseenAnnouncements([])
   }
 
   // ── Build combined list ───────────────────────────────────────────────────
   // Unseen IDs for quick lookup
-  const unseenInReportIds  = new Set(unseenInReports.map(r => r.id))
-  const unseenInLeaveIds   = new Set(unseenInLeaves.map(l => l.id))
-  const unseenMyReportIds  = new Set(unseenMyReports.map(r => r.id))
-  const unseenMyLeaveIds   = new Set(unseenMyLeaves.map(l => l.id))
+  const unseenInReportIds    = new Set(unseenInReports.map(r => r.id))
+  const unseenInLeaveIds     = new Set(unseenInLeaves.map(l => l.id))
+  const unseenMyReportIds    = new Set(unseenMyReports.map(r => r.id))
+  const unseenMyLeaveIds     = new Set(unseenMyLeaves.map(l => l.id))
+  const unseenAnnouncementIds= new Set(unseenAnnouncements.map(a => a.id))
 
   const allItems = [
     // Incoming admin reports
@@ -238,13 +268,21 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
       _sortTime: c.lastMsgAt || 0,
       id: c.roomId, // needed for key
     })),
+    // New Announcements (only unseen ones show up)
+    ...myAnnouncements
+      .filter(a => unseenAnnouncementIds.has(a.id))
+      .map(a => ({
+        ...a, _stream: 'announcement',
+        _unread: true,
+        _sortTime: a.created_at ?? 0,
+      })),
   ]
     .sort((a, b) => new Date(b._sortTime) - new Date(a._sortTime))
-    .slice(0, 25)
+    .slice(0, 30)
 
   const filteredItems = filter === 'unread' ? allItems.filter(i => i._unread) : allItems
 
-  const totalUnseen = unseenInReports.length + unseenInLeaves.length + unseenMyReports.length + unseenMyLeaves.length + unseenChats.length
+  const totalUnseen = unseenInReports.length + unseenInLeaves.length + unseenMyReports.length + unseenMyLeaves.length + unseenChats.length + unseenAnnouncements.length
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -377,11 +415,17 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                 const isMyLeave  = item._stream === 'my-leave'
                 const isInReport = item._stream === 'in-report'
                 const isChat     = item._stream === 'chat'
+                const isAnn      = item._stream === 'announcement'
 
                 // --- Avatar & Badge Icon ---
                 let Icon, accentColor, avatarInitial, avatarBg
 
-                if (isChat) {
+                if (isAnn) {
+                  Icon          = Megaphone
+                  accentColor   = item.is_urgent ? '#ef4444' : 'var(--theme-500)'
+                  avatarBg      = item.is_urgent ? 'rgba(239,68,68,0.1)' : 'rgba(var(--theme-500-rgb,99,102,241),0.1)'
+                  avatarInitial = '📢'
+                } else if (isChat) {
                   Icon        = MessageSquare
                   accentColor = '#14b8a6' // Teal
                   avatarBg    = 'var(--theme-500)'
@@ -401,7 +445,10 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
 
                 // --- Text Formatting (Inline Flow) ---
                 let boldText, mainText
-                if (isChat) {
+                if (isAnn) {
+                  boldText = item.author_name || 'HR'
+                  mainText = ` posted ${item.is_urgent ? '🚨 an urgent announcement' : 'an announcement'}: "${item.subject}"`
+                } else if (isChat) {
                   if (item.isDept) {
                     boldText = item.lastSenderName?.split(' ')[0] || 'Someone'
                     mainText = ` sent a message in ${item.roomId}: "${item.lastMessage || 'Attachment'}"`
@@ -447,9 +494,10 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                     <div style={{ position: 'relative', width: '56px', height: '56px', flexShrink: 0 }}>
                       <div style={{
                         width: '100%', height: '100%', borderRadius: '50%',
-                        background: avatarBg, color: avatarBg === 'var(--page-bg-alt)' ? 'var(--text-primary)' : '#fff',
+                        background: isAnn ? avatarBg : (avatarBg === 'var(--page-bg-alt)' ? avatarBg : avatarBg),
+                        color: isAnn ? accentColor : (avatarBg === 'var(--page-bg-alt)' ? 'var(--text-primary)' : '#fff'),
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '22px', fontWeight: 600
+                        fontSize: isAnn ? '24px' : '22px', fontWeight: 600
                       }}>
                         {avatarInitial}
                       </div>

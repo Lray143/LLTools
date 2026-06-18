@@ -137,6 +137,18 @@ window.electronAPI = {
   getMyLeaveRequests:      (employeeNo)            => ipcRenderer.invoke('leaves:getMine', employeeNo),
   reviewLeaveRequest:      (id, status, note, reviewedBy) => ipcRenderer.invoke('leaves:review', id, status, note, reviewedBy),
 
+  // ── Announcements ─────────────────────────────────────────────────
+  getAnnouncements:        (empId, incArch) => ipcRenderer.invoke('announcements:getAll', empId, incArch),
+  getArchivedAnnouncements:(empId)          => ipcRenderer.invoke('announcements:getArchived', empId),
+  upsertAnnouncement:      (ann)            => ipcRenderer.invoke('announcements:upsert', ann),
+  archiveAnnouncement:     (id)             => ipcRenderer.invoke('announcements:archive', id),
+  permDeleteAnnouncement:  (id)             => ipcRenderer.invoke('announcements:permDelete', id),
+  acknowledgeAnnouncement: (annId, empId, empName) => ipcRenderer.invoke('announcements:acknowledge', annId, empId, empName),
+  getAnnouncementAcks:     (annId)          => ipcRenderer.invoke('announcements:getAcks', annId),
+  getAnnouncementComments: (annId)          => ipcRenderer.invoke('announcements:getComments', annId),
+  addAnnouncementComment:  (annId, empId, empName, content, parentId) => ipcRenderer.invoke('announcements:addComment', annId, empId, empName, content, parentId),
+  reactAnnouncementComment:(commentId, empId, empName, reaction) => ipcRenderer.invoke('announcements:reactComment', commentId, empId, empName, reaction),
+
   // ── Cloud Sync Events ───────────────────────────────────────────
   // Called every 10 seconds after a cloud sync completes.
   // Returns a cleanup function — call it when the component unmounts.
