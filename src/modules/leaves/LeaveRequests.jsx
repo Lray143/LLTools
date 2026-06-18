@@ -101,6 +101,7 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
   const [loading,      setLoading]      = useState(true)
   const [submitting,   setSubmitting]   = useState(false)
   const [showModal,    setShowModal]    = useState(false)
+  const [showGForm,    setShowGForm]    = useState(false)
   const [viewTarget,   setViewTarget]   = useState(null)   // details modal
   const [reviewTarget, setReviewTarget] = useState(null)   // review modal
   const [statusFilter, setStatusFilter] = useState('All')
@@ -266,7 +267,7 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
           <Button 
             className="border-0 text-sm h-9 px-4 rounded-lg flex items-center gap-1.5"
             style={{ background: 'var(--theme-500)', color: '#fff' }}
-            onClick={() => setShowModal(true)}
+            onClick={() => isHR ? setShowModal(true) : setShowGForm(true)}
           >
             <Plus size={14} />
             New Request
@@ -367,15 +368,18 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
               isManageView={isManageView}
               onView={setViewTarget}
               onReview={r => { setViewTarget(null); setReviewTarget(r) }}
-              onNewRequest={() => setShowModal(true)}
+              onNewRequest={() => isHR ? setShowModal(true) : setShowGForm(true)}
             />
           )}
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Google Form modal — employee new request */}
+      {!isHR && <GFormModal open={showGForm} onClose={() => setShowGForm(false)} />}
+
+      {/* Legacy LeaveModal — HR only (kept for HR's own leave filing if needed) */}
       <LeaveModal
-        open={showModal}
+        open={isHR && showModal}
         onClose={() => setShowModal(false)}
         onSubmit={handleSubmit}
         loading={submitting}
@@ -392,6 +396,77 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
         isHR={isHR}
         onReview={() => { setReviewTarget(viewTarget); setViewTarget(null) }}
       />
+    </div>
+  )
+}
+
+// ── Google Form Modal ──────────────────────────────────────────────────────
+const GFORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfSBRl4zYfbTMCJzOfYz_bEK4y6LuV2cpu518K-xPbjWKibnA/viewform?embedded=true'
+
+function GFormModal({ open, onClose }) {
+  if (!open) return null
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,0.55)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '24px',
+      }}
+    >
+      <div style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: '16px',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+        width: '100%',
+        maxWidth: '780px',
+        height: '88vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px',
+          borderBottom: '1px solid var(--border)',
+          flexShrink: 0,
+        }}>
+          <div>
+            <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+              File a Leave Request
+            </p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+              Complete the form below to submit your leave request
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'var(--page-bg-alt)',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              padding: '6px 12px',
+              fontSize: '13px',
+              fontWeight: 500,
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: '6px',
+            }}
+          >
+            ✕ Close
+          </button>
+        </div>
+
+        {/* Webview */}
+        <webview
+          src={GFORM_URL}
+          style={{ flex: 1, width: '100%', border: 'none' }}
+        />
+      </div>
     </div>
   )
 }
