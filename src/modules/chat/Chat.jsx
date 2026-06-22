@@ -615,9 +615,9 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       <div className="flex items-center justify-between px-8 py-4 border-b shrink-0"
         style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Chats</h1>
-          <p className="text-xs m-0 mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Real-time messaging & team communication
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Chats</h1>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+            Real-time messaging &amp; team communication
           </p>
         </div>
         <div className="flex items-center gap-3">

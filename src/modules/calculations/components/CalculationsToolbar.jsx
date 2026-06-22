@@ -156,7 +156,10 @@ export default function CalculationsToolbar({
     <>
       {/* ── TOP HEADER (matches Outlets / Employees) ── */}
       <div className="flex items-center justify-between pl-8 pr-[calc(2rem+15px)] py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <h1 className="text-2xl font-semibold text-gray-900">Calculations</h1>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Calculations</h1>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Product order &amp; pricing calculator</p>
+        </div>
         <div className="flex items-center gap-3">
           {/* Search — always visible */}
           <div className="relative">

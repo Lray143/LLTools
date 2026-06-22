@@ -356,7 +356,10 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
 
       {/* TOP BAR */}
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <h1 className="text-2xl font-semibold text-gray-900">Clinic Log</h1>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Clinic Log</h1>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Employee health &amp; visit records</p>
+        </div>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />

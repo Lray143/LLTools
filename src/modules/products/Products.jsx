@@ -12,7 +12,10 @@ export default function Products({ refreshKey = 0, currentUser, onNavigate }) {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', overflow: 'hidden', background: 'var(--page-bg)' }}>
       {/* ── TOP HEADER ── */}
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Products</h1>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Products</h1>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Product list &amp; catalog management</p>
+        </div>
         <div className="flex items-center gap-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-secondary)' }} />

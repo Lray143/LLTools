@@ -1,11 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { SmilePlus, Send, CornerDownRight, ChevronDown, ChevronUp } from 'lucide-react'
+import { SmilePlus, Send, CornerDownRight, ChevronDown, ChevronUp, Smile } from 'lucide-react'
+import EmojiPicker from 'emoji-picker-react'
 
 const EMOJI_LIST = ['👍','❤️','😂','😮','😢','🔥','👏','🎉']
 
+function parseUTCDate(dateStr) {
+  if (!dateStr) return new Date();
+  if (dateStr.includes('T') && (dateStr.endsWith('Z') || dateStr.includes('+'))) return new Date(dateStr);
+  return new Date(dateStr.replace(' ', 'T') + 'Z');
+}
+
 function relativeTime(dateStr) {
   if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const diff = Date.now() - parseUTCDate(dateStr).getTime()
   const m = Math.floor(diff / 60_000)
   if (m < 1)  return 'just now'
   if (m < 60) return `${m}m ago`
@@ -178,14 +185,27 @@ function Comment({ comment, currentUser, onReact, onReply, allComments, depth = 
 
 // ── CommentSection ────────────────────────────────────────────────────────────
 export default function CommentSection({ announcementId, currentUser, pusherChannel }) {
-  const [comments,    setComments]    = useState([])
-  const [text,        setText]        = useState('')
-  const [replyTo,     setReplyTo]     = useState(null) // { id, employee_name }
-  const [submitting,  setSubmitting]  = useState(false)
+  const [comments, setComments] = useState([])
+  const [text, setText] = useState('')
+  const [replyTo, setReplyTo] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  
   const inputRef = useRef(null)
+  const emojiRef = useRef(null)
 
-  const empId   = String(currentUser.employeeId || currentUser.id)
+  const empId = String(currentUser.employeeId || currentUser.id)
   const empName = currentUser.employeeName || currentUser.username
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target)) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const load = useCallback(async () => {
     if (!announcementId) return
@@ -235,7 +255,29 @@ export default function CommentSection({ announcementId, currentUser, pusherChan
   }
 
   const handleReact = async (commentId, reaction) => {
-    await window.electronAPI.reactAnnouncementComment(commentId, empId, empName, reaction)
+    // Optimistic UI update so it feels instant
+    setComments(prev => prev.map(c => {
+      if (c.id === commentId) {
+        const reactionsObj = (() => { try { return JSON.parse(c.reactions || '{}') } catch { return {} } })()
+        const users = reactionsObj[reaction] || []
+        const isSelected = users.some(u => String(u.id) === String(empId))
+        
+        if (isSelected) {
+          reactionsObj[reaction] = users.filter(u => String(u.id) !== String(empId))
+          if (reactionsObj[reaction].length === 0) delete reactionsObj[reaction]
+        } else {
+          reactionsObj[reaction] = [...users, { id: empId, name: empName }]
+        }
+        return { ...c, reactions: JSON.stringify(reactionsObj) }
+      }
+      return c
+    }))
+
+    try {
+      await window.electronAPI.reactAnnouncementComment(commentId, empId, empName, reaction)
+    } catch(e) { console.error(e) }
+    // load() is no longer strictly necessary to wait for since Pusher will also trigger a sync if needed,
+    // but we can call it in the background to ensure consistency.
     load()
   }
 
@@ -282,9 +324,9 @@ export default function CommentSection({ announcementId, currentUser, pusherChan
             <button type="button" onClick={() => setReplyTo(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', lineHeight: 1 }}>✕</button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Avatar name={empName} size={28} />
-          <div style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center', background: 'var(--surface-hover)', borderRadius: 20, padding: '6px 12px', border: '1px solid var(--border)' }}>
+          <div style={{ flex: 1, display: 'flex', gap: 6, alignItems: 'center', background: 'var(--surface-hover)', borderRadius: 20, padding: '6px 12px', border: '1px solid var(--border)', position: 'relative' }}>
             <input
               ref={inputRef}
               value={text}
@@ -293,6 +335,31 @@ export default function CommentSection({ announcementId, currentUser, pusherChan
               placeholder="Write a comment…"
               style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 14, color: 'var(--text-primary)' }}
             />
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(v => !v)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: showEmojiPicker ? 'var(--theme-500)' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', padding: 4,
+              }}
+            >
+              <Smile size={16} />
+            </button>
+            {showEmojiPicker && (
+              <div ref={emojiRef} style={{ position: 'absolute', bottom: 40, right: 0, zIndex: 100 }}>
+                <EmojiPicker
+                  onEmojiClick={(e) => {
+                    setText(prev => prev + e.emoji)
+                    inputRef.current?.focus()
+                  }}
+                  theme="auto"
+                  width={300}
+                  height={400}
+                  lazyLoadEmojis={true}
+                />
+              </div>
+            )}
             <button
               type="submit"
               disabled={!text.trim() || submitting}

@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react'
 import {
   Megaphone, AlertTriangle, MessageSquare, ChevronDown, ChevronUp,
-  CheckCheck, Users, Archive, Trash2, CheckCircle, Eye
+  CheckCheck, Users, Archive, Trash2, CheckCircle, Eye,
+  Image as ImageIcon, Paperclip
 } from 'lucide-react'
 import CommentSection from './CommentSection'
 
+function parseUTCDate(dateStr) {
+  if (!dateStr) return new Date();
+  if (dateStr.includes('T') && (dateStr.endsWith('Z') || dateStr.includes('+'))) return new Date(dateStr);
+  return new Date(dateStr.replace(' ', 'T') + 'Z');
+}
+
 function relativeTime(dateStr) {
   if (!dateStr) return ''
-  const diff = Date.now() - new Date(dateStr).getTime()
+  const diff = Date.now() - parseUTCDate(dateStr).getTime()
   const m = Math.floor(diff / 60_000)
   if (m < 1)  return 'just now'
   if (m < 60) return `${m}m ago`
@@ -15,7 +22,7 @@ function relativeTime(dateStr) {
   if (h < 24) return `${h}h ago`
   const d = Math.floor(h / 24)
   if (d < 7) return `${d}d ago`
-  return new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+  return parseUTCDate(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function getInitials(name) {
@@ -94,11 +101,13 @@ export default function AnnouncementCard({
   pusherChannel,
   onArchive,
   onDelete,
+  onView,
+  focused = false,
   isArchived = false,
 }) {
-  const [expanded,      setExpanded]     = useState(false)
   const [showComments,  setShowComments] = useState(false)
   const [acks,          setAcks]         = useState([])
+  const [reads,         setReads]        = useState([])
   const [hasAcknowledged, setHasAcknowledged] = useState(!!announcement.has_acknowledged)
   const [ackCount,      setAckCount]     = useState(Number(announcement.ack_count) || 0)
   const [showAckModal,  setShowAckModal] = useState(false)
@@ -116,13 +125,33 @@ export default function AnnouncementCard({
   const allowComments = !!announcement.allow_comments
   const commentCount  = Number(announcement.comment_count) || 0
 
-  // Load ack list on demand (HR only)
+  // Load ack/read list on demand (HR only)
   const loadAcks = async () => {
     try {
       const rows = await window.electronAPI.getAnnouncementAcks(announcement.id)
       setAcks(rows || [])
     } catch(e) { console.error(e) }
   }
+
+  const loadReads = async () => {
+    try {
+      const rows = await window.electronAPI.getAnnouncementReads(announcement.id)
+      setReads(rows || [])
+    } catch(e) { console.error(e) }
+  }
+
+  useEffect(() => {
+    if (focused && !isArchived) {
+      window.electronAPI.markAnnouncementRead(announcement.id, empId, empName).catch(console.error)
+    }
+  }, [focused, announcement.id, empId, empName, isArchived])
+
+  useEffect(() => {
+    if (focused && canPost) {
+      loadAcks()
+      loadReads()
+    }
+  }, [focused, canPost])
 
   const handleAcknowledge = async () => {
     if (hasAcknowledged || acknowledging) return
@@ -173,11 +202,11 @@ export default function AnnouncementCard({
         )}
 
         <div
-          style={{ padding: '16px 20px', cursor: 'pointer' }}
+          style={{ padding: '16px 20px', cursor: focused ? 'default' : 'pointer' }}
           onClick={(e) => {
             // Prevent toggling if clicking a button inside
             if (e.target.closest('button')) return
-            setExpanded(o => !o)
+            if (!focused && onView) onView()
           }}
         >
           {/* Header row */}
@@ -239,9 +268,11 @@ export default function AnnouncementCard({
               </button>
             )}
             {/* Expand indicator */}
-            <div style={{ alignSelf: 'center', color: 'var(--text-secondary)', marginLeft: 8 }}>
-              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </div>
+            {!focused && (
+              <div style={{ alignSelf: 'center', color: 'var(--text-secondary)', marginLeft: 8 }}>
+                <Eye size={16} />
+              </div>
+            )}
           </div>
 
           {/* Subject */}
@@ -254,18 +285,185 @@ export default function AnnouncementCard({
             {announcement.subject}
           </h3>
 
-          {/* Content (Only shown if expanded) */}
-          {expanded && (
+          {!focused && (
+            <p style={{
+              margin: '8px 0 0',
+              fontSize: 14, color: 'var(--text-secondary)',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden', wordBreak: 'break-word',
+            }}>
+              {content.replace(/\[attachment:\s*([^\]]+)\]/g, ' 📎 Attachment ').trim() || 'No preview text.'}
+            </p>
+          )}
+
+          {/* Content (Only shown if focused) */}
+          {focused && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '50vh', overflowY: 'auto', paddingRight: '8px' }}>
-                {content}
-              </div>
+              {/* Inline attachment parser: splits content on [attachment: url] tags */}
+              {(() => {
+                const ATTACH_RE = /\[attachment:\s*([^|\]]+)(?:\|\s*([^\]]+))?\]/g
+                const parts = []
+                let last = 0
+                let match
+                let idx = 0
+                const raw = content || ''
+
+                while ((match = ATTACH_RE.exec(raw)) !== null) {
+                  // Text before this attachment
+                  if (match.index > last) {
+                    const textChunk = raw.slice(last, match.index).replace(/^\n/, '').replace(/\n$/, '')
+                    if (textChunk) {
+                      parts.push(
+                        <div key={`txt-${idx}`} style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {textChunk}
+                        </div>
+                      )
+                      idx++
+                    }
+                  }
+
+                  // Render the attachment
+                  const rawUrl = match[1].trim()
+                  const customName = match[2] ? match[2].trim() : null
+                  const renderUrl = rawUrl.replace('https://pub-b12f4572a0004391ac727c63af4321b8.r2.dev/', 'r2://')
+                  parts.push(
+                    <div key={`att-${idx}`} style={{ margin: '12px 0' }}>
+                      {renderUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) ? (
+                        <img
+                          src={renderUrl}
+                          alt="attachment"
+                          style={{
+                            borderRadius: 10, maxWidth: '100%', objectFit: 'contain',
+                            maxHeight: 400, cursor: 'zoom-in', transition: 'transform 150ms',
+                            border: '1px solid var(--border)', display: 'block'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (renderUrl.startsWith('r2://')) {
+                              window.electronAPI?.openR2File?.(renderUrl.replace('r2://', ''))
+                            } else {
+                              window.open(renderUrl, '_blank')
+                            }
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.01)'}
+                          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        />
+                      ) : renderUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                        <video
+                          src={renderUrl}
+                          controls
+                          preload="metadata"
+                          style={{
+                            borderRadius: 10, maxWidth: '100%', objectFit: 'cover',
+                            maxHeight: 400, border: '1px solid var(--border)', display: 'block'
+                          }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 10,
+                          padding: '10px 16px', borderRadius: 8,
+                          background: 'rgba(var(--theme-500-rgb,99,102,241), 0.08)',
+                          border: '1px solid rgba(var(--theme-500-rgb,99,102,241), 0.2)'
+                        }}>
+                          <Paperclip size={16} style={{ color: 'var(--theme-500)', flexShrink: 0 }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                              {customName || decodeURIComponent(renderUrl.split('/').pop().split('?')[0]) || 'Attached File'}
+                            </span>
+                            {(renderUrl.startsWith('attachment://') || renderUrl.startsWith('r2://')) ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (renderUrl.startsWith('attachment://')) {
+                                    window.electronAPI?.openAttachment?.(renderUrl.replace('attachment://', ''))
+                                  } else {
+                                    window.electronAPI?.openR2File?.(renderUrl.replace('r2://', ''))
+                                  }
+                                }}
+                                style={{
+                                  fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)',
+                                  background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left'
+                                }}
+                              >
+                                Download File
+                              </button>
+                            ) : (
+                              <a href={renderUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                                style={{ fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)' }}>
+                                Download File
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                  idx++
+                  last = match.index + match[0].length
+                }
+
+                // Remaining text after last attachment
+                if (last < raw.length) {
+                  const tail = raw.slice(last).replace(/^\n/, '')
+                  if (tail) {
+                    parts.push(
+                      <div key={`txt-${idx}`} style={{ fontSize: 14, lineHeight: 1.65, color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {tail}
+                      </div>
+                    )
+                  }
+                }
+
+                return (
+                  <div style={{ paddingRight: 8 }}>
+                    {parts}
+                  </div>
+                )
+              })()}
+
+              {/* Legacy: render file_url from old single-attachment posts */}
+              {announcement.file_url && (() => {
+                const renderUrl = announcement.file_url.replace('https://pub-b12f4572a0004391ac727c63af4321b8.r2.dev/', 'r2://')
+                return (
+                  <div style={{ marginTop: 12 }}>
+                    {renderUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) ? (
+                      <img src={renderUrl} alt="attachment" style={{ borderRadius: 10, maxWidth: '100%', maxHeight: 400, objectFit: 'contain', border: '1px solid var(--border)', display: 'block', cursor: 'zoom-in' }}
+                        onClick={(e) => { e.stopPropagation(); if (renderUrl.startsWith('r2://')) window.electronAPI?.openR2File?.(renderUrl.replace('r2://', '')); else window.open(renderUrl, '_blank') }} />
+                    ) : renderUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                      <video src={renderUrl} controls preload="metadata" style={{ borderRadius: 10, maxWidth: '100%', maxHeight: 400, border: '1px solid var(--border)', display: 'block' }} onClick={e => e.stopPropagation()} />
+                    ) : (
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 10,
+                        padding: '10px 16px', borderRadius: 8,
+                        background: 'rgba(var(--theme-500-rgb,99,102,241), 0.08)',
+                        border: '1px solid rgba(var(--theme-500-rgb,99,102,241), 0.2)'
+                      }}>
+                        <Paperclip size={16} style={{ color: 'var(--theme-500)', flexShrink: 0 }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                            {decodeURIComponent(renderUrl.split('/').pop().split('?')[0]) || 'Attached File'}
+                          </span>
+                          {(renderUrl.startsWith('r2://') || renderUrl.startsWith('attachment://')) ? (
+                          <button onClick={(e) => { e.stopPropagation(); window.electronAPI?.openR2File?.(renderUrl.replace('r2://', '')) }}
+                            style={{ fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                            Download File
+                          </button>
+                        ) : (
+                          <a href={renderUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)' }}>Download File</a>
+                        )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
 
 
           {/* Posted by footer line */}
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '10px 0 0', fontStyle: 'italic' }}>
-            Posted by {announcement.author_name} · {new Date(announcement.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            Posted by {announcement.author_name} · {parseUTCDate(announcement.created_at).toLocaleDateString('en-PH', { month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </p>
 
           {/* Divider */}
@@ -274,8 +472,8 @@ export default function AnnouncementCard({
           {/* Actions row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
 
-            {/* Acknowledge button (non-HR, requires ack) */}
-            {requiresAck && !canPost && (
+            {/* Acknowledge button (non-HR, requires ack) - Only show when focused so they must read first */}
+            {requiresAck && !canPost && focused && (
               <button
                 onClick={handleAcknowledge}
                 disabled={hasAcknowledged || acknowledging}
@@ -368,6 +566,44 @@ export default function AnnouncementCard({
               )}
             </div>
           )}
+
+          {/* HR / Admin View: Acknowledged & Opened lists */}
+          {focused && canPost && (
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '2px dashed var(--border)' }}>
+              <h4 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-primary)' }}>HR / Admin Dashboard</h4>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <h5 style={{ margin: '0 0 8px', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Acknowledged ({acks.length})</h5>
+                  {acks.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No one has acknowledged yet.</p> : (
+                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {acks.map(a => (
+                        <li key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                          <CheckCircle size={14} style={{ color: 'var(--theme-500)' }} />
+                          <span style={{ color: 'var(--text-primary)' }}>{a.employee_name}</span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: 11, marginLeft: 'auto' }}>{relativeTime(a.acknowledged_at)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <h5 style={{ margin: '0 0 8px', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Opened ({reads.length})</h5>
+                  {reads.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No one has opened this yet.</p> : (
+                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {reads.map(r => (
+                        <li key={r.employee_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                          <Eye size={14} style={{ color: 'var(--text-secondary)' }} />
+                          <span style={{ color: 'var(--text-primary)' }}>{r.employee_name}</span>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: 11, marginLeft: 'auto' }}>{relativeTime(r.read_at)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </>

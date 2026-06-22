@@ -274,8 +274,8 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
       {/* ── TOP HEADER ── */}
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <div>
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Reports</h1>
-          <p className="text-xs m-0 mt-1" style={{ color: 'var(--text-secondary)' }}>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Reports</h1>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
             {isManageView
               ? 'Manage and review all employee reports'
               : 'Submit and track your reports'}

@@ -4,7 +4,10 @@ import NotificationBell from '../../../components/ui/NotificationBell'
 export function MyAttendanceHeader({ currentUser, refreshKey, onNavigate }) {
   return (
     <>
-      <h1 className="text-2xl font-semibold text-gray-900">My Attendance</h1>
+      <div>
+        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>My Attendance</h1>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Your daily time &amp; attendance records</p>
+      </div>
 
       <div className="flex items-center gap-3">
 

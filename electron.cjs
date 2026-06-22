@@ -34,6 +34,7 @@ const {
   addModuleActivityLog, getModuleActivityLogs,
   getAnnouncements, getArchivedAnnouncements, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
   acknowledgeAnnouncement, getAnnouncementAcknowledgements, getAnnouncementComments, addAnnouncementComment, reactToAnnouncementComment,
+  markAnnouncementRead, getAnnouncementReads
 } = require('./db.cjs')
 
 // ── Pusher REST trigger (no SDK — avoids ESM require issues) ────────────
@@ -208,6 +209,8 @@ ipcMain.handle('announcements:archive',      (_, id)             => archiveAnnou
 ipcMain.handle('announcements:permDelete',   (_, id)             => permanentDeleteAnnouncement(id))
 ipcMain.handle('announcements:acknowledge',  (_, annId, empId, empName) => acknowledgeAnnouncement(annId, empId, empName))
 ipcMain.handle('announcements:getAcks',      (_, annId)          => getAnnouncementAcknowledgements(annId))
+ipcMain.handle('announcements:markRead',     (_, annId, empId, empName) => markAnnouncementRead(annId, empId, empName))
+ipcMain.handle('announcements:getReads',     (_, annId)          => getAnnouncementReads(annId))
 ipcMain.handle('announcements:getComments',  (_, annId)          => getAnnouncementComments(annId))
 ipcMain.handle('announcements:addComment',   (_, annId, empId, empName, content, parentId) => addAnnouncementComment(annId, empId, empName, content, parentId))
 ipcMain.handle('announcements:reactComment', (_, commentId, empId, empName, reaction) => reactToAnnouncementComment(commentId, empId, empName, reaction))

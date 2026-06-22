@@ -467,6 +467,7 @@ const initDb = async () => {
       require_ack     INTEGER DEFAULT 0,
       allow_comments  INTEGER DEFAULT 1,
       target_audience TEXT DEFAULT '[]', -- JSON array of employee IDs, or '[]' for all
+      file_url        TEXT DEFAULT NULL,
       status          TEXT DEFAULT 'Active', -- 'Active' or 'Archived'
       created_at      TEXT DEFAULT (datetime('now')),
       updated_at      TEXT DEFAULT (datetime('now'))
@@ -477,6 +478,13 @@ const initDb = async () => {
       employee_id     TEXT NOT NULL,
       employee_name   TEXT NOT NULL,
       acknowledged_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS announcement_reads (
+      id              TEXT PRIMARY KEY,
+      announcement_id TEXT NOT NULL,
+      employee_id     TEXT NOT NULL,
+      employee_name   TEXT NOT NULL,
+      read_at         TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS announcement_comments (
       id              TEXT PRIMARY KEY,
@@ -559,6 +567,9 @@ const initDb = async () => {
   try { await run("ALTER TABLE direct_messages ADD COLUMN is_unsent INTEGER DEFAULT 0") } catch (_) {}
   try { await run("ALTER TABLE direct_messages ADD COLUMN is_edited INTEGER DEFAULT 0") } catch (_) {}
   try { await run("ALTER TABLE direct_messages ADD COLUMN deleted_for TEXT DEFAULT '[]'") } catch (_) {}
+
+  // Migration: add file_url to announcements
+  try { await run("ALTER TABLE announcements ADD COLUMN file_url TEXT DEFAULT NULL") } catch (_) {}
 
   // Migration: snapshot lunch hours onto attendance records for historical accuracy
   try { await run("ALTER TABLE attendance ADD COLUMN sched_lunch_start TEXT DEFAULT NULL") } catch (_) {}
@@ -1706,8 +1717,8 @@ const getArchivedAnnouncements = async (employeeId = null) => {
 const upsertAnnouncement = async (announcement) => {
   const id = announcement.id || require('crypto').randomUUID();
   await run(`
-    INSERT INTO announcements (id, subject, content, author_id, author_name, is_urgent, require_ack, allow_comments, target_audience, status, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO announcements (id, subject, content, author_id, author_name, is_urgent, require_ack, allow_comments, target_audience, file_url, status, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       subject=excluded.subject,
       content=excluded.content,
@@ -1715,12 +1726,13 @@ const upsertAnnouncement = async (announcement) => {
       require_ack=excluded.require_ack,
       allow_comments=excluded.allow_comments,
       target_audience=excluded.target_audience,
+      file_url=excluded.file_url,
       status=excluded.status,
       updated_at=datetime('now')
   `, [
     id, announcement.subject, announcement.content, announcement.author_id, announcement.author_name,
     announcement.is_urgent ? 1 : 0, announcement.require_ack ? 1 : 0, announcement.allow_comments ? 1 : 0,
-    announcement.target_audience || '[]', announcement.status || 'Active'
+    announcement.target_audience || '[]', announcement.file_url || null, announcement.status || 'Active'
   ]);
   
   if (global.pusherTrigger) {
@@ -1750,6 +1762,29 @@ const acknowledgeAnnouncement = async (announcementId, employeeId, employeeName)
 
 const getAnnouncementAcknowledgements = async (announcementId) => {
   return await queryAll(`SELECT * FROM announcement_acknowledgements WHERE announcement_id = ? ORDER BY acknowledged_at DESC`, [announcementId]);
+}
+
+const markAnnouncementRead = async (announcementId, employeeId, employeeName) => {
+  const existing = await queryOne(`SELECT id FROM announcement_reads WHERE announcement_id = ? AND employee_id = ?`, [announcementId, employeeId]);
+  if (existing) {
+    await run(`UPDATE announcement_reads SET read_at = datetime('now') WHERE id = ?`, [existing.id]);
+    return;
+  }
+  const id = require('crypto').randomUUID();
+  await run(`
+    INSERT INTO announcement_reads (id, announcement_id, employee_id, employee_name)
+    VALUES (?, ?, ?, ?)
+  `, [id, announcementId, employeeId, employeeName]);
+}
+
+const getAnnouncementReads = async (announcementId) => {
+  return await queryAll(`
+    SELECT employee_id, employee_name, MAX(read_at) as read_at 
+    FROM announcement_reads 
+    WHERE announcement_id = ? 
+    GROUP BY employee_id, employee_name 
+    ORDER BY MAX(read_at) DESC
+  `, [announcementId]);
 }
 
 const getAnnouncementComments = async (announcementId) => {
@@ -1829,4 +1864,5 @@ module.exports = {
   addModuleActivityLog, getModuleActivityLogs,
   getAnnouncements, getArchivedAnnouncements, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
   acknowledgeAnnouncement, getAnnouncementAcknowledgements, getAnnouncementComments, addAnnouncementComment, reactToAnnouncementComment,
+  markAnnouncementRead, getAnnouncementReads
 }
