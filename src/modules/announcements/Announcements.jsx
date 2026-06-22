@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Pusher from 'pusher-js'
 import {
   Megaphone, Plus, X, Archive, ArchiveRestore, AlertTriangle,
-  Users, MessageSquare, CheckCheck, Search, ChevronDown
+  Users, MessageSquare, CheckCheck, Search, ChevronDown, Smile
 } from 'lucide-react'
+import EmojiPicker from 'emoji-picker-react'
 import NotificationBell from '../../components/ui/NotificationBell'
 import AnnouncementCard from './components/AnnouncementCard'
 import { canPostAnnouncements } from '../../lib/permissions'
@@ -113,6 +114,17 @@ function ComposeBox({ currentUser, employees, onPosted }) {
   const [allowComments, setAllowComments] = useState(true)
   const [targetIds,     setTargetIds]     = useState([]) // [] = all
   const [submitting,    setSubmitting]    = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (!e.target.closest('[data-emoji-container]')) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   const authorName = currentUser.employeeName || currentUser.username
 
@@ -212,9 +224,39 @@ function ComposeBox({ currentUser, employees, onPosted }) {
 
       {/* Content */}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Content *
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Content *
+          </label>
+          <div style={{ position: 'relative' }} data-emoji-container>
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(prev => !prev)}
+              style={{
+                background: showEmojiPicker ? 'var(--surface-hover)' : 'transparent',
+                border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6,
+                color: showEmojiPicker ? 'var(--theme-500)' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 150ms'
+              }}
+              title="Add Emoji"
+            >
+              <Smile size={16} />
+            </button>
+            {showEmojiPicker && (
+              <div style={{
+                position: 'absolute', right: 0, top: '100%', zIndex: 50, marginTop: 4,
+                border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                background: 'var(--surface)', overflow: 'hidden'
+              }}>
+                <EmojiPicker
+                  theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                  onEmojiClick={(e) => setContent(prev => prev + e.emoji)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
         <textarea
           value={content}
           onChange={e => setContent(e.target.value)}
