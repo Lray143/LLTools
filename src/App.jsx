@@ -22,6 +22,129 @@ import AppLinks       from './modules/app-links/AppLinks'
 import { getAllowedModules } from './lib/permissions'
 import { getSavedTheme, applyThemeToDocument, saveTheme } from './lib/theme'
 
+import { useMemo } from 'react'
+
+// ── Canvas-based background removal for mascot images ────────────────────────
+function useTransparentImage(src, threshold = 60) {
+  const [dataUrl, setDataUrl] = useState('')
+  useEffect(() => {
+    if (!src) { setDataUrl(''); return }
+    // If it's an SVG, we don't need to process it for transparency
+    if (src.endsWith('.svg')) { setDataUrl(src); return }
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width  = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const d = imgData.data
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] < threshold && d[i+1] < threshold && d[i+2] < threshold) {
+          d[i+3] = 0 // fully transparent
+        }
+      }
+      ctx.putImageData(imgData, 0, 0)
+      setDataUrl(canvas.toDataURL('image/png'))
+    }
+    img.src = src
+  }, [src, threshold])
+  return dataUrl
+}
+
+function ThemeDecorations() {
+  const [theme, setTheme] = useState(document.documentElement.dataset.activeTheme || '')
+  const [mascotSrc, setMascotSrc] = useState(document.documentElement.dataset.mascotSidebar || '')
+  const transparentMascot = useTransparentImage(mascotSrc)
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.dataset.activeTheme || '')
+      setMascotSrc(document.documentElement.dataset.mascotSidebar || '')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-active-theme', 'data-mascot-sidebar'] })
+    return () => observer.disconnect()
+  }, [])
+
+  const elements = useMemo(() => {
+    const items = []
+    // 4 mascot images
+    for (let i = 0; i < 4; i++) {
+      items.push({
+        type: 'mascot',
+        top: Math.random() * 80 + 10 + '%',
+        left: Math.random() * 65 + 25 + '%', // avoid left sidebar area
+        size: Math.random() * 120 + 80 + 'px',
+        rotation: Math.random() * 360 + 'deg',
+        opacity: Math.random() * 0.1 + 0.05
+      })
+    }
+    // 5 secondary elements
+    for (let i = 0; i < 5; i++) {
+      items.push({
+        type: 'secondary',
+        top: Math.random() * 80 + 10 + '%',
+        left: Math.random() * 65 + 25 + '%',
+        size: Math.random() * 20 + 20 + 'px',
+        rotation: Math.random() * 60 - 30 + 'deg',
+        opacity: Math.random() * 0.2 + 0.15,
+        emojiIndex: i
+      })
+    }
+    return items
+  }, [])
+
+  if (theme !== 'sunflower' && theme !== 'kuromi') return null
+
+  const isSunflower = theme === 'sunflower'
+  const emojiSet = isSunflower ? ['🐝'] : ['✨', '🦇', '💜', '🎀']
+
+  return (
+    <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
+      {elements.map((el, i) => {
+        if (el.type === 'mascot') {
+          if (!transparentMascot) return null
+          return (
+            <img 
+              key={i} 
+              src={transparentMascot} 
+              className="absolute" 
+              style={{ 
+                top: el.top, 
+                left: el.left, 
+                width: el.size, 
+                height: el.size, 
+                transform: `translate(-50%, -50%) rotate(${el.rotation})`,
+                opacity: el.opacity,
+                filter: 'var(--mascot-filter, none)',
+              }} 
+              alt="" 
+            />
+          )
+        } else {
+          const emoji = emojiSet[el.emojiIndex % emojiSet.length]
+          return (
+            <div 
+              key={i} 
+              className="absolute drop-shadow-md" 
+              style={{ 
+                top: el.top, 
+                left: el.left, 
+                fontSize: el.size, 
+                transform: `translate(-50%, -50%) rotate(${el.rotation}) ${Math.random() > 0.5 ? 'scaleX(-1)' : ''}`,
+                opacity: el.opacity,
+              }}
+            >
+              {emoji}
+            </div>
+          )
+        }
+      })}
+    </div>
+  )
+}
+
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [activePage,  setActivePage]  = useState('announcements')
@@ -213,7 +336,8 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen" style={{ background: 'var(--page-bg)' }}>
+    <div className="flex h-screen relative" style={{ background: 'var(--page-bg)' }}>
+      <ThemeDecorations />
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
@@ -222,7 +346,7 @@ function App() {
         currentUser={currentUser}
         refreshKey={refreshKey}
       />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto relative z-10">
         {renderPage()}
       </main>
     </div>

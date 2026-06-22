@@ -374,7 +374,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
     const ch = pusher.subscribe('lltools-updates')
     setPusherChannel(ch)
 
-    ch.bind('new-announcement', () => { load() })
+    ch.bind('new-announcement', () => { window.electronAPI?.forceSync?.() })
 
     return () => {
       pusher.unsubscribe('lltools-updates')

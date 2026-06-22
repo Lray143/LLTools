@@ -197,15 +197,24 @@ export default function CommentSection({ announcementId, currentUser, pusherChan
 
   useEffect(() => { load() }, [load])
 
-  // Real-time: refresh when Pusher fires
+  // Real-time: force a sync when Pusher fires
   useEffect(() => {
     if (!pusherChannel) return
     const handler = (data) => {
-      if (data?.announcementId === announcementId || data?.commentId) load()
+      if (data?.announcementId === announcementId || data?.commentId) {
+        window.electronAPI?.forceSync?.()
+      }
     }
     pusherChannel.bind('new-announcement-comment', handler)
     return () => pusherChannel.unbind('new-announcement-comment', handler)
-  }, [pusherChannel, announcementId, load])
+  }, [pusherChannel, announcementId])
+
+  // Reload when the database finishes syncing
+  useEffect(() => {
+    if (!window.electronAPI?.onDbSynced) return
+    const cleanup = window.electronAPI.onDbSynced(() => load())
+    return () => cleanup()
+  }, [load])
 
   const handleSubmit = async (e) => {
     e.preventDefault()

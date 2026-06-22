@@ -555,6 +555,7 @@ app.whenReady().then(async () => {
     workerData: { dbPath: path.join(app.getPath('userData'), 'lltools-turso.db') }
   })
   syncWorkerRef = syncWorker
+  global.syncWorkerRef = syncWorker
 
   let lastKnownVersion = -1
   syncWorker.on('message', async (msg) => {

@@ -240,7 +240,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
               width: '140px',
               opacity: isExpanded ? 0.30 : 0,
               transition: 'opacity 0.3s ease',
-              filter: 'hue-rotate(260deg) saturate(5) drop-shadow(0 0 12px rgba(147,51,234,0.7))',
+              filter: 'var(--mascot-filter, none)',
               zIndex: 0,
             }}
           />

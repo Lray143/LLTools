@@ -53,7 +53,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
                           className="inline-flex items-center gap-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full"
                         >
                           <Tag size={9} />
-                          {d.name} {d.value}%
+                          {d.name}: {d.value}%
                         </span>
                       ))}
                     </div>

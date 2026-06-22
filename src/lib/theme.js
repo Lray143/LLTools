@@ -269,6 +269,7 @@ export const THEMES = [
     type: 'dark',
     mascotSidebar: './kuromi_mascot.png',
     mascotEmpty: './kuromi_empty_state.png',
+    mascotFilter: 'hue-rotate(260deg) saturate(5) drop-shadow(0 0 12px rgba(147,51,234,0.7))',
     colors: {
       pageBg: '#0d0814',
       pageBgAlt: '#120b1e',
@@ -283,6 +284,29 @@ export const THEMES = [
       accentHover: '#a855f7',
       sidebarBg: '#08040f',
       sidebarActive: '#9333ea'
+    }
+  },
+  {
+    id: 'sunflower',
+    name: 'Sunflower',
+    type: 'light',
+    mascotSidebar: './sunflower_mascot.svg',
+    mascotEmpty: './sunflower_empty_state.svg',
+    mascotFilter: 'drop-shadow(0 0 12px rgba(245,158,11,0.5))',
+    colors: {
+      pageBg: '#fffbeb',
+      pageBgAlt: '#fef3c7',
+      surface: '#ffffff',
+      surfaceHover: '#fffbeb',
+      border: '#fde68a',
+      borderStrong: '#fbbf24',
+      textPrimary: '#451a03',
+      textSecondary: '#78350f',
+      accentBg: '#f59e0b',
+      accentText: '#ffffff',
+      accentHover: '#d97706',
+      sidebarBg: '#451a03',
+      sidebarActive: '#f59e0b'
     }
   }
 ]
@@ -341,6 +365,7 @@ export function applyThemeToDocument(themeId) {
 
   // Mascot images (empty string if not a mascot theme)
   root.style.setProperty('--mascot-sidebar', theme.mascotSidebar ? `url('${theme.mascotSidebar}')` : 'none')
+  root.style.setProperty('--mascot-filter',  theme.mascotFilter || 'none')
   root.dataset.mascotSidebar  = theme.mascotSidebar  || ''
   root.dataset.mascotEmpty    = theme.mascotEmpty    || ''
 

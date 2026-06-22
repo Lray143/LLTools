@@ -30,21 +30,15 @@ function calcActualHours(r) {
 
   let diff = outMin - inMin
 
-  const lunchOutMin = parseTime(r.lunchOut)
-  const lunchInMin  = parseTime(r.lunchIn)
-  if (lunchOutMin != null && lunchInMin != null) {
-    // Actual lunch taps recorded — deduct exactly that
-    diff -= (lunchInMin - lunchOutMin)
-  } else {
-    // No lunch taps: deduct the overlap of the scheduled lunch window
-    // with the actual work period [inMin, outMin]
-    const lsMin = parseHHMM(r.lunchStart) ?? (12 * 60)
-    const leMin = parseHHMM(r.lunchEnd)   ?? (13 * 60)
-    const overlapStart = Math.max(inMin,  lsMin)
-    const overlapEnd   = Math.min(outMin, leMin)
-    const overlap      = Math.max(0, overlapEnd - overlapStart)
-    diff -= overlap
-  }
+  // Strictly deduct only the scheduled lunch window overlap
+  const lsMin = parseHHMM(r.lunchStart) ?? (12 * 60)
+  const leMin = parseHHMM(r.lunchEnd)   ?? (13 * 60)
+  
+  const overlapSchedStart = Math.max(inMin, lsMin)
+  const overlapSchedEnd   = Math.min(outMin, leMin)
+  const schedDeduction    = Math.max(0, overlapSchedEnd - overlapSchedStart)
+  
+  diff -= schedDeduction
 
   if (diff <= 0) return null
   const h  = Math.floor(diff / 60)
@@ -72,21 +66,15 @@ function calcSchedHours(r) {
 
   let diff = effectiveOut - effectiveIn
 
-  // Lunch deduction: overlap of scheduled lunch window with the clamped work window
-  const lunchOutMin = parseTime(r.lunchOut)
-  const lunchInMin  = parseTime(r.lunchIn)
-  if (lunchOutMin != null && lunchInMin != null) {
-    // Actual lunch taps recorded
-    diff -= (lunchInMin - lunchOutMin)
-  } else {
-    // Deduct the overlap of [lunchStart, lunchEnd] with [effectiveIn, effectiveOut]
-    const lsMin = parseHHMM(r.lunchStart) ?? (12 * 60)
-    const leMin = parseHHMM(r.lunchEnd)   ?? (13 * 60)
-    const overlapStart = Math.max(effectiveIn,  lsMin)
-    const overlapEnd   = Math.min(effectiveOut, leMin)
-    const overlap      = Math.max(0, overlapEnd - overlapStart)
-    diff -= overlap
-  }
+  // Strictly deduct only the scheduled lunch window overlap
+  const lsMin = parseHHMM(r.lunchStart) ?? (12 * 60)
+  const leMin = parseHHMM(r.lunchEnd)   ?? (13 * 60)
+  
+  const overlapSchedStart = Math.max(effectiveIn, lsMin)
+  const overlapSchedEnd   = Math.min(effectiveOut, leMin)
+  const schedDeduction    = Math.max(0, overlapSchedEnd - overlapSchedStart)
+  
+  diff -= schedDeduction
 
   if (diff <= 0) return '0h'
   const h  = Math.floor(diff / 60)

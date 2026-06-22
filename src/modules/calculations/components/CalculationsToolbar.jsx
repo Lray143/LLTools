@@ -80,7 +80,14 @@ function CustomSelect({ value, onChange, options, minWidth = '148px', onAdd }) {
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
               >
-                {label}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span>{label}</span>
+                  {opt.subLabel && (
+                    <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 400 }}>
+                      {opt.subLabel}
+                    </span>
+                  )}
+                </div>
                 {isActive && <Check size={14} color="var(--theme-500)" strokeWidth={2.5} />}
               </button>
             )
@@ -135,8 +142,14 @@ export default function CalculationsToolbar({
 
   // Build outlet options for the CustomSelect
   const outletOptions = [
-    { label: 'Default Prices', value: '' },
-    ...outlets.map(o => ({ label: o.name, value: o.id })),
+    { label: 'Default Prices', value: '', subLabel: 'Standard base prices' },
+    ...outlets.map(o => {
+      let subLabel = 'No discounts'
+      if (o.discounts && o.discounts.length > 0) {
+        subLabel = o.discounts.map(d => `${d.name}: ${d.value}%`).join(', ')
+      }
+      return { label: o.name, value: o.id, subLabel }
+    }),
   ]
 
   return (

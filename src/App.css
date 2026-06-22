@@ -1,0 +1,10 @@
+/* Make the module backgrounds transparent in Sunflower theme so the decorative background shows through */
+[data-active-theme="sunflower"] main > div,
+[data-active-theme="sunflower"] main [style*="--page-bg"],
+[data-active-theme="sunflower"] main .flex-1.flex.flex-col.rounded-xl.shadow-sm,
+[data-active-theme="kuromi"] main > div,
+[data-active-theme="kuromi"] main [style*="--page-bg"],
+[data-active-theme="kuromi"] main .flex-1.flex.flex-col.rounded-xl.shadow-sm {
+  background: transparent !important;
+  background-color: transparent !important;
+}

@@ -45,7 +45,7 @@ parentPort.on('message', async (msg) => {
     await new Promise(r => setTimeout(r, 2000))
     setInterval(() => {
       runSync().catch(() => {})
-    }, 5000)
+    }, 60000)
   }
 
   if (msg === 'sync-now') {

@@ -65,6 +65,7 @@ const queryOne = async (sql, params = []) => {
 
 const run = async (sql, params = []) => {
   await executeWithRetry(sql, params)
+  if (!isBulkOperating) syncCloud().catch(() => {})
 }
 
 // Sync local replica with cloud (call this periodically)
@@ -94,6 +95,14 @@ const syncWithRetry = async (maxAttempts = 3) => {
 
 const syncCloud = async () => {
   if (isSyncing || isBulkOperating) return;
+  
+  // Delegate all cloud syncing to the dedicated background worker thread
+  // to prevent freezing the main thread or causing WalConflicts.
+  if (global.syncWorkerRef) {
+    global.syncWorkerRef.postMessage('sync-now');
+    return;
+  }
+
   isSyncing = true;
   try {
     await syncWithRetry()
@@ -123,99 +132,99 @@ const SEED_PRODUCT_GROUPS = [
   {
     id: 'g-astringents', name: 'ASTRINGENTS', sortOrder: 0,
     rows: [
-      { id: 'r-a1', caseBarcode: '14809010740028', itemBarcode: '4809010740021', description: 'Hydroquinone + Tretinoin # 3',      qty: 144, size: '30 ml', price: 48.75  },
-      { id: 'r-a2', caseBarcode: '14809010740011', itemBarcode: '4809010740014', description: 'Hydroquinone + Tretinoin # 3',      qty: 144, size: '60 ml', price: 77.75  },
-      { id: 'r-a3', caseBarcode: '14809010740042', itemBarcode: '4809010740045', description: 'Hydroquinone + Tretinoin # 2',      qty: 144, size: '30 ml', price: 40.50  },
-      { id: 'r-a4', caseBarcode: '14809010740035', itemBarcode: '4809010740038', description: 'Hydroquinone + Tretinoin # 2',      qty: 144, size: '60 ml', price: 73.00  },
-      { id: 'r-a5', caseBarcode: '14809010740066', itemBarcode: '4809010740069', description: 'Babyface Astringent Solution Care', qty: 144, size: '30 ml', price: 39.00  },
-      { id: 'r-a6', caseBarcode: '14809010740059', itemBarcode: '4809010740052', description: 'Babyface Astringent Solution Care', qty: 144, size: '60 ml', price: 68.25  },
-      { id: 'r-a7', caseBarcode: '14806517781387', itemBarcode: '4806517781380', description: 'Babyface Serum',                   qty: 144, size: '30ml',  price: 229.25 },
+      { id: 'r-a1', productNo: '1', caseBarcode: '14809010740028', itemBarcode: '4809010740021', description: 'Hydroquinone + Tretinoin # 3',      qty: 144, size: '30 ml', price: 48.75  },
+      { id: 'r-a2', productNo: '2', caseBarcode: '14809010740011', itemBarcode: '4809010740014', description: 'Hydroquinone + Tretinoin # 3',      qty: 144, size: '60 ml', price: 77.75  },
+      { id: 'r-a3', productNo: '3', caseBarcode: '14809010740042', itemBarcode: '4809010740045', description: 'Hydroquinone + Tretinoin # 2',      qty: 144, size: '30 ml', price: 40.50  },
+      { id: 'r-a4', productNo: '4', caseBarcode: '14809010740035', itemBarcode: '4809010740038', description: 'Hydroquinone + Tretinoin # 2',      qty: 144, size: '60 ml', price: 73.00  },
+      { id: 'r-a5', productNo: '5', caseBarcode: '14809010740066', itemBarcode: '4809010740069', description: 'Babyface Astringent Solution Care', qty: 144, size: '30 ml', price: 39.00  },
+      { id: 'r-a6', productNo: '6', caseBarcode: '14809010740059', itemBarcode: '4809010740052', description: 'Babyface Astringent Solution Care', qty: 144, size: '60 ml', price: 68.25  },
+      { id: 'r-a7', productNo: '104', caseBarcode: '14806517781387', itemBarcode: '4806517781380', description: 'Babyface Serum',                   qty: 144, size: '30ml',  price: 229.25 },
     ],
   },
   {
     id: 'g-creams', name: 'CREAMS', sortOrder: 1,
     rows: [
-      { id: 'r-c1', caseBarcode: '14809010740397', itemBarcode: '4809010740298', description: 'Sunblock Cream',         qty: 12,  size: '6g',   price: 16.25  },
-      { id: 'r-c2', caseBarcode: '14809010740403', itemBarcode: '4809010740304', description: 'Sunblock Cream',         qty: 12,  size: '12g',  price: 32.50  },
-      { id: 'r-c3', caseBarcode: '14809010740526', itemBarcode: '4809010740489', description: 'Sunblock Cream',         qty: 12,  size: '15g',  price: 35.00  },
-      { id: 'r-c4', caseBarcode: '14806517780335', itemBarcode: '4806517780338', description: 'Sunblock Cream',         qty: 120, size: '25ml', price: 56.25  },
-      { id: 'r-c5', caseBarcode: '14809010740458', itemBarcode: '4809010740359', description: 'Whitening Cream',        qty: 12,  size: '6g',   price: 31.00  },
-      { id: 'r-c6', caseBarcode: '14809010740465', itemBarcode: '4809010740366', description: 'Whitening Cream',        qty: 12,  size: '12g',  price: 61.50  },
-      { id: 'r-c7', caseBarcode: '14806517780359', itemBarcode: '4809010740352', description: 'Whitening Cream (tube)', qty: 120, size: '25mL', price: 110.00 },
-      { id: 'r-c8', caseBarcode: '14809010740509', itemBarcode: '4809010740502', description: 'Placenta Cream',         qty: 12,  size: '20g',  price: 75.75  },
+      { id: 'r-c1', productNo: '7', caseBarcode: '14809010740397', itemBarcode: '4809010740298', description: 'Sunblock Cream',         qty: 12,  size: '6g',   price: 16.25  },
+      { id: 'r-c2', productNo: '8', caseBarcode: '14809010740403', itemBarcode: '4809010740304', description: 'Sunblock Cream',         qty: 12,  size: '12g',  price: 32.50  },
+      { id: 'r-c3', productNo: '9', caseBarcode: '14809010740526', itemBarcode: '4809010740489', description: 'Sunblock Cream',         qty: 12,  size: '15g',  price: 35.00  },
+      { id: 'r-c4', productNo: '10', caseBarcode: '14806517780335', itemBarcode: '4806517780338', description: 'Sunblock Cream',         qty: 120, size: '25ml', price: 56.25  },
+      { id: 'r-c5', productNo: '11', caseBarcode: '14809010740458', itemBarcode: '4809010740359', description: 'Whitening Cream',        qty: 12,  size: '6g',   price: 31.00  },
+      { id: 'r-c6', productNo: '12', caseBarcode: '14809010740465', itemBarcode: '4809010740366', description: 'Whitening Cream',        qty: 12,  size: '12g',  price: 61.50  },
+      { id: 'r-c7', productNo: '13', caseBarcode: '14806517780359', itemBarcode: '4809010740352', description: 'Whitening Cream (tube)', qty: 120, size: '25mL', price: 110.00 },
+      { id: 'r-c8', productNo: '14', caseBarcode: '14809010740509', itemBarcode: '4809010740502', description: 'Placenta Cream',         qty: 12,  size: '20g',  price: 75.75  },
     ],
   },
   {
     id: 'g-toner', name: 'TONER', sortOrder: 2,
     rows: [
-      { id: 'r-t1', caseBarcode: '14809010740271', itemBarcode: '4809010740274', description: 'Clarifying Toner', qty: 96, size: '60 ml',  price: 47.25 },
-      { id: 'r-t2', caseBarcode: '14809010740288', itemBarcode: '4809010740281', description: 'Clarifying Toner', qty: 72, size: '120 ml', price: 79.25 },
+      { id: 'r-t1', productNo: '15', caseBarcode: '14809010740271', itemBarcode: '4809010740274', description: 'Clarifying Toner', qty: 96, size: '60 ml',  price: 47.25 },
+      { id: 'r-t2', productNo: '16', caseBarcode: '14809010740288', itemBarcode: '4809010740281', description: 'Clarifying Toner', qty: 72, size: '120 ml', price: 79.25 },
     ],
   },
   {
     id: 'g-soaps', name: 'SOAPS (Regular & Sachet)', sortOrder: 3,
     rows: [
-      { id: 'r-s1',  caseBarcode: '14809010710202', itemBarcode: '4809010740205', description: 'Avocado Soap',                      qty: 96,  size: '135g',  price: 44.50 },
-      { id: 'r-s2',  caseBarcode: '14809010740189', itemBarcode: '4809010740182', description: 'Bleaching Soap',                     qty: 96,  size: '135g',  price: 83.50 },
-      { id: 'r-s3',  caseBarcode: '14809010740226', itemBarcode: '4809010740229', description: 'Kalamansi Soap',                     qty: 96,  size: '135g',  price: 44.50 },
-      { id: 'r-s4',  caseBarcode: '14809010740196', itemBarcode: '4809010740199', description: 'Cucumber Soap',                      qty: 96,  size: '135g',  price: 44.50 },
-      { id: 'r-s5',  caseBarcode: '14809010740332', itemBarcode: '4809010740463', description: 'Placenta Soap',                      qty: 96,  size: '150g',  price: 83.50 },
-      { id: 'r-s6',  caseBarcode: '14809010740219', itemBarcode: '4809010740212', description: 'Papaya Soap',                        qty: 96,  size: '135g',  price: 52.80 },
-      { id: 'r-s7',  caseBarcode: '14806517740851', itemBarcode: '4809010740854', description: 'Papaya Soap w/ Milk',                qty: 96,  size: '135g',  price: 52.80 },
-      { id: 'r-s8',  caseBarcode: '14806517780991', itemBarcode: '4806517780994', description: 'RDL Papaya Soap',                    qty: 144, size: '90g',   price: 39.00 },
-      { id: 'r-s9',  caseBarcode: '14809010740844', itemBarcode: '4809010740847', description: 'Baby Bath Soap w/ SB',               qty: 96,  size: '135g',  price: 53.00 },
-      { id: 'r-s10', caseBarcode: '14809010740264', itemBarcode: '4809010740267', description: 'Tawas Soap',                         qty: 96,  size: '135g',  price: 83.50 },
-      { id: 'r-s11', caseBarcode: '14806517781349', itemBarcode: '4806517781342', description: 'Kojic Soap',                         qty: 96,  size: '150g',  price: 66.25 },
-      { id: 'r-s12', caseBarcode: '1480651770991',  itemBarcode: '4806517780994', description: 'RDL Papaya Soap',                    qty: 144, size: '90g',   price: 39.00 },
-      { id: 'r-s13', caseBarcode: '14806517780212', itemBarcode: '4806517780215', description: 'Surewhite Soap w/ Gigawhite',        qty: 118, size: '135g',  price: 66.75 },
-      { id: 'r-s14', caseBarcode: '14809010740561', itemBarcode: '4809010740564', description: 'Whitening Soap w/ Melawhite',        qty: 96,  size: '135g',  price: 69.00 },
-      { id: 'r-s15', caseBarcode: '14809010740691', itemBarcode: '4809010740694', description: 'Papaya Soap Sachets',                qty: 432, size: '25g',   price: 14.75 },
-      { id: 'r-s16', caseBarcode: '14809010740998', itemBarcode: '4809010740991', description: 'Papaya Soap with Milk Sachet',       qty: 432, size: '25g',   price: 14.75 },
-      { id: 'r-s17', caseBarcode: '14806517781370', itemBarcode: '4806517781373', description: 'Kojic Soap sachet',                  qty: 432, size: '25g',   price: 17.00 },
-      { id: 'r-s18', caseBarcode: '14809010740868', itemBarcode: '4809010740861', description: 'Babyskin Bath Soap-Sachet',          qty: 432, size: '25g',   price: 14.75 },
-      { id: 'r-s19', caseBarcode: '14806517781974', itemBarcode: '4806617781977', description: 'Papaya Whitening Soap 3x Valuepack', qty: 60,  size: '65gms', price: 78.00 },
+      { id: 'r-s1',  productNo: '19', caseBarcode: '14809010710202', itemBarcode: '4809010740205', description: 'Avocado Soap',                      qty: 96,  size: '135g',  price: 44.50 },
+      { id: 'r-s2',  productNo: '21', caseBarcode: '14809010740189', itemBarcode: '4809010740182', description: 'Bleaching Soap',                     qty: 96,  size: '135g',  price: 83.50 },
+      { id: 'r-s3',  productNo: '24', caseBarcode: '14809010740226', itemBarcode: '4809010740229', description: 'Kalamansi Soap',                     qty: 96,  size: '135g',  price: 44.50 },
+      { id: 'r-s4',  productNo: '22', caseBarcode: '14809010740196', itemBarcode: '4809010740199', description: 'Cucumber Soap',                      qty: 96,  size: '135g',  price: 44.50 },
+      { id: 'r-s5',  productNo: '29', caseBarcode: '14809010740332', itemBarcode: '4809010740463', description: 'Placenta Soap',                      qty: 96,  size: '150g',  price: 83.50 },
+      { id: 'r-s6',  productNo: '26', caseBarcode: '14809010740219', itemBarcode: '4809010740212', description: 'Papaya Soap',                        qty: 96,  size: '135g',  price: 52.80 },
+      { id: 'r-s7',  productNo: '27', caseBarcode: '14806517740851', itemBarcode: '4809010740854', description: 'Papaya Soap w/ Milk',                qty: 96,  size: '135g',  price: 52.80 },
+      { id: 'r-s8',  productNo: '34', caseBarcode: '14806517780991', itemBarcode: '4806517780994', description: 'RDL Papaya Soap',                    qty: 144, size: '90g',   price: 39.00 },
+      { id: 'r-s9',  productNo: '20', caseBarcode: '14809010740844', itemBarcode: '4809010740847', description: 'Baby Bath Soap w/ SB',               qty: 96,  size: '135g',  price: 53.00 },
+      { id: 'r-s10', productNo: '32', caseBarcode: '14809010740264', itemBarcode: '4809010740267', description: 'Tawas Soap',                         qty: 96,  size: '135g',  price: 83.50 },
+      { id: 'r-s11', productNo: '25', caseBarcode: '14806517781349', itemBarcode: '4806517781342', description: 'Kojic Soap',                         qty: 96,  size: '150g',  price: 66.25 },
+      { id: 'r-s12', productNo: '34', caseBarcode: '1480651770991',  itemBarcode: '4806517780994', description: 'RDL Papaya Soap',                    qty: 144, size: '90g',   price: 39.00 },
+      { id: 'r-s13', productNo: '31', caseBarcode: '14806517780212', itemBarcode: '4806517780215', description: 'Surewhite Soap w/ Gigawhite',        qty: 118, size: '135g',  price: 66.75 },
+      { id: 'r-s14', productNo: '33', caseBarcode: '14809010740561', itemBarcode: '4809010740564', description: 'Whitening Soap w/ Melawhite',        qty: 96,  size: '135g',  price: 69.00 },
+      { id: 'r-s15', productNo: '38', caseBarcode: '14809010740691', itemBarcode: '4809010740694', description: 'Papaya Soap Sachets',                qty: 432, size: '25g',   price: 14.75 },
+      { id: 'r-s16', productNo: '39', caseBarcode: '14809010740998', itemBarcode: '4809010740991', description: 'Papaya Soap with Milk Sachet',       qty: 432, size: '25g',   price: 14.75 },
+      { id: 'r-s17', productNo: '37', caseBarcode: '14806517781370', itemBarcode: '4806517781373', description: 'Kojic Soap sachet',                  qty: 432, size: '25g',   price: 17.00 },
+      { id: 'r-s18', productNo: '36', caseBarcode: '14809010740868', itemBarcode: '4809010740861', description: 'Babyskin Bath Soap-Sachet',          qty: 432, size: '25g',   price: 14.75 },
+      { id: 'r-s19', productNo: '28', caseBarcode: '14806517781974', itemBarcode: '4806617781977', description: 'Papaya Whitening Soap 3x Valuepack', qty: 60,  size: '65gms', price: 78.00 },
     ],
   },
   {
     id: 'g-lotion', name: 'LOTION', sortOrder: 4,
     rows: [
-      { id: 'r-l1', caseBarcode: '14806517781363', itemBarcode: '4806517781366', description: 'Kojic Whitening Lotion', qty: 108, size: '50ml',  price: 59.50  },
-      { id: 'r-l2', caseBarcode: '14806517781356', itemBarcode: '480651781359', description: 'Kojic Whitening Lotion', qty: 72,  size: '100ml', price: 116.50 },
-      { id: 'r-l3', caseBarcode: '14806517781660', itemBarcode: '4806517781663', description: 'Kojic Whitening Lotion', qty: 24,  size: '500ml', price: 527.00 },
-      { id: 'r-l4', caseBarcode: '14809010740646', itemBarcode: '4809010740649', description: 'Babyskin Moisturizing Lotion', qty: 144, size: '50ml', price: 43.50 },
-      { id: 'r-l5', caseBarcode: '14809010740653', itemBarcode: '4809010740656', description: 'Babyskin Moisturizing Lotion', qty: 96,  size: '100ml', price: 74.25 },
+      { id: 'r-l1', productNo: '87', caseBarcode: '14806517781363', itemBarcode: '4806517781366', description: 'Kojic Whitening Lotion', qty: 108, size: '50ml',  price: 59.50  },
+      { id: 'r-l2', productNo: '88', caseBarcode: '14806517781356', itemBarcode: '480651781359', description: 'Kojic Whitening Lotion', qty: 72,  size: '100ml', price: 116.50 },
+      { id: 'r-l3', productNo: '109', caseBarcode: '14806517781660', itemBarcode: '4806517781663', description: 'Kojic Whitening Lotion', qty: 24,  size: '500ml', price: 527.00 },
+      { id: 'r-l4', productNo: '17', caseBarcode: '14809010740646', itemBarcode: '4809010740649', description: 'Babyskin Moisturizing Lotion', qty: 144, size: '50ml', price: 43.50 },
+      { id: 'r-l5', productNo: '18', caseBarcode: '14809010740653', itemBarcode: '4809010740656', description: 'Babyskin Moisturizing Lotion', qty: 96,  size: '100ml', price: 74.25 },
     ],
   },
   {
     id: 'g-cleansers', name: "CLEANSER'S", sortOrder: 5,
     rows: [
-      { id: 'r-cl1', caseBarcode: '14809010740165', itemBarcode: '4809010740168', description: 'Avocado Extract', qty: 144, size: '75ml', price: 32.25 },
-      { id: 'r-cl2', caseBarcode: '14809010740158', itemBarcode: '4809010740151', description: 'Avocado Extract', qty: 72, size: '150ml', price: 47.00 },
-      { id: 'r-cl3', caseBarcode: '14809010740813', itemBarcode: '4809010740816', description: 'Avocado Extract', qty: 72, size: '250ml', price: 64.75 },
-      { id: 'r-cl4', caseBarcode: '14809010740127', itemBarcode: '4809010740120', description: 'Cucumber Extract', qty: 144, size: '75ml', price: 32.25 },
-      { id: 'r-cl5', caseBarcode: '14809010740110', itemBarcode: '4809010740113', description: 'Cucumber Extract', qty: 72, size: '150ml', price: 47.00 },
-      { id: 'r-cl6', caseBarcode: '14809010740820', itemBarcode: '4809010740823', description: 'Cucumber Extract', qty: 72, size: '250ml', price: 64.75 },
-      { id: 'r-cl7', caseBarcode: '14809010740103', itemBarcode: '4809010740106', description: 'Kalamansi Extract', qty: 144, size: '75ml', price: 32.25 },
-      { id: 'r-cl8', caseBarcode: '14809010740097', itemBarcode: '4809010740090', description: 'Kalamansi Extract', qty: 72, size: '150ml', price: 47.00 },
-      { id: 'r-cl9', caseBarcode: '14809010740806', itemBarcode: '4809010740809', description: 'Kalamansi Extract', qty: 72, size: '250ml', price: 64.75 },
-      { id: 'r-cl10', caseBarcode: '14809010740141', itemBarcode: '4809010740144', description: 'Papaya Extract', qty: 144, size: '75ml', price: 32.25 },
-      { id: 'r-cl11', caseBarcode: '14809010740134', itemBarcode: '4809010740137', description: 'Papaya Extract', qty: 72, size: '150ml', price: 47.00 },
-      { id: 'r-cl12', caseBarcode: '14809010740790', itemBarcode: '4809010740793', description: 'Papaya Extract', qty: 72, size: '250ml', price: 64.75 },
-      { id: 'r-cl13', caseBarcode: '14806517781653', itemBarcode: '4806517781656', description: 'Kojic + Glutathione', qty: 144, size: '75ml', price: 38.50 },
-      { id: 'r-cl14', caseBarcode: '14806517781646', itemBarcode: '4806517781649', description: 'Kojic + Glutathione', qty: 72, size: '150ml', price: 54.00 },
-      { id: 'r-cl15', caseBarcode: '14806517781639', itemBarcode: '4806517781632', description: 'Kojic + Glutathione', qty: 72, size: '250ml', price: 71.00 },
-      { id: 'r-cl16', caseBarcode: '14809010740080', itemBarcode: '4809010740083', description: 'Plain', qty: 144, size: '75ml', price: 32.25 },
-      { id: 'r-cl17', caseBarcode: '14809010740073', itemBarcode: '4809010740076', description: 'Plain', qty: 72, size: '150ml', price: 47.00 },
-      { id: 'r-cl18', caseBarcode: '14809010740837', itemBarcode: '4809010740830', description: 'Plain', qty: 72, size: '250ml', price: 64.75 },
-      { id: 'r-cl19', caseBarcode: '14809010740738', itemBarcode: '4806517780314', description: 'Freshmen Papaya', qty: 144, size: '75ml', price: 35.75 },
-      { id: 'r-cl20', caseBarcode: '14809010740745', itemBarcode: '4806517780321', description: 'Freshmen Papaya', qty: 72, size: '150ml', price: 48.75 },
+      { id: 'r-cl1', productNo: '57', caseBarcode: '14809010740165', itemBarcode: '4809010740168', description: 'Avocado Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl2', productNo: '58', caseBarcode: '14809010740158', itemBarcode: '4809010740151', description: 'Avocado Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl3', productNo: '59', caseBarcode: '14809010740813', itemBarcode: '4809010740816', description: 'Avocado Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl4', productNo: '60', caseBarcode: '14809010740127', itemBarcode: '4809010740120', description: 'Cucumber Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl5', productNo: '61', caseBarcode: '14809010740110', itemBarcode: '4809010740113', description: 'Cucumber Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl6', productNo: '62', caseBarcode: '14809010740820', itemBarcode: '4809010740823', description: 'Cucumber Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl7', productNo: '63', caseBarcode: '14809010740103', itemBarcode: '4809010740106', description: 'Kalamansi Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl8', productNo: '64', caseBarcode: '14809010740097', itemBarcode: '4809010740090', description: 'Kalamansi Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl9', productNo: '65', caseBarcode: '14809010740806', itemBarcode: '4809010740809', description: 'Kalamansi Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl10', productNo: '66', caseBarcode: '14809010740141', itemBarcode: '4809010740144', description: 'Papaya Extract', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl11', productNo: '67', caseBarcode: '14809010740134', itemBarcode: '4809010740137', description: 'Papaya Extract', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl12', productNo: '68', caseBarcode: '14809010740790', itemBarcode: '4809010740793', description: 'Papaya Extract', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl13', productNo: '101', caseBarcode: '14806517781653', itemBarcode: '4806517781656', description: 'Kojic + Glutathione', qty: 144, size: '75ml', price: 38.50 },
+      { id: 'r-cl14', productNo: '102', caseBarcode: '14806517781646', itemBarcode: '4806517781649', description: 'Kojic + Glutathione', qty: 72, size: '150ml', price: 54.00 },
+      { id: 'r-cl15', productNo: '103', caseBarcode: '14806517781639', itemBarcode: '4806517781632', description: 'Kojic + Glutathione', qty: 72, size: '250ml', price: 71.00 },
+      { id: 'r-cl16', productNo: '69', caseBarcode: '14809010740080', itemBarcode: '4809010740083', description: 'Plain', qty: 144, size: '75ml', price: 32.25 },
+      { id: 'r-cl17', productNo: '70', caseBarcode: '14809010740073', itemBarcode: '4809010740076', description: 'Plain', qty: 72, size: '150ml', price: 47.00 },
+      { id: 'r-cl18', productNo: '71', caseBarcode: '14809010740837', itemBarcode: '4809010740830', description: 'Plain', qty: 72, size: '250ml', price: 64.75 },
+      { id: 'r-cl19', productNo: '89', caseBarcode: '14809010740738', itemBarcode: '4806517780314', description: 'Freshmen Papaya', qty: 144, size: '75ml', price: 35.75 },
+      { id: 'r-cl20', productNo: '90', caseBarcode: '14809010740745', itemBarcode: '4806517780321', description: 'Freshmen Papaya', qty: 72, size: '150ml', price: 48.75 },
     ],
   },
   {
     id: 'g-tawas', name: 'TAWAS', sortOrder: 6,
     rows: [
-      { id: 'r-tw1', caseBarcode: '14806517781097', itemBarcode: '4806517781090', description: 'Tawas Powder Plain', qty: 432, size: '50g', price: 13.00 },
-      { id: 'r-tw2', caseBarcode: '14806517781103', itemBarcode: '4806517781106', description: 'Tawas Powder w/ Perfume', qty: 432, size: '50g', price: 13.75 },
+      { id: 'r-tw1', productNo: '45', caseBarcode: '14806517781097', itemBarcode: '4806517781090', description: 'Tawas Powder Plain', qty: 432, size: '50g', price: 13.00 },
+      { id: 'r-tw2', productNo: '46', caseBarcode: '14806517781103', itemBarcode: '4806517781106', description: 'Tawas Powder w/ Perfume', qty: 432, size: '50g', price: 13.75 },
     ],
   },
 ]
@@ -554,6 +563,14 @@ const initDb = async () => {
   // Migration: snapshot lunch hours onto attendance records for historical accuracy
   try { await run("ALTER TABLE attendance ADD COLUMN sched_lunch_start TEXT DEFAULT NULL") } catch (_) {}
   try { await run("ALTER TABLE attendance ADD COLUMN sched_lunch_end   TEXT DEFAULT NULL") } catch (_) {}
+
+  // Migration: employee shift and lunch schedules
+  try { await run("ALTER TABLE employees ADD COLUMN lunch_start TEXT DEFAULT '12:00'") } catch (_) {}
+  try { await run("ALTER TABLE employees ADD COLUMN lunch_end TEXT DEFAULT '13:00'") } catch (_) {}
+  try { await run("ALTER TABLE employees ADD COLUMN shift_start TEXT DEFAULT '07:00'") } catch (_) {}
+  try { await run("ALTER TABLE employees ADD COLUMN shift_end TEXT DEFAULT '17:30'") } catch (_) {}
+  try { await run("ALTER TABLE employees ADD COLUMN day_offs TEXT DEFAULT 'Saturday,Sunday'") } catch (_) {}
+  try { await run("ALTER TABLE employees ADD COLUMN day_schedule TEXT DEFAULT NULL") } catch (_) {}
 
   // ── Seed admin user ────────────────────────────────────────────────────────
   const adminHash = bcrypt.hashSync('admin123', 10)
@@ -1793,7 +1810,7 @@ module.exports = {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
-  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme, heartbeatUser,
+  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme, heartbeatUser, logoutUser,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,

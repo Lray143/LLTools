@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, startTransition } from 'react'
 import Pusher from 'pusher-js'
-import { Hash, User, Users, MessageSquare, Wifi } from 'lucide-react'
+import { Hash, User, Users, MessageSquare, Wifi, Sidebar } from 'lucide-react'
 import ChatSidebar from './components/ChatSidebar'
 import ChatMessages from './components/ChatMessages'
 import ChatInput from './components/ChatInput'
@@ -22,6 +22,7 @@ function chatMessagesFingerprint(msgs) {
 
 export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavigate }) {
   const [activeTab, setActiveTab]         = useState('channels')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [messageCache, setMessageCache]   = useState({})
   const [inputMsg, setInputMsg]           = useState('')
   const [isSending, setIsSending]         = useState(false)
@@ -630,6 +631,15 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
             </div>
           )}
 
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="flex items-center justify-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            style={{ color: 'var(--text-secondary)', border: 'none', background: 'transparent', cursor: 'pointer' }}
+            title={isSidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+          >
+            <Sidebar size={18} />
+          </button>
+
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
       </div>
@@ -637,13 +647,15 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       {/* ── CONTENT AREA ── */}
       <div className="flex-1 min-h-0 flex p-6 gap-4">
 
-        <ChatSidebar
-          activeTab={activeTab} setActiveTab={setActiveTab}
-          sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
-          sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
-          isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
-          onlineUsers={onlineUsers}
-        />
+        <div style={{ display: isSidebarOpen ? 'block' : 'none' }}>
+          <ChatSidebar
+            activeTab={activeTab} setActiveTab={setActiveTab}
+            sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
+            sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
+            isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
+            onlineUsers={onlineUsers}
+          />
+        </div>
 
         {/* ── MAIN CHAT AREA ── */}
         <div className="flex-1 flex flex-col rounded-xl shadow-sm overflow-hidden"

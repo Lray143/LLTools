@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { v4 as uuidv4 } from 'uuid'
 import { Plus, Search, User, Users, Bell, ChevronDown, Check } from 'lucide-react'
 
-import { LeaveModal }        from './components/LeaveModal'
 import { ReviewModal }       from './components/ReviewModal'
 import { ViewDetailsModal }  from './components/ViewDetailsModal'
 import { LeaveTable }        from './components/LeaveTable'
@@ -112,7 +110,6 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
   const [allRequests,  setAllRequests]  = useState([])
   const [loading,      setLoading]      = useState(true)
   const [submitting,   setSubmitting]   = useState(false)
-  const [showModal,    setShowModal]    = useState(false)
   const [showGForm,    setShowGForm]    = useState(false)
   const [viewTarget,   setViewTarget]   = useState(null)   // details modal
   const [reviewTarget, setReviewTarget] = useState(null)   // review modal
@@ -171,32 +168,6 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
   }, [loadMine, loadAll, isHR])
 
   useEffect(() => { load(refreshKey === 0) }, [load, refreshKey])
-
-  // ── Submit ────────────────────────────────────────────────────────────────
-  async function handleSubmit(form) {
-    setSubmitting(true)
-    setErrorMsg('')
-    try {
-      await window.electronAPI.submitLeaveRequest({
-        id            : uuidv4(),
-        employee_id   : currentUser.employeeId ?? null,
-        employee_no   : currentUser.username,
-        employee_name : currentUser.username,
-        leave_type    : form.leave_type,
-        start_date    : form.start_date,
-        end_date      : form.end_date,
-        reason        : form.reason,
-      })
-      setShowModal(false)
-      flash('success', 'Leave request submitted successfully!')
-      await load()
-    } catch (e) {
-      console.error(e)
-      flash('error', 'Failed to submit: ' + (e?.message ?? String(e)))
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   // ── Review ────────────────────────────────────────────────────────────────
   async function handleReview(status, note) {
@@ -298,11 +269,11 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
             </div>
           )}
 
-          {(!showGForm || isHR) && (
+          {!showGForm && (
             <Button 
               className="border-0 text-sm h-9 px-4 rounded-lg flex items-center gap-1.5"
               style={{ background: 'var(--theme-500)', color: '#fff' }}
-              onClick={() => isHR ? setShowModal(true) : setShowGForm(true)}
+              onClick={() => setShowGForm(true)}
             >
               <Plus size={14} />
               New Request
@@ -313,7 +284,7 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
       </div>
 
       {/* ── CONTENT ── */}
-      {showGForm && !isHR ? (
+      {showGForm ? (
         <div className="flex-1 min-h-0 px-8 pb-8 flex flex-col pt-6 gap-5">
           <div className="flex items-center justify-between">
              <div className="flex flex-col">
@@ -428,20 +399,14 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
               isManageView={isManageView}
               onView={setViewTarget}
               onReview={r => { setViewTarget(null); setReviewTarget(r) }}
-              onNewRequest={() => isHR ? setShowModal(true) : setShowGForm(true)}
+              onNewRequest={() => setShowGForm(true)}
             />
           )}
         </div>
         </div>
       )}
 
-      {/* Legacy LeaveModal — HR only (kept for HR's own leave filing if needed) */}
-      <LeaveModal
-        open={isHR && showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={handleSubmit}
-        loading={submitting}
-      />
+
       <ReviewModal
         request={reviewTarget}
         onClose={() => setReviewTarget(null)}

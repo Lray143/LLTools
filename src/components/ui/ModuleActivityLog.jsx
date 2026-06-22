@@ -229,7 +229,7 @@ function ActivityLogDrawer({ module, refreshKey, onClose }) {
         className="fixed top-0 right-0 bottom-0 z-50 flex flex-col shadow-2xl"
         style={{
           width: 'min(480px, 100vw)',
-          background: 'var(--page-bg)',
+          background: 'var(--surface)',
           borderLeft: '1px solid var(--border)',
         }}
       >
