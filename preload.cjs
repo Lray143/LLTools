@@ -96,6 +96,7 @@ window.electronAPI = {
   getUsers:                ()                   => ipcRenderer.invoke('users:getAll'),
   updateUserRole:          (id, role)           => ipcRenderer.invoke('users:updateRole', id, role),
   resetUserPassword:       (id, newPassword)    => ipcRenderer.invoke('users:resetPassword', id, newPassword),
+  updateUserCredentials:   (id, username, password) => ipcRenderer.invoke('users:updateCredentials', id, username, password),
   updateUserTheme:         (id, color, mode)    => ipcRenderer.invoke('users:updateTheme', id, color, mode),
   heartbeatUser:           (id)                 => ipcRenderer.invoke('users:heartbeat', id),
   logoutUser:              (id)                 => ipcRenderer.invoke('users:logout', id),

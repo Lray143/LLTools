@@ -799,6 +799,21 @@ const updateUserRole      = async (id, role) => run(`UPDATE users SET role = ?, 
 const resetUserPassword   = async (id, newPassword) => run(`UPDATE users SET password_hash = ?, sync_status = 'pending' WHERE id = ?`, [bcrypt.hashSync(newPassword, 10), id])
 const deleteUserAccount   = async (id) => run(`DELETE FROM users WHERE id = ? AND employee_id IS NOT NULL`, [id])
 const updateUserTheme     = async (id, color, mode) => run(`UPDATE users SET theme_color = ?, theme_mode = ?, sync_status = 'pending' WHERE id = ?`, [color, mode, id])
+const updateUserCredentials = async (id, newUsername, newPassword) => {
+  try {
+    if (newPassword) {
+      await run(`UPDATE users SET username = ?, password_hash = ?, sync_status = 'pending' WHERE id = ?`, [newUsername, bcrypt.hashSync(newPassword, 10), id])
+    } else {
+      await run(`UPDATE users SET username = ?, sync_status = 'pending' WHERE id = ?`, [newUsername, id])
+    }
+    return { success: true }
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE')) {
+      return { success: false, message: 'Username is already taken.' }
+    }
+    return { success: false, message: err.message || 'An error occurred while updating credentials.' }
+  }
+}
 
 // ── EMPLOYEES ─────────────────────────────────────────────────────────────────
 const getEmployees = async () => queryAll(`
@@ -1869,7 +1884,7 @@ module.exports = {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
-  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme, heartbeatUser, logoutUser,
+  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme, updateUserCredentials, heartbeatUser, logoutUser,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,
@@ -1882,7 +1897,7 @@ module.exports = {
   markChatAsRead, getChatSidebarData, getRoomReceipts,
   getAppLinks, getAppLink, upsertAppLink,
   addModuleActivityLog, getModuleActivityLogs,
-  getAnnouncements, getArchivedAnnouncements, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
+  getAnnouncements, getArchivedAnnouncements, getAnnouncementHistory, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
   acknowledgeAnnouncement, getAnnouncementAcknowledgements, getAnnouncementComments, addAnnouncementComment, reactToAnnouncementComment,
   markAnnouncementRead, getAnnouncementReads
 }

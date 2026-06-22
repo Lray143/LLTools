@@ -19,7 +19,7 @@ const {
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
 
-  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme,
+  getUsers, updateUserRole, resetUserPassword, updateUserCredentials, deleteUserAccount, updateUserTheme,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,
@@ -32,7 +32,7 @@ const {
   refreshUser, heartbeatUser, logoutUser,
   getAppLinks, getAppLink, upsertAppLink,
   addModuleActivityLog, getModuleActivityLogs,
-  getAnnouncements, getArchivedAnnouncements, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
+  getAnnouncements, getArchivedAnnouncements, getAnnouncementHistory, upsertAnnouncement, archiveAnnouncement, permanentDeleteAnnouncement,
   acknowledgeAnnouncement, getAnnouncementAcknowledgements, getAnnouncementComments, addAnnouncementComment, reactToAnnouncementComment,
   markAnnouncementRead, getAnnouncementReads
 } = require('./db.cjs')
@@ -194,6 +194,7 @@ ipcMain.handle('clinic:permDelete',   (_, id)   => permanentDeleteClinicLog(id))
 ipcMain.handle('users:getAll',         ()                    => getUsers())
 ipcMain.handle('users:updateRole',     (_, id, role)         => updateUserRole(id, role))
 ipcMain.handle('users:resetPassword',  (_, id, newPassword)  => resetUserPassword(id, newPassword))
+ipcMain.handle('users:updateCredentials', (_, id, username, password) => updateUserCredentials(id, username, password))
 ipcMain.handle('users:delete',         (_, id)               => deleteUserAccount(id))
 ipcMain.handle('users:updateTheme',    (_, id, color, mode)  => updateUserTheme(id, color, mode))
 ipcMain.handle('users:heartbeat',      (_, id)               => heartbeatUser(id))
