@@ -17,13 +17,33 @@ export function parseRawBiometrics(text, employeeMap = {}) {
     return { hours: h, minutes: m }
   }
 
-  // Total shift duration in hours from shiftStart/shiftEnd strings (minus 1hr lunch)
-  function expectedHours(startStr, endStr) {
+  // Total shift duration in hours from shiftStart/shiftEnd strings
+  function expectedHours(startStr, endStr, lunchStartStr, lunchEndStr) {
     const s = parseHHMM(startStr)
     const e = parseHHMM(endStr)
     if (!s || !e) return 8.5
-    const diff = (e.hours * 60 + e.minutes) - (s.hours * 60 + s.minutes)
-    return Math.max(0, (diff / 60) - 1)
+
+    const startMins = s.hours * 60 + s.minutes
+    const endMins = e.hours * 60 + e.minutes
+    const diff = endMins - startMins
+
+    let lunchDeductionMins = 60 // fallback
+    const ls = parseHHMM(lunchStartStr)
+    const le = parseHHMM(lunchEndStr)
+    if (ls && le) {
+       const lunchStartMins = ls.hours * 60 + ls.minutes
+       const lunchEndMins = le.hours * 60 + le.minutes
+       
+       const overlapStart = Math.max(startMins, lunchStartMins)
+       const overlapEnd = Math.min(endMins, lunchEndMins)
+       if (overlapEnd > overlapStart) {
+         lunchDeductionMins = overlapEnd - overlapStart
+       } else {
+         lunchDeductionMins = 0 // no overlap
+       }
+    }
+
+    return Math.max(0, (diff - lunchDeductionMins) / 60)
   }
 
   const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
@@ -106,7 +126,7 @@ export function parseRawBiometrics(text, employeeMap = {}) {
       isDayOff      = dayOffs.includes(dayName)
     }
 
-    const minHours         = expectedHours(shiftStartStr, shiftEndStr)
+    const minHours         = expectedHours(shiftStartStr, shiftEndStr, empSchedule.lunchStart ?? '12:00', empSchedule.lunchEnd ?? '13:00')
     const shiftStartParsed = parseHHMM(shiftStartStr) ?? { hours: 7, minutes: 0 }
 
     const totalTaps  = entry.ins.length + entry.outs.length
@@ -154,9 +174,30 @@ export function parseRawBiometrics(text, employeeMap = {}) {
       : null
 
     // ── Lunch deduction helper ────────────────────────────────
-    const lunchDeductionMs = lunchOut && lunchIn
-      ? (lunchIn - lunchOut)
-      : 60 * 60 * 1000   // default 1 hour
+    let lunchDeductionMs = 0
+    if (lunchOut && lunchIn) {
+      lunchDeductionMs = lunchIn - lunchOut
+    } else {
+      const ls = parseHHMM(empSchedule.lunchStart ?? '12:00')
+      const le = parseHHMM(empSchedule.lunchEnd ?? '13:00')
+      
+      if (ls && le && shiftIn && shiftOut) {
+         const lunchStartDt = new Date(shiftIn)
+         lunchStartDt.setHours(ls.hours, ls.minutes, 0, 0)
+         
+         const lunchEndDt = new Date(shiftIn)
+         lunchEndDt.setHours(le.hours, le.minutes, 0, 0)
+
+         const overlapStart = Math.max(shiftIn.getTime(), lunchStartDt.getTime())
+         const overlapEnd = Math.min(shiftOut.getTime(), lunchEndDt.getTime())
+
+         if (overlapEnd > overlapStart) {
+           lunchDeductionMs = overlapEnd - overlapStart
+         }
+      } else {
+         lunchDeductionMs = 60 * 60 * 1000 // default fallback
+      }
+    }
 
     // ── Total Hours (RAW — tap-in to tap-out) ─────────────────
     let totalHours = null
@@ -191,15 +232,19 @@ export function parseRawBiometrics(text, employeeMap = {}) {
     const period = shiftPeriod(shiftIn)
 
     parsed.push({
-      employee_no : entry.employee_no,
-      date        : entry.date,
-      shift_in    : fmt(shiftIn),
-      lunch_out   : fmt(lunchOut),
-      lunch_in    : fmt(lunchIn),
-      shift_out   : fmt(shiftOut),
-      total_hours : totalHours,
+      employee_no        : entry.employee_no,
+      date               : entry.date,
+      shift_in           : fmt(shiftIn),
+      lunch_out          : fmt(lunchOut),
+      lunch_in           : fmt(lunchIn),
+      shift_out          : fmt(shiftOut),
+      total_hours        : totalHours,
       status,
       extraTaps,
+      // Snapshot the employee's lunch schedule at import time
+      // so historical records are unaffected by future lunch schedule changes
+      sched_lunch_start  : empSchedule.lunchStart ?? '12:00',
+      sched_lunch_end    : empSchedule.lunchEnd   ?? '13:00',
       id         : `EMP-${entry.employee_no}`,
       name       : '',
       department : '—',
@@ -213,6 +258,8 @@ export function parseRawBiometrics(text, employeeMap = {}) {
       // Expose schedule times so BiometricTable can compute scheduled hours
       schedStart : shiftStartStr,
       schedEnd   : shiftEndStr,
+      lunchStart : empSchedule.lunchStart ?? '12:00',
+      lunchEnd   : empSchedule.lunchEnd ?? '13:00',
     })
   }
 

@@ -34,7 +34,17 @@ export function calcActualHoursDecimal(r) {
   if (lunchOutMin != null && lunchInMin != null) {
     diff -= (lunchInMin - lunchOutMin)
   } else {
-    diff -= 60
+    const lStart = parseHHMM(r.lunchStart ?? '12:00')
+    const lEnd = parseHHMM(r.lunchEnd ?? '13:00')
+    if (lStart != null && lEnd != null) {
+      const overlapStart = Math.max(inMin, lStart)
+      const overlapEnd = Math.min(outMin, lEnd)
+      if (overlapEnd > overlapStart) {
+        diff -= (overlapEnd - overlapStart)
+      }
+    } else {
+      diff -= 60
+    }
   }
 
   if (diff <= 0) return 0
@@ -61,7 +71,17 @@ export function calcScheduledHoursDecimal(r) {
   if (lunchOutMin != null && lunchInMin != null) {
     diff -= (lunchInMin - lunchOutMin)
   } else {
-    diff -= 60
+    const lStart = parseHHMM(r.lunchStart ?? '12:00')
+    const lEnd = parseHHMM(r.lunchEnd ?? '13:00')
+    if (lStart != null && lEnd != null) {
+      const overlapStart = Math.max(effectiveIn, lStart)
+      const overlapEnd = Math.min(effectiveOut, lEnd)
+      if (overlapEnd > overlapStart) {
+        diff -= (overlapEnd - overlapStart)
+      }
+    } else {
+      diff -= 60
+    }
   }
 
   if (diff <= 0) return 0

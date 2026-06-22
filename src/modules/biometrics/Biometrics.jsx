@@ -79,6 +79,8 @@ const mapRow = (r) => {
     totalHours : r.total_hours,
     schedStart,
     schedEnd,
+    lunchStart : r.lunch_start ?? '12:00',
+    lunchEnd   : r.lunch_end   ?? '13:00',
   }
 }
 

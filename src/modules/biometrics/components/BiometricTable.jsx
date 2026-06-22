@@ -22,7 +22,7 @@ function parseHHMM(str) {
   return h * 60 + m
 }
 
-// ACTUAL hours: raw tap-in to tap-out (deducts actual lunch, or 60 min default)
+// ACTUAL hours: raw tap-in to tap-out (deducts actual lunch taps, else scheduled lunch overlap)
 function calcActualHours(r) {
   const inMin  = parseTime(r.shiftIn)
   const outMin = parseTime(r.shiftOut)
@@ -33,9 +33,17 @@ function calcActualHours(r) {
   const lunchOutMin = parseTime(r.lunchOut)
   const lunchInMin  = parseTime(r.lunchIn)
   if (lunchOutMin != null && lunchInMin != null) {
+    // Actual lunch taps recorded — deduct exactly that
     diff -= (lunchInMin - lunchOutMin)
   } else {
-    diff -= 60   // default 1-hr lunch deduction
+    // No lunch taps: deduct the overlap of the scheduled lunch window
+    // with the actual work period [inMin, outMin]
+    const lsMin = parseHHMM(r.lunchStart) ?? (12 * 60)
+    const leMin = parseHHMM(r.lunchEnd)   ?? (13 * 60)
+    const overlapStart = Math.max(inMin,  lsMin)
+    const overlapEnd   = Math.min(outMin, leMin)
+    const overlap      = Math.max(0, overlapEnd - overlapStart)
+    diff -= overlap
   }
 
   if (diff <= 0) return null
@@ -64,13 +72,20 @@ function calcSchedHours(r) {
 
   let diff = effectiveOut - effectiveIn
 
-  // Lunch deduction (actual if available, else 60 min)
+  // Lunch deduction: overlap of scheduled lunch window with the clamped work window
   const lunchOutMin = parseTime(r.lunchOut)
   const lunchInMin  = parseTime(r.lunchIn)
   if (lunchOutMin != null && lunchInMin != null) {
+    // Actual lunch taps recorded
     diff -= (lunchInMin - lunchOutMin)
   } else {
-    diff -= 60
+    // Deduct the overlap of [lunchStart, lunchEnd] with [effectiveIn, effectiveOut]
+    const lsMin = parseHHMM(r.lunchStart) ?? (12 * 60)
+    const leMin = parseHHMM(r.lunchEnd)   ?? (13 * 60)
+    const overlapStart = Math.max(effectiveIn,  lsMin)
+    const overlapEnd   = Math.min(effectiveOut, leMin)
+    const overlap      = Math.max(0, overlapEnd - overlapStart)
+    diff -= overlap
   }
 
   if (diff <= 0) return '0h'
@@ -129,8 +144,9 @@ function ExtraTapsTooltip({ extraTaps }) {
           left         : pos.x + 14,
           transform    : 'translateY(-100%)',
           zIndex       : 99999,
-          background   : 'var(--text-primary)',
-          color        : 'var(--accent-text)',
+          background   : 'var(--page-bg-alt)',
+          border       : '1px solid var(--border)',
+          color        : 'var(--text-primary)',
           borderRadius : '10px',
           padding      : '10px 14px',
           minWidth     : '200px',
@@ -157,7 +173,7 @@ function ExtraTapsTooltip({ extraTaps }) {
               <span style={{
                 fontSize     : '9px',
                 fontWeight   : 700,
-                color        : t.type === 'IN' ? '#4ade80' : '#f87171',
+                color        : t.type === 'IN' ? '#16a34a' : '#dc2626',
                 background   : t.type === 'IN' ? 'rgba(74,222,128,0.18)' : 'rgba(248,113,113,0.18)',
                 padding      : '2px 6px',
                 borderRadius : '4px',
@@ -165,10 +181,10 @@ function ExtraTapsTooltip({ extraTaps }) {
               }}>
                 {t.type}
               </span>
-              <span style={{ fontSize: '12px', color: '#e8ddd0' }}>{t.time}</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-primary)' }}>{t.time}</span>
             </div>
           ))}
-          <p style={{ fontSize: '10px', color: '#6b5040', marginTop: '8px', lineHeight: 1.4 }}>
+          <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.4 }}>
             Ignored — only the 4 main taps were used for calculation.
           </p>
         </div>

@@ -1,4 +1,10 @@
+import { useState } from 'react'
 import { SectionHeading, SettingRow } from './AppearanceSection'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '../../../components/ui/dialog'
+import { Input } from '../../../components/ui/input'
+import { Button } from '../../../components/ui/button'
 
 const ROLE_LABELS = {
   admin:     'Administrator',
@@ -12,6 +18,38 @@ export function AccountSection({ currentUser }) {
   const roleLabel = ROLE_LABELS[currentUser?.role] ?? currentUser?.role ?? '—'
   const displayName = String(currentUser?.employeeName || currentUser?.username || '—')
   const initials  = displayName.slice(0, 2).toUpperCase()
+
+  const [wipeModalOpen, setWipeModalOpen] = useState(false)
+  const [wipePassword, setWipePassword] = useState('')
+  const [wipeError, setWipeError] = useState('')
+  const [isWiping, setIsWiping] = useState(false)
+
+  async function handleWipe() {
+    setWipeError('')
+    if (!wipePassword) {
+      setWipeError('Password is required.')
+      return
+    }
+    setIsWiping(true)
+    try {
+      const res = await window.electronAPI.login({
+        username: currentUser.username,
+        password: wipePassword
+      })
+      if (!res.success) {
+        setWipeError('Incorrect password.')
+        setIsWiping(false)
+        return
+      }
+
+      await window.electronAPI.wipeAllData()
+      alert('Database completely wiped! Reloading app...')
+      window.location.reload()
+    } catch (err) {
+      setWipeError('An error occurred.')
+      setIsWiping(false)
+    }
+  }
 
   return (
     <div>
@@ -92,29 +130,61 @@ export function AccountSection({ currentUser }) {
       </SettingRow>
 
       {currentUser?.username === 'admin@doublel.com' && (
-        <SettingRow label="Wipe Test Data" description="Delete all records (employees, products, chats, etc.) to prepare for production use.">
-          <button
-            onClick={async () => {
-              if (window.confirm('Are you absolutely sure you want to completely WIPE all data? This will clear the entire database. It cannot be undone.')) {
-                await window.electronAPI.wipeAllData()
-                alert('Database completely wiped! Reloading app...')
-                window.location.reload()
-              }
-            }}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              background: '#ef4444',
-              color: '#fff',
-              border: 'none',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            Wipe Database
-          </button>
-        </SettingRow>
+        <>
+          <SettingRow label="Wipe Test Data" description="Delete all records (employees, products, chats, etc.) to prepare for production use.">
+            <button
+              onClick={() => {
+                setWipePassword('')
+                setWipeError('')
+                setWipeModalOpen(true)
+              }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                background: '#ef4444',
+                color: '#fff',
+                border: 'none',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '13px'
+              }}
+            >
+              Wipe Database
+            </button>
+          </SettingRow>
+
+          <Dialog open={wipeModalOpen} onOpenChange={setWipeModalOpen}>
+            <DialogContent className="bg-white p-6 max-w-[400px]">
+              <DialogHeader>
+                <DialogTitle className="text-gray-900 font-semibold text-lg">Wipe Database</DialogTitle>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                  Are you absolutely sure you want to completely WIPE all data? This will clear the entire database. <strong className="text-red-500">It cannot be undone.</strong>
+                </p>
+              </DialogHeader>
+
+              <div className="mt-4 flex flex-col gap-2">
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Confirm Password</label>
+                <Input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={wipePassword}
+                  onChange={e => setWipePassword(e.target.value)}
+                  className="bg-white border-gray-200 text-sm h-10"
+                />
+                {wipeError && <p className="text-xs text-red-500 mt-1 font-medium">{wipeError}</p>}
+              </div>
+
+              <DialogFooter className="mt-6 gap-2">
+                <Button variant="outline" onClick={() => setWipeModalOpen(false)} disabled={isWiping} className="border-gray-200 text-gray-600 hover:bg-gray-50">
+                  Cancel
+                </Button>
+                <Button onClick={handleWipe} disabled={isWiping} className="bg-red-500 hover:bg-red-600 text-white font-medium">
+                  {isWiping ? 'Wiping...' : 'Wipe All Data'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </div>
   )

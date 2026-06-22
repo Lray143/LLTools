@@ -265,6 +265,8 @@ const initDb = async () => {
       leave_type    TEXT DEFAULT NULL,
       leave_start   TEXT DEFAULT NULL,
       leave_end     TEXT DEFAULT NULL,
+      lunch_start   TEXT DEFAULT '12:00',
+      lunch_end     TEXT DEFAULT '13:00',
       shift_start   TEXT DEFAULT '07:00',
       shift_end     TEXT DEFAULT '17:30',
       day_offs      TEXT DEFAULT 'Saturday,Sunday',
@@ -274,19 +276,21 @@ const initDb = async () => {
       sync_status   TEXT DEFAULT 'pending'
     );
     CREATE TABLE IF NOT EXISTS attendance (
-      id            TEXT PRIMARY KEY,
-      employee_id   TEXT,
-      date          TEXT NOT NULL,
-      shift_in      TEXT,
-      lunch_out     TEXT,
-      lunch_in      TEXT,
-      shift_out     TEXT,
-      total_hours   REAL,
-      status        TEXT,
-      extra_taps    TEXT DEFAULT NULL,
-      created_at    TEXT DEFAULT (datetime('now')),
-      synced_at     TEXT DEFAULT NULL,
-      sync_status   TEXT DEFAULT 'pending'
+      id                TEXT PRIMARY KEY,
+      employee_id       TEXT,
+      date              TEXT NOT NULL,
+      shift_in          TEXT,
+      lunch_out         TEXT,
+      lunch_in          TEXT,
+      shift_out         TEXT,
+      total_hours       REAL,
+      status            TEXT,
+      extra_taps        TEXT DEFAULT NULL,
+      sched_lunch_start TEXT DEFAULT NULL,
+      sched_lunch_end   TEXT DEFAULT NULL,
+      created_at        TEXT DEFAULT (datetime('now')),
+      synced_at         TEXT DEFAULT NULL,
+      sync_status       TEXT DEFAULT 'pending'
     );
     CREATE TABLE IF NOT EXISTS clinic_logs (
       id            TEXT PRIMARY KEY,
@@ -547,6 +551,10 @@ const initDb = async () => {
   try { await run("ALTER TABLE direct_messages ADD COLUMN is_edited INTEGER DEFAULT 0") } catch (_) {}
   try { await run("ALTER TABLE direct_messages ADD COLUMN deleted_for TEXT DEFAULT '[]'") } catch (_) {}
 
+  // Migration: snapshot lunch hours onto attendance records for historical accuracy
+  try { await run("ALTER TABLE attendance ADD COLUMN sched_lunch_start TEXT DEFAULT NULL") } catch (_) {}
+  try { await run("ALTER TABLE attendance ADD COLUMN sched_lunch_end   TEXT DEFAULT NULL") } catch (_) {}
+
   // ── Seed admin user ────────────────────────────────────────────────────────
   const adminHash = bcrypt.hashSync('admin123', 10)
   await run(
@@ -790,20 +798,22 @@ const upsertEmployee = async (emp) => {
   await run(`
     INSERT INTO employees
       (id, employee_no, name, position, department, contact, status,
-       leave_type, leave_start, leave_end, shift_start, shift_end, day_offs, day_schedule)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       leave_type, leave_start, leave_end, lunch_start, lunch_end, shift_start, shift_end, day_offs, day_schedule)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       employee_no  = excluded.employee_no, name         = excluded.name,
       position     = excluded.position,    department   = excluded.department,
       contact      = excluded.contact,     status       = excluded.status,
       leave_type   = excluded.leave_type,  leave_start  = excluded.leave_start,
-      leave_end    = excluded.leave_end,   shift_start  = excluded.shift_start,
+      leave_end    = excluded.leave_end,   lunch_start  = excluded.lunch_start,
+      lunch_end    = excluded.lunch_end,   shift_start  = excluded.shift_start,
       shift_end    = excluded.shift_end,   day_offs     = excluded.day_offs,
       day_schedule = excluded.day_schedule, sync_status = 'pending'
   `, [emp.id, emp.employee_no, emp.name,
       emp.position ?? null, emp.department ?? null, emp.contact ?? null,
       emp.status ?? 'Active',
       emp.leave_type ?? null, emp.leave_start ?? null, emp.leave_end ?? null,
+      emp.lunch_start ?? '12:00', emp.lunch_end ?? '13:00',
       emp.shift_start ?? '07:00', emp.shift_end ?? '17:30', emp.day_offs ?? 'Saturday,Sunday',
       emp.day_schedule ?? null])
   await createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
@@ -820,7 +830,10 @@ const permanentDeleteEmployee = async (id) => {
 const getAttendance = async () => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
-         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
+         e.employee_no, e.name, e.department,
+         COALESCE(a.sched_lunch_start, e.lunch_start, '12:00') AS lunch_start,
+         COALESCE(a.sched_lunch_end,   e.lunch_end,   '13:00') AS lunch_end,
+         e.shift_start, e.shift_end, e.day_offs, e.day_schedule
   FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
   ORDER BY a.date DESC, e.name
 `)
@@ -828,7 +841,10 @@ const getAttendance = async () => queryAll(`
 const getAttendanceByDate = async (date) => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
-         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
+         e.employee_no, e.name, e.department,
+         COALESCE(a.sched_lunch_start, e.lunch_start, '12:00') AS lunch_start,
+         COALESCE(a.sched_lunch_end,   e.lunch_end,   '13:00') AS lunch_end,
+         e.shift_start, e.shift_end, e.day_offs, e.day_schedule
   FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
   WHERE a.date = ? ORDER BY e.name
 `, [date])
@@ -836,7 +852,10 @@ const getAttendanceByDate = async (date) => queryAll(`
 const getMyAttendance = async (employeeId) => queryAll(`
   SELECT a.id, a.date, a.shift_in, a.lunch_out, a.lunch_in, a.shift_out,
          a.total_hours, a.status, a.extra_taps,
-         e.employee_no, e.name, e.department, e.shift_start, e.shift_end, e.day_offs, e.day_schedule
+         e.employee_no, e.name, e.department,
+         COALESCE(a.sched_lunch_start, e.lunch_start, '12:00') AS lunch_start,
+         COALESCE(a.sched_lunch_end,   e.lunch_end,   '13:00') AS lunch_end,
+         e.shift_start, e.shift_end, e.day_offs, e.day_schedule
   FROM attendance a LEFT JOIN employees e ON e.id = a.employee_id
   WHERE a.employee_id = ? ORDER BY a.date DESC
 `, [employeeId])
@@ -890,6 +909,7 @@ const importAttendance = async (records) => {
         rec.shift_in ?? null, rec.lunch_out ?? null, rec.lunch_in ?? null, rec.shift_out ?? null,
         rec.total_hours ?? null, rec.status ?? 'Absent',
         rec.extraTaps?.length > 0 ? JSON.stringify(rec.extraTaps) : null,
+        rec.sched_lunch_start ?? null, rec.sched_lunch_end ?? null,
         'pending'
       )
       newRecords++
@@ -929,7 +949,7 @@ const importAttendance = async (records) => {
     }
 
     await runBulkInsert('employees', 'id, employee_no, name, status, shift_start, shift_end, day_offs, sync_status', empInsertArgs, 8)
-    await runBulkInsert('attendance', 'id, employee_id, date, shift_in, lunch_out, lunch_in, shift_out, total_hours, status, extra_taps, sync_status', attInsertArgs, 11)
+    await runBulkInsert('attendance', 'id, employee_id, date, shift_in, lunch_out, lunch_in, shift_out, total_hours, status, extra_taps, sched_lunch_start, sched_lunch_end, sync_status', attInsertArgs, 13)
 
     // 4. Create dummy user accounts for any newly discovered employees
     for (const acc of missingAccounts) {
@@ -956,6 +976,8 @@ const importAttendanceRawText = async (text) => {
     empMap[String(e.employee_no)] = {
       shiftStart  : e.shift_start ?? '07:00',
       shiftEnd    : e.shift_end   ?? '17:30',
+      lunchStart  : e.lunch_start ?? '12:00',
+      lunchEnd    : e.lunch_end   ?? '13:00',
       dayOffs     : e.day_offs ? e.day_offs.split(',').map(d => d.trim()).filter(Boolean) : ['Saturday', 'Sunday'],
       daySchedule,
     }

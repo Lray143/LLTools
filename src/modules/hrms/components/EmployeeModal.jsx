@@ -30,6 +30,8 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
     role: "",
     dept: "Sales",
     contact: "",
+    lunch_start: "12:00",
+    lunch_end: "13:00",
     daySchedule: DEFAULT_DAY_SCHEDULE,
   })
 
@@ -43,6 +45,8 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
             role: employee.role || "",
             dept: employee.dept,
             contact: employee.contact || "",
+            lunch_start: employee.lunch_start || "12:00",
+            lunch_end: employee.lunch_end || "13:00",
             daySchedule: employee.daySchedule || DEFAULT_DAY_SCHEDULE,
           }
           : {
@@ -51,6 +55,8 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
             role: "",
             dept: "Sales",
             contact: "",
+            lunch_start: "12:00",
+            lunch_end: "13:00",
             daySchedule: DEFAULT_DAY_SCHEDULE,
           }
       )
@@ -172,7 +178,18 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
           <div className="flex flex-col gap-4 w-full md:w-[380px] md:border-l md:border-gray-100 md:ml-8 md:pl-8 mt-8 md:mt-0">
             <div>
               <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Shift Schedule</p>
-              <p className="text-[11px] text-gray-400">Toggle to mark a day as rest day.</p>
+              <p className="text-[11px] text-gray-400 mb-3">Toggle to mark a day as rest day.</p>
+            </div>
+
+            <div className="flex gap-4 mb-2 px-1">
+              <div className="flex flex-col gap-1.5 flex-1">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Lunch Start</label>
+                <Input type="time" value={form.lunch_start} onChange={e => setForm({ ...form, lunch_start: e.target.value })} className="bg-white border-gray-200 text-sm h-9 px-2" />
+              </div>
+              <div className="flex flex-col gap-1.5 flex-1">
+                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Lunch End</label>
+                <Input type="time" value={form.lunch_end} onChange={e => setForm({ ...form, lunch_end: e.target.value })} className="bg-white border-gray-200 text-sm h-9 px-2" />
+              </div>
             </div>
 
             {/* Column headers */}
