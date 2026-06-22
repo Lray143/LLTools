@@ -207,7 +207,17 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
           `}>
             Overview
           </p>
-          {navItems.map((item) => <NavButton key={item.id} item={item} />)}
+          {navItems.length > 0 ? (
+            navItems.map((item) => <NavButton key={item.id} item={item} />)
+          ) : (
+            <div className={`
+              px-2 py-3 text-xs italic text-gray-500 text-center
+              transition-all duration-200
+              ${isExpanded ? 'opacity-100' : 'opacity-0 hidden'}
+            `}>
+              No permissions
+            </div>
+          )}
         </div>
 
         {/* ── SYSTEM / SETTINGS — always pinned above user info ── */}

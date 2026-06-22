@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LogIn, Eye, EyeOff } from "lucide-react";
 
 function LoginPage({ onLogin }) {
@@ -8,6 +8,13 @@ function LoginPage({ onLogin }) {
   const [error,        setError]        = useState("");
   const [isLoading,    setIsLoading]    = useState(false);
   const [keepLogged,   setKeepLogged]   = useState(false);
+  const [appVersion,   setAppVersion]   = useState("1.0.0");
+
+  useEffect(() => {
+    if (window.electronAPI?.getVersion) {
+      window.electronAPI.getVersion().then(setAppVersion).catch(() => {});
+    }
+  }, []);
 
   const handleSubmit = async () => {
     setError("");
@@ -146,7 +153,7 @@ function LoginPage({ onLogin }) {
           color: "rgba(255,255,255,0.2)",
           letterSpacing: "0.5px",
         }}>
-          LLTools v1.0 · © 2026
+          LLTools v{appVersion} · © {new Date().getFullYear()}
         </p>
       </div>
 

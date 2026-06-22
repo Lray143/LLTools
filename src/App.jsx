@@ -215,6 +215,13 @@ function App() {
       }, 4000)
     })
 
+    channel.bind('employee-updated', (data) => {
+      const me = currentUserRef.current
+      if (me && (me.employeeId === data.id || String(me.id) === String(data.id))) {
+        window.electronAPI?.forceSync?.()
+      }
+    })
+
     return () => {
       pusher.unsubscribe('lltools-updates')
       pusher.disconnect()

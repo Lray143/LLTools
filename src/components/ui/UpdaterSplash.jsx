@@ -5,6 +5,13 @@ function UpdaterSplash({ onComplete }) {
   const [updateState, setUpdateState] = useState("checking");
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
+  const [appVersion, setAppVersion] = useState("1.0.0");
+
+  useEffect(() => {
+    if (window.electronAPI?.getVersion) {
+      window.electronAPI.getVersion().then(setAppVersion).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     if (!window.electronAPI?.updater) {
@@ -183,7 +190,7 @@ function UpdaterSplash({ onComplete }) {
             letterSpacing: "0.5px",
           }}
         >
-          LLTools v1.0 · © 2026
+          LLTools v{appVersion} · © {new Date().getFullYear()}
         </p>
       </div>
 

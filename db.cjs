@@ -834,6 +834,10 @@ const upsertEmployee = async (emp) => {
       emp.shift_start ?? '07:00', emp.shift_end ?? '17:30', emp.day_offs ?? 'Saturday,Sunday',
       emp.day_schedule ?? null])
   await createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
+  
+  if (global.pusherTrigger) {
+    global.pusherTrigger('lltools-updates', 'employee-updated', { id: emp.id })
+  }
 }
 
 const archiveEmployee         = async (id) => run("UPDATE employees SET status='Archived', sync_status='pending' WHERE id=?", [id])
