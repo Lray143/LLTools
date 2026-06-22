@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Pusher from 'pusher-js'
 import {
   Megaphone, Plus, X, Archive, ArchiveRestore, AlertTriangle,
   Users, MessageSquare, CheckCheck, Search, ChevronDown, Smile, Paperclip,
-  CheckSquare, MessageCircle
+  CheckSquare, MessageCircle, History
 } from 'lucide-react'
 import EmojiPicker from 'emoji-picker-react'
 import NotificationBell from '../../components/ui/NotificationBell'
@@ -652,6 +652,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
   const [pusherChannel,  setPusherChannel]  = useState(null)
   const [composing,      setComposing]      = useState(false)
   const [viewingAnnouncement, setViewingAnnouncement] = useState(null)
+  const [filterHistory,  setFilterHistory]  = useState('all') // 'all' | 'acknowledged'
 
   const canPost = canPostAnnouncements(currentUser)
   const empId   = String(currentUser.employeeId || currentUser.id)
@@ -671,10 +672,12 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
 
   const loadArchived = useCallback(async () => {
     try {
-      const rows = await window.electronAPI.getArchivedAnnouncements(empId)
+      const rows = canPost 
+        ? await window.electronAPI.getArchivedAnnouncements(empId)
+        : await window.electronAPI.getHistory(empId)
       setArchived(rows || [])
     } catch(e) { console.error(e) }
-  }, [empId])
+  }, [empId, canPost])
 
   useEffect(() => { load() }, [load, refreshKey])
   useEffect(() => { if (view === 'archived') loadArchived() }, [view, loadArchived, refreshKey])
@@ -716,7 +719,25 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
     loadArchived()
   }
 
-  const displayList = view === 'archived' ? archived : announcements
+  const feedList = useMemo(() => {
+    if (canPost) return announcements
+    return announcements.filter(a => {
+      // "if they opened an acknowledgement post and just close it (without acknowledging) it should not vanish. it will only banish when they acknowledge it."
+      if (a.require_ack && a.has_acknowledged > 0) return false;
+      // "when a non hr opened a non acknowledgement post on announcement , it should vanish on feed and go to the see tab."
+      if (!a.require_ack && a.has_read > 0) return false;
+      return true;
+    })
+  }, [announcements, canPost])
+
+  const historyList = useMemo(() => {
+    if (filterHistory === 'acknowledged') {
+      return archived.filter(a => a.has_acknowledged > 0)
+    }
+    return archived
+  }, [archived, filterHistory])
+
+  const displayList = view === 'archived' ? (canPost ? archived : historyList) : feedList
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--page-bg)' }}>
@@ -750,7 +771,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
           <div style={{ display: 'flex', background: 'var(--surface-hover)', borderRadius: 10, padding: 3, gap: 2 }}>
             {[
               { id: 'feed', label: 'Feed' },
-              { id: 'archived', label: 'Archive' },
+              { id: 'archived', label: canPost ? 'Archive' : 'Seen' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -763,7 +784,8 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
                   transition: 'all 150ms',
                 }}
               >
-                {tab.id === 'archived' ? <Archive size={12} style={{ marginRight: 4, display: 'inline' }} /> : null}
+                {tab.id === 'archived' && canPost ? <Archive size={12} style={{ marginRight: 4, display: 'inline' }} /> : null}
+                {tab.id === 'archived' && !canPost ? <History size={12} style={{ marginRight: 4, display: 'inline' }} /> : null}
                 {tab.label}
               </button>
             ))}
@@ -821,7 +843,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
             flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0
           }}>
             <button
-              onClick={() => { setViewingAnnouncement(null); load() }}
+              onClick={() => { setViewingAnnouncement(null); load(); loadArchived(); }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: 'none', border: 'none', cursor: 'pointer',
@@ -877,7 +899,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
           )}
 
           {/* Archive view header */}
-          {view === 'archived' && (
+          {view === 'archived' && canPost && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
               borderRadius: 10, background: 'rgba(var(--theme-500-rgb,99,102,241),0.06)',
@@ -887,6 +909,32 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
                 Archived announcements are stored for record-keeping. Only HR/Admin can permanently delete them.
               </span>
+            </div>
+          )}
+          {view === 'archived' && !canPost && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px',
+              borderRadius: 10, background: 'rgba(var(--theme-500-rgb,99,102,241),0.06)',
+              border: '1px solid rgba(var(--theme-500-rgb,99,102,241),0.15)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <History size={15} style={{ color: 'var(--theme-500)' }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  Your collection of announcements you have seen and acknowledged.
+                </span>
+              </div>
+              <select
+                value={filterHistory}
+                onChange={(e) => setFilterHistory(e.target.value)}
+                style={{
+                  padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)',
+                  background: 'var(--surface)', color: 'var(--text-primary)',
+                  fontSize: 12, fontWeight: 600, outline: 'none', cursor: 'pointer'
+                }}
+              >
+                <option value="all">All Seen</option>
+                <option value="acknowledged">Acknowledged Only</option>
+              </select>
             </div>
           )}
 
@@ -909,7 +957,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
                 <Megaphone size={30} style={{ color: 'var(--text-secondary)', opacity: 0.5 }} />
               </div>
               <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
-                {view === 'archived' ? 'No archived announcements' : 'No announcements yet'}
+                {view === 'archived' ? (canPost ? 'No archived announcements' : 'No announcements seen yet') : 'No announcements yet'}
               </p>
               <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>
                 {view === 'feed' && canPost ? 'Create the first announcement above.' : 'Check back later.'}

@@ -1687,12 +1687,13 @@ const getAnnouncements = async (employeeId = null, includeArchived = false) => {
       a.*,
       (SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id) as ack_count,
       ${employeeId ? `(SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id AND ack.employee_id = ?) as has_acknowledged,` : ''}
+      ${employeeId ? `(SELECT count(*) FROM announcement_reads r WHERE r.announcement_id = a.id AND r.employee_id = ?) as has_read,` : ''}
       (SELECT count(*) FROM announcement_comments ac WHERE ac.announcement_id = a.id) as comment_count
     FROM announcements a
     ${statusCondition}
     ORDER BY a.created_at DESC
   `;
-  const params = employeeId ? [employeeId] : [];
+  const params = employeeId ? [employeeId, employeeId] : [];
   const results = await queryAll(sql, params);
   
   // Also fetch acknowledgements if they are needed (usually only HR needs the full list, but we can fetch them per announcement later)
@@ -1712,6 +1713,25 @@ const getArchivedAnnouncements = async (employeeId = null) => {
   `;
   const params = employeeId ? [employeeId] : [];
   return await queryAll(sql, params);
+}
+
+const getAnnouncementHistory = async (employeeId) => {
+  const sql = `
+    SELECT 
+      a.*,
+      (SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id) as ack_count,
+      (SELECT count(*) FROM announcement_acknowledgements ack WHERE ack.announcement_id = a.id AND ack.employee_id = ?) as has_acknowledged,
+      (SELECT count(*) FROM announcement_reads r WHERE r.announcement_id = a.id AND r.employee_id = ?) as has_read,
+      (SELECT count(*) FROM announcement_comments ac WHERE ac.announcement_id = a.id) as comment_count
+    FROM announcements a
+    WHERE a.id IN (
+      SELECT announcement_id FROM announcement_acknowledgements WHERE employee_id = ?
+      UNION
+      SELECT announcement_id FROM announcement_reads WHERE employee_id = ?
+    )
+    ORDER BY a.created_at DESC
+  `;
+  return await queryAll(sql, [employeeId, employeeId, employeeId, employeeId]);
 }
 
 const upsertAnnouncement = async (announcement) => {

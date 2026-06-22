@@ -140,6 +140,7 @@ window.electronAPI = {
   // ── Announcements ─────────────────────────────────────────────────
   getAnnouncements:        (empId, incArch) => ipcRenderer.invoke('announcements:getAll', empId, incArch),
   getArchivedAnnouncements:(empId)          => ipcRenderer.invoke('announcements:getArchived', empId),
+  getHistory:              (empId)          => ipcRenderer.invoke('announcements:getHistory', empId),
   upsertAnnouncement:      (ann)            => ipcRenderer.invoke('announcements:upsert', ann),
   archiveAnnouncement:     (id)             => ipcRenderer.invoke('announcements:archive', id),
   permDeleteAnnouncement:  (id)             => ipcRenderer.invoke('announcements:permDelete', id),

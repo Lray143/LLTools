@@ -204,6 +204,7 @@ ipcMain.handle('db:wipeAll',           ()                    => wipeAllData())
 // ── ANNOUNCEMENTS ──────────────────────────────────────────────────
 ipcMain.handle('announcements:getAll',       (_, empId, incArch) => getAnnouncements(empId, incArch))
 ipcMain.handle('announcements:getArchived',  (_, empId)          => getArchivedAnnouncements(empId))
+ipcMain.handle('announcements:getHistory',   (_, empId)          => getAnnouncementHistory(empId))
 ipcMain.handle('announcements:upsert',       (_, ann)            => upsertAnnouncement(ann))
 ipcMain.handle('announcements:archive',      (_, id)             => archiveAnnouncement(id))
 ipcMain.handle('announcements:permDelete',   (_, id)             => permanentDeleteAnnouncement(id))
