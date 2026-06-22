@@ -3,6 +3,7 @@ import Pusher from 'pusher-js'
 import './App.css'
 
 import LoginPage   from './components/ui/LoginPage'
+import UpdaterSplash from './components/ui/UpdaterSplash'
 import Sidebar     from './components/ui/Sidebar'
 
 import Announcements  from './modules/announcements/Announcements'
@@ -148,6 +149,7 @@ function ThemeDecorations() {
 function App() {
   const [currentUser, setCurrentUser] = useState(null)
   const [activePage,  setActivePage]  = useState('announcements')
+  const [updaterFinished, setUpdaterFinished] = useState(false)
   // Increments every time a cloud sync completes — modules use this as a
   // useEffect dependency so they automatically re-fetch fresh data.
   const [refreshKey,  setRefreshKey]  = useState(0)
@@ -295,6 +297,10 @@ function App() {
     localStorage.removeItem('savedSessionId')
     setCurrentUser(null)
     setActivePage('announcements')
+  }
+
+  if (!updaterFinished) {
+    return <UpdaterSplash onComplete={() => setUpdaterFinished(true)} />
   }
 
   if (!currentUser) {

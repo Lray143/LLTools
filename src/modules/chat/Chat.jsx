@@ -253,6 +253,12 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     if (el) el.scrollTop = el.scrollHeight
   }, [])
 
+  // Programmatic smooth scroll localized to the container
+  const scrollToBottomSmooth = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }, [])
+
   // ── Load messages when room changes ──────────────────────────────────────
   const loadMessages = useCallback(async (forceScroll = false) => {
     const reqRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
@@ -304,8 +310,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     pendingScrollRef.current = null
 
     if (mode === 'instant') scrollToBottomInstant()
-    else messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [activeRoomId, messageCache[activeRoomId], scrollToBottomInstant])
+    else scrollToBottomSmooth()
+  }, [activeRoomId, messageCache[activeRoomId], scrollToBottomInstant, scrollToBottomSmooth])
 
   // Room switch → load messages for the new room
   useEffect(() => {
@@ -357,7 +363,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         }))
         setInputMsg('')
         setReplyTo(null)
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
+        setTimeout(scrollToBottomSmooth, 10)
         await window.electronAPI.sendChatMessage(msgData)
       } else if (activeTab === 'dms' && selectedUser) {
         const msgData = {
@@ -371,7 +377,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         }))
         setInputMsg('')
         setReplyTo(null)
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 10)
+        setTimeout(scrollToBottomSmooth, 10)
         await window.electronAPI.sendDirectMessage(msgData)
       }
 
@@ -603,7 +609,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
   }, [selectedDept, selectedUser, myParticipantId])
 
   return (
-    <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
+    <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--page-bg)' }}>
 
       {/* ── TOP HEADER BAR (matches app-wide pattern) ── */}
       <div className="flex items-center justify-between px-8 py-4 border-b shrink-0"
@@ -647,15 +653,17 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       {/* ── CONTENT AREA ── */}
       <div className="flex-1 min-h-0 flex p-6 gap-4">
 
-        <div style={{ display: isSidebarOpen ? 'block' : 'none' }}>
-          <ChatSidebar
-            activeTab={activeTab} setActiveTab={setActiveTab}
-            sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
-            sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
-            isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
-            onlineUsers={onlineUsers}
-          />
-        </div>
+        {isSidebarOpen && (
+          <div className="flex h-full">
+            <ChatSidebar
+              activeTab={activeTab} setActiveTab={setActiveTab}
+              sortedDepts={sortedDepts} selectedDept={selectedDept} setSelectedDept={setSelectedDept}
+              sortedEmployees={sortedEmployees} selectedUser={selectedUser} setSelectedUser={setSelectedUser}
+              isUnread={isUnread} currentUser={currentUser} getRoomId={getRoomId} sidebarData={sidebarData}
+              onlineUsers={onlineUsers}
+            />
+          </div>
+        )}
 
         {/* ── MAIN CHAT AREA ── */}
         <div className="flex-1 flex flex-col rounded-xl shadow-sm overflow-hidden"
