@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react"
+import { RotateCcw } from "lucide-react"
 import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "../../../components/ui/dialog"
+import { NotificationModal } from "../../../components/ui/NotificationModal"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../../components/ui/select"
@@ -92,7 +94,45 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
     }
   }
 
+  const [resetOpen, setResetOpen] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+  const [notificationState, setNotificationState] = useState({ open: false, title: '', message: '', type: 'info' })
+
+  async function handleResetCredentials() {
+    if (!employee?.id) return
+    setIsResetting(true)
+    try {
+      const res = await window.electronAPI.resetEmployeeCredentials(employee.id)
+      if (res.success) {
+        setResetOpen(false)
+        setNotificationState({
+          open: true,
+          title: 'Credentials Reset',
+          message: 'Credentials successfully reset to Employee No.',
+          type: 'success'
+        })
+      } else {
+        setNotificationState({
+          open: true,
+          title: 'Reset Failed',
+          message: res.message || 'Failed to reset credentials.',
+          type: 'error'
+        })
+      }
+    } catch (err) {
+      setNotificationState({
+        open: true,
+        title: 'Error',
+        message: 'An error occurred while resetting credentials.',
+        type: 'error'
+      })
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
   return (
+    <>
     <Dialog open={open} onOpenChange={val => { if (!val) onClose() }}>
       <DialogContent className="bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[90vh] overflow-y-auto w-auto"
         style={{ maxWidth: '95vw' }}>
@@ -243,15 +283,61 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
         </div>
 
-        <DialogFooter className="gap-2 pt-4 border-t border-gray-100 mt-2">
-          <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Employee"}
+        <DialogFooter className="gap-2 pt-4 border-t border-gray-100 mt-2 sm:justify-between">
+          <div>
+            {isEdit && (
+              <Button type="button" variant="ghost" className="text-gray-500 hover:text-orange-600 hover:bg-orange-50 text-sm px-2 flex items-center gap-1.5" onClick={() => setResetOpen(true)}>
+                <RotateCcw className="w-4 h-4" />
+                Reset Credentials
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Employee"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog open={resetOpen} onOpenChange={val => { if (!val) setResetOpen(false) }}>
+      <DialogContent className="sm:max-w-sm bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 z-[200]">
+        <DialogHeader>
+          <div className="flex flex-col items-center gap-3 pt-2 pb-1">
+            <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
+              <RotateCcw className="w-5 h-5 text-orange-500" />
+            </div>
+            <DialogTitle className="text-center text-gray-900">Reset Credentials</DialogTitle>
+          </div>
+        </DialogHeader>
+
+        <p className="text-sm text-gray-500 text-center px-2 pb-2">
+          Are you sure you want to reset credentials for{" "}
+          <span className="font-semibold text-gray-800">{employee?.name}</span>?
+          <br/><br/>
+          This will change their username and password back to their Employee No.
+        </p>
+
+        <DialogFooter className="flex gap-2 sm:gap-2">
+          <Button variant="outline" className="flex-1" onClick={() => setResetOpen(false)} disabled={isResetting}>Cancel</Button>
+          <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={handleResetCredentials} disabled={isResetting}>
+            {isResetting ? "Resetting..." : "Confirm Reset"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <NotificationModal 
+      open={notificationState.open}
+      title={notificationState.title}
+      message={notificationState.message}
+      type={notificationState.type}
+      onClose={() => setNotificationState(prev => ({ ...prev, open: false }))}
+    />
+    </>
   )
 }

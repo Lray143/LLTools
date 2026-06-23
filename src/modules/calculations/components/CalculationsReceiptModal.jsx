@@ -25,6 +25,7 @@ export default function CalculationsReceiptModal({
       if (q > 0) {
         const price = outletPrices[row.id] ?? row.price
         groupLines.push({
+          productNo:   row.productNo,
           description: row.description,
           size:        row.size,
           price,

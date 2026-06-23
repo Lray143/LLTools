@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from "react"
-import { Search, User } from "lucide-react"
+import { Search, User, Stethoscope } from "lucide-react"
 import NotificationBell from '../../components/ui/NotificationBell'
 import NewEntryForm from "./components/NewEntryForm"
 import VisitsTable from "./components/VisitsTable"
@@ -356,9 +356,18 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
 
       {/* TOP BAR */}
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Clinic Log</h1>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Employee health &amp; visit records</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'rgba(var(--theme-500-rgb,99,102,241),0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Stethoscope size={18} style={{ color: 'var(--theme-500)' }} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Clinic Log</h1>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Employee health &amp; visit records</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">

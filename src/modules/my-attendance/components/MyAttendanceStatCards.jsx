@@ -5,12 +5,11 @@ export function MyAttendanceStatCards({ stats }) {
     { label: 'Undertime',       value: stats.undertime,     color: '#d97706' },
     { label: 'Late & Undertime',value: stats.lateUndertime, color: '#dc2626' },
     { label: 'Incomplete',      value: stats.incomplete,    color: '#7c3aed' },
-    { label: 'Absent',          value: stats.absent,        color: '#dc2626' },
     { label: 'On Leave',        value: stats.onLeave,       color: '#2563eb' },
   ]
 
   return (
-    <div className="grid grid-cols-7 gap-3">
+    <div className="grid grid-cols-6 gap-3">
       {cards.map((card) => (
         <div
           key={card.label}

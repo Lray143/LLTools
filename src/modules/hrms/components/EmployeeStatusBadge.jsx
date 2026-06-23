@@ -1,12 +1,10 @@
 import { statusStyles } from "../employeeConstants"
 
-const ACTIVE_STATUSES = new Set(["Active", "Intern"])
-
 export function EmployeeStatusBadge({ status }) {
-  // Active → green, Intern → blue, any leave type → amber
+  // Active → green, Resigned → gray, any leave type → amber
   const styling = statusStyles[status]
-    ?? (ACTIVE_STATUSES.has(status)
-      ? "bg-gray-100 text-gray-500 border border-gray-200"
+    ?? (status === 'Active'
+      ? "bg-green-50 text-green-600 border border-green-200"
       : "bg-amber-50 text-amber-600 border border-amber-200")
 
   return (
@@ -14,4 +12,4 @@ export function EmployeeStatusBadge({ status }) {
       {status}
     </span>
   )
-}
+}

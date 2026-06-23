@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Pusher from 'pusher-js'
+import { Sparkles, Star, Heart, Zap, Bug } from 'lucide-react'
 import './App.css'
 
 import LoginPage   from './components/ui/LoginPage'
@@ -99,7 +100,14 @@ function ThemeDecorations() {
   if (theme !== 'sunflower' && theme !== 'kuromi') return null
 
   const isSunflower = theme === 'sunflower'
-  const emojiSet = isSunflower ? ['🐝'] : ['✨', '🦇', '💜', '🎀']
+  const iconSet = isSunflower
+    ? [{ Icon: Bug, color: '#f59e0b' }]
+    : [
+        { Icon: Sparkles, color: '#a78bfa' },
+        { Icon: Star,     color: '#4ade80' },
+        { Icon: Heart,    color: '#f472b6' },
+        { Icon: Zap,      color: '#c084fc' },
+      ]
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 0 }}>
@@ -124,7 +132,7 @@ function ThemeDecorations() {
             />
           )
         } else {
-          const emoji = emojiSet[el.emojiIndex % emojiSet.length]
+          const { Icon, color } = iconSet[el.emojiIndex % iconSet.length]
           return (
             <div 
               key={i} 
@@ -132,12 +140,15 @@ function ThemeDecorations() {
               style={{ 
                 top: el.top, 
                 left: el.left, 
-                fontSize: el.size, 
-                transform: `translate(-50%, -50%) rotate(${el.rotation}) ${Math.random() > 0.5 ? 'scaleX(-1)' : ''}`,
+                width: el.size,
+                height: el.size,
+                transform: `translate(-50%, -50%) rotate(${el.rotation})`,
                 opacity: el.opacity,
+                color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
-              {emoji}
+              <Icon size={parseInt(el.size)} />
             </div>
           )
         }
@@ -304,6 +315,8 @@ function App() {
     localStorage.removeItem('savedSessionId')
     setCurrentUser(null)
     setActivePage('announcements')
+    // Fix Radix UI bug where dropdowns/modals leave body frozen if unmounted abruptly
+    document.body.style.pointerEvents = 'auto'
   }
 
   if (!updaterFinished) {

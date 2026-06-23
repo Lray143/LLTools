@@ -12,6 +12,8 @@ window.electronAPI = {
   getAppLink:              (key)                => ipcRenderer.invoke('appLinks:get', key),
   upsertAppLink:           (link)               => ipcRenderer.invoke('appLinks:upsert', link),
 
+  getSystemUsage: () => ipcRenderer.invoke('getSystemUsage'),
+
   // ── Module Activity Logs ──────────────────────────────────────────
   addModuleActivityLog:    (entry)              => ipcRenderer.invoke('activityLog:add', entry),
   getModuleActivityLogs:   (module, limit)      => ipcRenderer.invoke('activityLog:get', module, limit),
@@ -23,6 +25,7 @@ window.electronAPI = {
   archiveEmployee:         (id)      => ipcRenderer.invoke('employees:archive', id),
   unarchiveEmployee:       (id)      => ipcRenderer.invoke('employees:unarchive', id),
   permanentDeleteEmployee: (id)      => ipcRenderer.invoke('employees:permDelete', id),
+  resetEmployeeCredentials:(id)      => ipcRenderer.invoke('employees:resetCredentials', id),
 
   // ── Attendance ──────────────────────────────────────────────────
   getAttendance:           ()        => ipcRenderer.invoke('attendance:getAll'),
@@ -96,7 +99,7 @@ window.electronAPI = {
   getUsers:                ()                   => ipcRenderer.invoke('users:getAll'),
   updateUserRole:          (id, role)           => ipcRenderer.invoke('users:updateRole', id, role),
   resetUserPassword:       (id, newPassword)    => ipcRenderer.invoke('users:resetPassword', id, newPassword),
-  updateUserCredentials:   (id, username, password) => ipcRenderer.invoke('users:updateCredentials', id, username, password),
+  updateUserCredentials:   (id, username, oldPassword, newPassword) => ipcRenderer.invoke('users:updateCredentials', id, username, oldPassword, newPassword),
   updateUserTheme:         (id, color, mode)    => ipcRenderer.invoke('users:updateTheme', id, color, mode),
   heartbeatUser:           (id)                 => ipcRenderer.invoke('users:heartbeat', id),
   logoutUser:              (id)                 => ipcRenderer.invoke('users:logout', id),

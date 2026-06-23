@@ -21,7 +21,10 @@ export function AboutSection() {
     const unsubs = [
       updater.onChecking(() => setUpdateState('checking')),
       updater.onUpdateAvailable(() => setUpdateState('available')),
-      updater.onUpdateNotAvailable(() => setUpdateState('idle')),
+      updater.onUpdateNotAvailable(() => {
+        setUpdateState('no_update')
+        setTimeout(() => setUpdateState('idle'), 2500)
+      }),
       updater.onDownloadProgress((p) => {
         setUpdateState('downloading')
         setProgress(Math.round(p.percent))
@@ -52,6 +55,7 @@ export function AboutSection() {
     switch (updateState) {
       case 'idle': return 'Check for Updates'
       case 'checking': return 'Checking...'
+      case 'no_update': return "There's no new update"
       case 'available': return 'Download Update'
       case 'downloading': return `Downloading (${progress}%)`
       case 'downloaded': return 'Restart & Install'
@@ -108,7 +112,7 @@ export function AboutSection() {
         <InfoChip value={`v${appVersion}`} />
       </SettingRow>
 
-      <SettingRow label="Developer" description="Built and maintained by the LLTools team.">
+      <SettingRow label="Developer" description="Built and maintained by the LLTools team: Lester Raymond M. Gulferic and Lawrence O. Dullo (Interns).">
         <InfoChip value="Double L Development" />
       </SettingRow>
 

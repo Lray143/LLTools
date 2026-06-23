@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { Plus, Search, User, Users, ChevronDown, Check, Archive } from 'lucide-react'
+import { Plus, Search, User, Users, ChevronDown, Check, Archive, BarChart2 } from 'lucide-react'
 
 import { ReportModal }          from './components/ReportModal'
 import { ReportDetailsDrawer }  from './components/ReportDetailsDrawer'
@@ -273,13 +273,22 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
     <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
       {/* ── TOP HEADER ── */}
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Reports</h1>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
-            {isManageView
-              ? 'Manage and review all employee reports'
-              : 'Submit and track your reports'}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'rgba(var(--theme-500-rgb,99,102,241),0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <BarChart2 size={18} style={{ color: 'var(--theme-500)' }} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Reports</h1>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
+              {isManageView
+                ? 'Manage and review all employee reports'
+                : 'Submit and track your reports'}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {/* Admin tab switcher */}

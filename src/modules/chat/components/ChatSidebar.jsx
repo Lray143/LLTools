@@ -133,7 +133,7 @@ const ChatSidebar = memo(function ChatSidebar({
                           const prefix = isMe ? 'You' : (entry.lastSenderName?.split(' ')[0] || 'Someone')
                           return (
                             <span className="text-[11px] truncate text-left mt-0.5 max-w-full" style={{ color: 'var(--text-secondary)' }}>
-                              {prefix}: {entry.lastMessage || 'Sent an attachment'}
+                              {prefix}: {(entry.lastMessage || '').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '') || 'Sent an attachment'}
                             </span>
                           )
                         }
@@ -209,7 +209,7 @@ const ChatSidebar = memo(function ChatSidebar({
                           const prefix = isMe ? 'You' : (entry.lastSenderName?.split(' ')[0] || 'Someone')
                           return (
                             <div className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                              {prefix}: {entry.lastMessage || 'Sent an attachment'}
+                              {prefix}: {(entry.lastMessage || '').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '') || 'Sent an attachment'}
                             </div>
                           )
                         }

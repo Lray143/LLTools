@@ -1,10 +1,66 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Megaphone, AlertTriangle, MessageSquare, ChevronDown, ChevronUp,
   CheckCheck, Users, Archive, Trash2, CheckCircle, Eye,
   Image as ImageIcon, Paperclip
 } from 'lucide-react'
 import CommentSection from './CommentSection'
+
+// ── LazyImage ─────────────────────────────────────────────────────────────────
+// Shows an animated skeleton while the image downloads, then fades it in.
+function LazyImage({ src, alt, style, onClick, onMouseEnter, onMouseLeave }) {
+  const [loaded, setLoaded] = useState(false)
+  const [errored, setErrored] = useState(false)
+
+  return (
+    <div style={{ position: 'relative', display: 'block', ...( !loaded && !errored ? { minHeight: 120 } : {}) }}>
+      {/* Skeleton shown while loading */}
+      {!loaded && !errored && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          borderRadius: style?.borderRadius ?? 10,
+          background: 'linear-gradient(90deg, rgba(var(--theme-500-rgb,99,102,241), 0.05) 25%, rgba(var(--theme-500-rgb,99,102,241), 0.15) 50%, rgba(var(--theme-500-rgb,99,102,241), 0.05) 75%)',
+          backgroundSize: '200% 100%',
+          animation: 'imgSkeletonShimmer 1.4s ease-in-out infinite',
+          minHeight: 120,
+        }} />
+      )}
+      {errored ? (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '24px 16px', borderRadius: style?.borderRadius ?? 10,
+          background: 'var(--surface-hover)', border: '1px solid var(--border)',
+          gap: 6, color: 'var(--text-secondary)', fontSize: 13,
+        }}>
+          <ImageIcon size={24} style={{ opacity: 0.4 }} />
+          <span>Image unavailable</span>
+        </div>
+      ) : (
+        <img
+          src={src}
+          alt={alt}
+          style={{
+            ...style,
+            display: 'block',
+            opacity: loaded ? 1 : 0,
+            transition: 'opacity 250ms ease, transform 150ms',
+          }}
+          onLoad={() => setLoaded(true)}
+          onError={() => setErrored(true)}
+          onClick={onClick}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+        />
+      )}
+      <style>{`
+        @keyframes imgSkeletonShimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+    </div>
+  )
+}
 
 function parseUTCDate(dateStr) {
   if (!dateStr) return new Date();
@@ -48,8 +104,10 @@ function Avatar({ name, size = 40 }) {
   )
 }
 
-// ── AcknowledgeModal ──────────────────────────────────────────────────────────
-function AckListModal({ acks, onClose }) {
+// ── AnalyticsModal ──────────────────────────────────────────────────────────
+function AnalyticsModal({ acks, reads, requiresAck, onClose }) {
+  const [tab, setTab] = useState(requiresAck ? 'acks' : 'reads')
+
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
@@ -57,32 +115,81 @@ function AckListModal({ acks, onClose }) {
     }} onClick={onClose}>
       <div style={{
         background: 'var(--surface)', borderRadius: 16, padding: '24px',
-        width: 380, maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+        width: 400, maxHeight: '75vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }} onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <CheckCircle size={20} style={{ color: 'var(--theme-500)' }} />
-          <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>Acknowledged by</span>
-          <span style={{ marginLeft: 'auto', background: 'var(--surface-hover)', padding: '2px 10px', borderRadius: 20, fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
-            {acks.length}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-primary)' }}>Post Analytics</span>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+             <Trash2 size={16} style={{opacity: 0}} />
+          </button>
         </div>
+
+        {/* Tabs — only show Acknowledged tab if post requires ack */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 12 }}>
+          {requiresAck && (
+            <button
+              onClick={() => setTab('acks')}
+              style={{
+                flex: 1, padding: '10px 0', border: 'none', background: 'transparent', cursor: 'pointer',
+                fontWeight: 600, fontSize: 14,
+                color: tab === 'acks' ? 'var(--theme-500)' : 'var(--text-secondary)',
+                borderBottom: tab === 'acks' ? '2px solid var(--theme-500)' : '2px solid transparent',
+                transition: 'all 200ms'
+              }}
+            >
+              Acknowledged ({acks.length})
+            </button>
+          )}
+          <button
+            onClick={() => setTab('reads')}
+            style={{
+              flex: 1, padding: '10px 0', border: 'none', background: 'transparent', cursor: 'pointer',
+              fontWeight: 600, fontSize: 14,
+              color: tab === 'reads' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              borderBottom: tab === 'reads' ? '2px solid var(--text-primary)' : '2px solid transparent',
+              transition: 'all 200ms'
+            }}
+          >
+            Opened ({reads.length})
+          </button>
+        </div>
+
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {acks.length === 0 ? (
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, margin: '20px 0' }}>No acknowledgements yet.</p>
-          ) : (
-            acks.map(a => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                <Avatar name={a.employee_name} size={32} />
-                <div>
-                  <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{a.employee_name}</p>
-                  <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{relativeTime(a.acknowledged_at)}</p>
+          {tab === 'acks' && (
+            acks.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, margin: '20px 0' }}>No acknowledgements yet.</p>
+            ) : (
+              acks.map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <Avatar name={a.employee_name} size={32} />
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{a.employee_name}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{relativeTime(a.acknowledged_at)}</p>
+                  </div>
+                  <CheckCircle size={16} style={{ marginLeft: 'auto', color: '#16a34a' }} />
                 </div>
-                <CheckCircle size={16} style={{ marginLeft: 'auto', color: '#16a34a' }} />
-              </div>
-            ))
+              ))
+            )
+          )}
+
+          {tab === 'reads' && (
+            reads.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, margin: '20px 0' }}>No one has opened this yet.</p>
+            ) : (
+              reads.map(r => (
+                <div key={r.employee_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
+                  <Avatar name={r.employee_name} size={32} />
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{r.employee_name}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{relativeTime(r.read_at)}</p>
+                  </div>
+                </div>
+              ))
+            )
           )}
         </div>
+        
         <button onClick={onClose} style={{
           marginTop: 16, padding: '8px', borderRadius: 10, border: 'none',
           background: 'var(--surface-hover)', color: 'var(--text-primary)',
@@ -166,6 +273,7 @@ export default function AnnouncementCard({
 
   const handleShowAcks = async () => {
     await loadAcks()
+    await loadReads()
     setShowAckModal(true)
   }
 
@@ -173,7 +281,7 @@ export default function AnnouncementCard({
 
   return (
     <>
-      {showAckModal && <AckListModal acks={acks} onClose={() => setShowAckModal(false)} />}
+      {showAckModal && <AnalyticsModal acks={acks} reads={reads} requiresAck={requiresAck} onClose={() => setShowAckModal(false)} />}
 
       <div style={{
         background: 'var(--surface)',
@@ -243,6 +351,13 @@ export default function AnnouncementCard({
             {canPost && !isArchived && (
               <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <button
+                  onClick={(e) => { e.stopPropagation(); handleShowAcks(); }}
+                  title="Analytics"
+                  style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
+                >
+                  <Users size={13} />
+                </button>
+                <button
                   onClick={(e) => { e.stopPropagation(); onArchive(); }}
                   title="Archive"
                   style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
@@ -267,12 +382,6 @@ export default function AnnouncementCard({
                 <Trash2 size={12} /> Delete
               </button>
             )}
-            {/* Expand indicator */}
-            {!focused && (
-              <div style={{ alignSelf: 'center', color: 'var(--text-secondary)', marginLeft: 8 }}>
-                <Eye size={16} />
-              </div>
-            )}
           </div>
 
           {/* Subject */}
@@ -292,7 +401,7 @@ export default function AnnouncementCard({
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               overflow: 'hidden', wordBreak: 'break-word',
             }}>
-              {content.replace(/\[attachment:\s*([^\]]+)\]/g, ' 📎 Attachment ').trim() || 'No preview text.'}
+              {content.replace(/\[attachment:\s*([^\]]+)\]/g, ' [Attachment] ').trim() || 'No preview text.'}
             </p>
           )}
 
@@ -329,13 +438,13 @@ export default function AnnouncementCard({
                   parts.push(
                     <div key={`att-${idx}`} style={{ margin: '12px 0' }}>
                       {renderUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) ? (
-                        <img
+                        <LazyImage
                           src={renderUrl}
                           alt="attachment"
                           style={{
                             borderRadius: 10, maxWidth: '100%', objectFit: 'contain',
-                            maxHeight: 400, cursor: 'zoom-in', transition: 'transform 150ms',
-                            border: '1px solid var(--border)', display: 'block'
+                            maxHeight: 400, cursor: 'zoom-in',
+                            border: '1px solid var(--border)',
                           }}
                           onClick={(e) => {
                             e.stopPropagation()
@@ -428,7 +537,7 @@ export default function AnnouncementCard({
                 return (
                   <div style={{ marginTop: 12 }}>
                     {renderUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i) ? (
-                      <img src={renderUrl} alt="attachment" style={{ borderRadius: 10, maxWidth: '100%', maxHeight: 400, objectFit: 'contain', border: '1px solid var(--border)', display: 'block', cursor: 'zoom-in' }}
+                      <LazyImage src={renderUrl} alt="attachment" style={{ borderRadius: 10, maxWidth: '100%', maxHeight: 400, objectFit: 'contain', border: '1px solid var(--border)', cursor: 'zoom-in' }}
                         onClick={(e) => { e.stopPropagation(); if (renderUrl.startsWith('r2://')) window.electronAPI?.openR2File?.(renderUrl.replace('r2://', '')); else window.open(renderUrl, '_blank') }} />
                     ) : renderUrl.match(/\.(mp4|webm|ogg)$/i) ? (
                       <video src={renderUrl} controls preload="metadata" style={{ borderRadius: 10, maxWidth: '100%', maxHeight: 400, border: '1px solid var(--border)', display: 'block' }} onClick={e => e.stopPropagation()} />
@@ -493,20 +602,6 @@ export default function AnnouncementCard({
               </button>
             )}
 
-            {/* HR: see who acknowledged */}
-            {requiresAck && canPost && (
-              <button
-                onClick={handleShowAcks}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '6px 14px', borderRadius: 20, fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                  border: '1.5px solid var(--border)',
-                  background: 'var(--surface-hover)', color: 'var(--text-secondary)',
-                }}
-              >
-                <Eye size={13} /> {ackCount} Acknowledged
-              </button>
-            )}
 
             {/* Comments toggle */}
             {allowComments && (
@@ -564,43 +659,6 @@ export default function AnnouncementCard({
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* HR / Admin View: Acknowledged & Opened lists */}
-          {focused && canPost && (
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '2px dashed var(--border)' }}>
-              <h4 style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--text-primary)' }}>HR / Admin Dashboard</h4>
-              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <h5 style={{ margin: '0 0 8px', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Acknowledged ({acks.length})</h5>
-                  {acks.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No one has acknowledged yet.</p> : (
-                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {acks.map(a => (
-                        <li key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                          <CheckCircle size={14} style={{ color: 'var(--theme-500)' }} />
-                          <span style={{ color: 'var(--text-primary)' }}>{a.employee_name}</span>
-                          <span style={{ color: 'var(--text-secondary)', fontSize: 11, marginLeft: 'auto' }}>{relativeTime(a.acknowledged_at)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 200 }}>
-                  <h5 style={{ margin: '0 0 8px', fontSize: 12, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Opened ({reads.length})</h5>
-                  {reads.length === 0 ? <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>No one has opened this yet.</p> : (
-                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {reads.map(r => (
-                        <li key={r.employee_id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                          <Eye size={14} style={{ color: 'var(--text-secondary)' }} />
-                          <span style={{ color: 'var(--text-primary)' }}>{r.employee_name}</span>
-                          <span style={{ color: 'var(--text-secondary)', fontSize: 11, marginLeft: 'auto' }}>{relativeTime(r.read_at)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
             </div>
           )}
 

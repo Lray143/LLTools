@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3')
+const { S3Client, PutObjectCommand, GetObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const fs = require('fs')
 const path = require('path')
 
@@ -70,7 +70,86 @@ const downloadFileFromR2 = async (fileName) => {
   }
 }
 
+/**
+ * Calculates the total size of all objects in the bucket.
+ * @returns {Promise<number>} - Total size in bytes.
+ */
+const getBucketSize = async () => {
+  try {
+    let totalSize = 0
+    let isTruncated = true
+    let continuationToken = undefined
+
+    while (isTruncated) {
+      const command = new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        ContinuationToken: continuationToken
+      })
+      const response = await s3Client.send(command)
+      if (response.Contents) {
+        for (const item of response.Contents) {
+          totalSize += item.Size || 0
+        }
+      }
+      isTruncated = response.IsTruncated
+      continuationToken = response.NextContinuationToken
+    }
+    return totalSize
+  } catch (error) {
+    console.error('[R2] Failed to get bucket size:', error)
+    return 0
+  }
+}
+
+/**
+ * Deletes a file from Cloudflare R2.
+ * @param {string} fileName - The name of the file to delete.
+ */
+const deleteFileFromR2 = async (fileName) => {
+  if (!fileName) return
+  try {
+    const command = new DeleteObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: fileName
+    })
+    await s3Client.send(command)
+  } catch (error) {
+    console.error(`[R2] Delete failed for ${fileName}:`, error)
+  }
+}
+
+/**
+ * Deletes all objects in the bucket (used for wiping data).
+ */
+const emptyBucket = async () => {
+  try {
+    let isTruncated = true
+    let continuationToken = undefined
+
+    while (isTruncated) {
+      const listCommand = new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        ContinuationToken: continuationToken
+      })
+      const response = await s3Client.send(listCommand)
+      
+      if (response.Contents) {
+        for (const item of response.Contents) {
+          if (item.Key) await deleteFileFromR2(item.Key)
+        }
+      }
+      isTruncated = response.IsTruncated
+      continuationToken = response.NextContinuationToken
+    }
+  } catch (error) {
+    console.error('[R2] Failed to empty bucket:', error)
+  }
+}
+
 module.exports = {
   uploadFileToR2,
-  downloadFileFromR2
+  downloadFileFromR2,
+  getBucketSize,
+  deleteFileFromR2,
+  emptyBucket
 }

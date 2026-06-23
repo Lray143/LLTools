@@ -78,7 +78,7 @@ function styleDataCell(cell, colNum, fillArgb) {
   cell.font   = { name: 'Calibri', size: colNum === 1 ? 11 : 14 }
 
   if (colNum === 1) {
-    cell.alignment = { vertical: 'middle' }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' }
   } else if (colNum === 2) {                        // DATE
     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     cell.numFmt    = 'mm-dd-yy'
@@ -341,8 +341,9 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
         : item.description
 
       // Auto-height: let Excel expand rows to fit wrapped product names
-      // Col 1 (A): item sequence
-      ws.getCell(currentRow, 1).value  = i + 1
+      // Col 1 (A): product number from products table (falls back to item sequence for old orders)
+      const rawNo = item.productNo != null && item.productNo !== '' ? item.productNo : (i + 1)
+      ws.getCell(currentRow, 1).value  = isNaN(Number(rawNo)) ? rawNo : Number(rawNo)
       // Col 2 (B): DATE — first row only
       ws.getCell(currentRow, 2).value  = isFirst ? dateFormatted : null
       // Col 3 (C): PRODUCT NAME

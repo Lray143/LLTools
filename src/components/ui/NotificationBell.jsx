@@ -424,7 +424,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                   Icon          = Megaphone
                   accentColor   = item.is_urgent ? '#ef4444' : 'var(--theme-500)'
                   avatarBg      = item.is_urgent ? 'rgba(239,68,68,0.1)' : 'rgba(var(--theme-500-rgb,99,102,241),0.1)'
-                  avatarInitial = '📢'
+                  avatarInitial = <Megaphone size={24} color={accentColor} />
                 } else if (isChat) {
                   Icon        = MessageSquare
                   accentColor = '#14b8a6' // Teal
@@ -447,14 +447,14 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                 let boldText, mainText
                 if (isAnn) {
                   boldText = item.author_name || 'HR'
-                  mainText = ` posted ${item.is_urgent ? '🚨 an urgent announcement' : 'an announcement'}: "${item.subject}"`
+                  mainText = ` posted ${item.is_urgent ? 'an urgent announcement' : 'an announcement'}: "${item.subject}"`
                 } else if (isChat) {
                   if (item.isDept) {
                     boldText = item.lastSenderName?.split(' ')[0] || 'Someone'
-                    mainText = ` sent a message in ${item.roomId}: "${item.lastMessage || 'Attachment'}"`
+                    mainText = ` sent a message in ${item.roomId}: "${(item.lastMessage || '').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '') || 'Attachment'}"`
                   } else {
                     boldText = item.lastSenderName?.split(' ')[0] || 'Someone'
-                    mainText = ` sent a message: "${item.lastMessage || 'Attachment'}"`
+                    mainText = ` sent a message: "${(item.lastMessage || '').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '') || 'Attachment'}"`
                   }
                 } else if (isInReport) {
                   boldText = item.employeeName || item.employeeNo || 'Employee'

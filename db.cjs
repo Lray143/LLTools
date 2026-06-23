@@ -3,6 +3,7 @@ const { createClient } = require('@libsql/client')
 const path      = require('path')
 const { app }   = require('electron')
 const bcrypt    = require('bcryptjs')
+const { emptyBucket, deleteFileFromR2 } = require('./r2.cjs')
 
 // ── Turso Client (Embedded Replica) ───────────────────────────────────────────
 // Reads/writes happen on a local SQLite file (instant, works offline).
@@ -663,7 +664,7 @@ const initDb = async () => {
 // ── AUTH ───────────────────────────────────────────────────────────────────────
 const loginUser = async (username, password) => {
   const user = await queryOne(`
-    SELECT u.*, e.status AS employee_status, e.department, e.name AS employee_name, e.position AS employee_position
+    SELECT u.*, e.status AS employee_status, e.department, e.name AS employee_name, e.position AS employee_position, e.employee_no
     FROM users u
     LEFT JOIN employees e ON e.id = u.employee_id
     WHERE u.username = ?
@@ -678,11 +679,11 @@ const loginUser = async (username, password) => {
       username     : user.username,
       role         : user.role,
       employeeId   : user.employee_id        ?? null,
+      employeeNo   : user.employee_no        ?? null,
       department   : user.department         ?? null,
       employeeName : user.employee_name      ?? null,
       position     : user.employee_position  ?? null,
       themeColor   : user.theme_color        ?? null,
-      themeMode    : user.theme_mode         ?? 'light',
       themeMode    : user.theme_mode         ?? 'light',
     },
   }
@@ -690,7 +691,7 @@ const loginUser = async (username, password) => {
 
 const refreshUser = async (id) => {
   const user = await queryOne(`
-    SELECT u.*, e.department, e.name AS employee_name, e.position AS employee_position
+    SELECT u.*, e.department, e.name AS employee_name, e.position AS employee_position, e.employee_no
     FROM users u
     LEFT JOIN employees e ON e.id = u.employee_id
     WHERE u.id = ?
@@ -701,6 +702,7 @@ const refreshUser = async (id) => {
     username     : user.username,
     role         : user.role,
     employeeId   : user.employee_id        ?? null,
+    employeeNo   : user.employee_no        ?? null,
     department   : user.department         ?? null,
     employeeName : user.employee_name      ?? null,
     position     : user.employee_position  ?? null,
@@ -798,9 +800,38 @@ const getUsers = async () => {
 const updateUserRole      = async (id, role) => run(`UPDATE users SET role = ?, sync_status = 'pending' WHERE id = ?`, [role, id])
 const resetUserPassword   = async (id, newPassword) => run(`UPDATE users SET password_hash = ?, sync_status = 'pending' WHERE id = ?`, [bcrypt.hashSync(newPassword, 10), id])
 const deleteUserAccount   = async (id) => run(`DELETE FROM users WHERE id = ? AND employee_id IS NOT NULL`, [id])
-const updateUserTheme     = async (id, color, mode) => run(`UPDATE users SET theme_color = ?, theme_mode = ?, sync_status = 'pending' WHERE id = ?`, [color, mode, id])
-const updateUserCredentials = async (id, newUsername, newPassword) => {
+
+const resetEmployeeCredentials = async (employeeId) => {
+  const emp = await queryOne('SELECT employee_no FROM employees WHERE id = ?', [employeeId])
+  if (!emp) return { success: false, message: 'Employee not found.' }
+  
+  const strNo = String(emp.employee_no)
+  const hash = await bcrypt.hash(strNo, 10)
+  
+  const user = await queryOne('SELECT id FROM users WHERE employee_id = ?', [employeeId])
+  if (!user) return { success: false, message: 'User account not found for this employee.' }
+  
   try {
+    await run(`UPDATE users SET username = ?, password_hash = ?, sync_status = 'pending' WHERE id = ?`, [strNo, hash, user.id])
+    return { success: true }
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE')) {
+      return { success: false, message: 'Username (Employee No) is already taken.' }
+    }
+    throw err
+  }
+}
+
+const updateUserTheme     = async (id, color, mode) => run(`UPDATE users SET theme_color = ?, theme_mode = ?, sync_status = 'pending' WHERE id = ?`, [color, mode, id])
+const updateUserCredentials = async (id, newUsername, oldPassword, newPassword) => {
+  try {
+    const user = await queryOne('SELECT password_hash FROM users WHERE id = ?', [id])
+    if (!user) return { success: false, message: 'User not found.' }
+    
+    if (!bcrypt.compareSync(oldPassword, user.password_hash)) {
+      return { success: false, message: 'Incorrect old password.' }
+    }
+
     if (newPassword) {
       await run(`UPDATE users SET username = ?, password_hash = ?, sync_status = 'pending' WHERE id = ?`, [newUsername, bcrypt.hashSync(newPassword, 10), id])
     } else {
@@ -1446,10 +1477,16 @@ const editMessage = async (msgId, userId, newText, isDm = false) => {
 
 const unsendMessage = async (msgId, userId, isDm = false) => {
   const table = isDm ? 'direct_messages' : 'department_chats'
-  const row = await queryOne(`SELECT sender_id, created_at FROM ${table} WHERE id = ?`, [msgId])
+  const row = await queryOne(`SELECT sender_id, created_at, file_url FROM ${table} WHERE id = ?`, [msgId])
   if (!row || String(row.sender_id) !== String(userId)) return { success: false, error: 'Unauthorized' }
   const diffMs = Date.now() - new Date(row.created_at.replace(' ', 'T') + 'Z').getTime()
   if (diffMs > 15 * 60 * 1000) return { success: false, error: 'Message is too old to unsend' }
+
+  if (row.file_url && row.file_url.startsWith('r2://')) {
+    const fileKey = row.file_url.replace('r2://', '')
+    await deleteFileFromR2(fileKey).catch(console.error)
+  }
+
   await run(`UPDATE ${table} SET message = NULL, is_unsent = 1, file_url = NULL WHERE id = ?`, [msgId])
   try { await syncCloud() } catch (_) {}
   return { success: true }
@@ -1680,6 +1717,9 @@ const wipeAllData = async () => {
     }
     try { await run(`DELETE FROM users WHERE username != 'admin@doublel.com'`) } catch(e){}
     
+    // Wipe Cloudflare R2 attachments
+    await emptyBucket()
+
     // Immediately reseed default products and sync to cloud
     await initDb()
 
@@ -1871,8 +1911,18 @@ const reactToAnnouncementComment = async (commentId, employeeId, employeeName, r
 
 
 // ── Exports ───────────────────────────────────────────────────────────────────
+const getDatabaseSize = async () => {
+  try {
+    const res = await queryOne('SELECT page_count * page_size as bytes FROM pragma_page_count(), pragma_page_size()');
+    return res ? Number(res.bytes) : 0;
+  } catch (err) {
+    console.error('Failed to get database size:', err);
+    return 0;
+  }
+};
+
 module.exports = {
-  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud, wipeAllData,
+  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud, wipeAllData, getDatabaseSize,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance, importAttendanceRawText,
@@ -1884,7 +1934,7 @@ module.exports = {
   getOutletProductPrices, upsertOutletProductPrice, deleteOutletProductPrice,
   getClinicLogs, getArchivedClinicLogs,
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
-  getUsers, updateUserRole, resetUserPassword, deleteUserAccount, updateUserTheme, updateUserCredentials, heartbeatUser, logoutUser,
+  getUsers, updateUserRole, resetUserPassword, resetEmployeeCredentials, deleteUserAccount, updateUserTheme, updateUserCredentials, heartbeatUser, logoutUser,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,

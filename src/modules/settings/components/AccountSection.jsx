@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Eye, EyeOff, Database, Cloud, Activity, Server } from 'lucide-react'
 import { SectionHeading, SettingRow } from './AppearanceSection'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '../../../components/ui/dialog'
 import { Input } from '../../../components/ui/input'
 import { Button } from '../../../components/ui/button'
+import { NotificationModal } from '../../../components/ui/NotificationModal'
 
 const ROLE_LABELS = {
   admin:     'Administrator',
@@ -26,9 +28,26 @@ export function AccountSection({ currentUser }) {
 
   const [credModalOpen, setCredModalOpen] = useState(false)
   const [newUsername, setNewUsername] = useState(currentUser?.username || '')
+  const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showOldPassword, setShowOldPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [credError, setCredError] = useState('')
   const [isUpdatingCreds, setIsUpdatingCreds] = useState(false)
+  const [notificationState, setNotificationState] = useState({ open: false, title: '', message: '', type: 'info' })
+  const [systemUsage, setSystemUsage] = useState(null)
+
+  useEffect(() => {
+    if (currentUser?.username === 'admin@doublel.com') {
+      window.electronAPI.getSystemUsage().then(setSystemUsage).catch(console.error)
+      const timer = setInterval(() => {
+        window.electronAPI.getSystemUsage().then(setSystemUsage).catch(console.error)
+      }, 30000)
+      return () => clearInterval(timer)
+    }
+  }, [currentUser?.username])
 
   async function handleUpdateCreds() {
     setCredError('')
@@ -36,16 +55,30 @@ export function AccountSection({ currentUser }) {
       setCredError('Username cannot be empty.')
       return
     }
+    if (!oldPassword) {
+      setCredError('Current password is required to make changes.')
+      return
+    }
+    if (newPassword && newPassword !== confirmPassword) {
+      setCredError('New passwords do not match.')
+      return
+    }
+
     setIsUpdatingCreds(true)
     try {
-      const res = await window.electronAPI.updateUserCredentials(currentUser.id, newUsername.trim(), newPassword)
+      const res = await window.electronAPI.updateUserCredentials(currentUser.id, newUsername.trim(), oldPassword, newPassword)
       if (!res.success) {
         setCredError(res.message || 'Failed to update credentials.')
         setIsUpdatingCreds(false)
         return
       }
-      alert('Credentials updated successfully. Please note your new credentials for your next login.')
       setCredModalOpen(false)
+      setNotificationState({
+        open: true,
+        title: 'Credentials Updated',
+        message: 'Credentials updated successfully. Please note your new credentials for your next login.',
+        type: 'success'
+      })
     } catch (err) {
       setCredError('An error occurred.')
     } finally {
@@ -72,8 +105,13 @@ export function AccountSection({ currentUser }) {
       }
 
       await window.electronAPI.wipeAllData()
-      alert('Database completely wiped! Reloading app...')
-      window.location.reload()
+      setNotificationState({
+        open: true,
+        title: 'Database Wiped',
+        message: 'Database completely wiped! Reloading app...',
+        type: 'info'
+      })
+      setTimeout(() => window.location.reload(), 2000)
     } catch (err) {
       setWipeError('An error occurred.')
       setIsWiping(false)
@@ -87,7 +125,8 @@ export function AccountSection({ currentUser }) {
         description="Your account information as configured by your administrator."
       />
 
-      {/* Avatar + name row */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -143,7 +182,7 @@ export function AccountSection({ currentUser }) {
       </SettingRow>
 
       <SettingRow label="Employee ID" description="Your unique company identification number.">
-        <InfoChip value={currentUser?.employeeId ?? '—'} highlight />
+        <InfoChip value={currentUser?.employeeNo ?? currentUser?.employeeId ?? '—'} highlight />
       </SettingRow>
 
       <SettingRow label="Username" description="Your login username.">
@@ -154,7 +193,9 @@ export function AccountSection({ currentUser }) {
         <button
           onClick={() => {
             setNewUsername(currentUser?.username || '')
+            setOldPassword('')
             setNewPassword('')
+            setConfirmPassword('')
             setCredError('')
             setCredModalOpen(true)
           }}
@@ -194,15 +235,64 @@ export function AccountSection({ currentUser }) {
               />
             </div>
             <div>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Current Password</label>
+              <div className="relative">
+                <Input
+                  type={showOldPassword ? "text" : "password"}
+                  placeholder="Enter current password (required)"
+                  value={oldPassword}
+                  onChange={e => setOldPassword(e.target.value)}
+                  className="text-sm h-10 mt-1 pr-10"
+                  style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOldPassword(!showOldPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none mt-0.5"
+                >
+                  {showOldPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+            <div>
               <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>New Password</label>
-              <Input
-                type="password"
-                placeholder="Leave blank to keep current"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                className="text-sm h-10 mt-1"
-                style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
-              />
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Leave blank to keep current"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="text-sm h-10 mt-1 pr-10"
+                  style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none mt-0.5"
+                >
+                  {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Confirm New Password</label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="text-sm h-10 mt-1 pr-10"
+                  style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none mt-0.5"
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             {credError && <p className="text-xs text-red-500 mt-1 font-medium">{credError}</p>}
           </div>
@@ -288,6 +378,61 @@ export function AccountSection({ currentUser }) {
           </Dialog>
         </>
       )}
+
+      <NotificationModal 
+        open={notificationState.open}
+        title={notificationState.title}
+        message={notificationState.message}
+        type={notificationState.type}
+        onClose={() => setNotificationState(prev => ({ ...prev, open: false }))}
+      />
+      </div>
+
+        {currentUser?.username === 'admin@doublel.com' && (
+          <div style={{ width: 280, flexShrink: 0, position: 'sticky', top: 16 }}>
+            <div style={{
+              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
+              padding: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Server size={16} style={{ color: 'var(--theme-500)' }} /> System Usage
+              </h3>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Database size={14} style={{ color: 'var(--text-secondary)' }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Turso Database</span>
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', paddingLeft: 20 }}>
+                    {systemUsage ? systemUsage.turso.label : 'Loading...'}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Cloud size={14} style={{ color: 'var(--text-secondary)' }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Cloudflare R2 Storage</span>
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', paddingLeft: 20 }}>
+                    {systemUsage ? systemUsage.r2.label : 'Loading...'}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Activity size={14} style={{ color: 'var(--text-secondary)' }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Pusher Sockets</span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', paddingLeft: 20 }}>
+                    {systemUsage ? systemUsage.pusher.label : 'Loading...'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

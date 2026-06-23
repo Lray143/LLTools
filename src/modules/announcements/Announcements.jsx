@@ -115,6 +115,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
   const [targetIds,     setTargetIds]     = useState([])
   const [submitting,    setSubmitting]    = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showSubjectEmoji, setShowSubjectEmoji] = useState(false)
   const [isUploading,   setIsUploading]   = useState(false)
   const [hasContent,    setHasContent]    = useState(false)
   const fileInputRef = useRef(null)
@@ -126,7 +127,10 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
 
   useEffect(() => {
     const handler = (e) => {
-      if (!e.target.closest('[data-emoji-container]')) setShowEmojiPicker(false)
+      if (!e.target.closest('[data-emoji-container]')) {
+        setShowEmojiPicker(false)
+        setShowSubjectEmoji(false)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -237,7 +241,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
                border:1px solid rgba(var(--theme-500-rgb,99,102,241),0.2);
                border-radius:8px;font-size:13px;color:var(--text-primary);font-weight:600;
                margin:4px 2px;vertical-align:middle;">
-        <span style="color:var(--theme-500)">📎</span> ${file.name}</span>`
+        <span style="color:var(--theme-500); font-weight: bold; margin-right: 4px;">[Attachment]</span> ${file.name}</span>`
     }
 
     insertHTMLAtCursor(html)
@@ -395,9 +399,42 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
 
       {/* Subject */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Subject *
-        </label>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Subject *
+          </label>
+          <div style={{ position: 'relative' }} data-emoji-container>
+            <button
+              type="button"
+              onClick={() => setShowSubjectEmoji(prev => !prev)}
+              style={{
+                background: showSubjectEmoji ? 'var(--surface-hover)' : 'transparent',
+                border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6,
+                color: showSubjectEmoji ? 'var(--theme-500)' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', transition: 'all 150ms',
+              }}
+              title="Add Emoji"
+            >
+              <Smile size={16} />
+            </button>
+            {showSubjectEmoji && (
+              <div style={{
+                position: 'absolute', right: 0, top: '100%', zIndex: 50, marginTop: 4,
+                border: '1px solid var(--border)', borderRadius: 12,
+                boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+                background: 'var(--surface)', overflow: 'hidden',
+              }}>
+                <EmojiPicker
+                  theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                  onEmojiClick={(ev) => {
+                    setSubject(prev => prev + ev.emoji)
+                    setShowSubjectEmoji(false)
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
         <input
           value={subject}
           onChange={e => setSubject(e.target.value)}
@@ -538,7 +575,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
             if (sel?.rangeCount) savedSelection.current = sel.getRangeAt(0).cloneRange()
           }}
           onPaste={handlePaste}
-          data-placeholder="Write your announcement here… Use the 📎 button to attach images, videos or files inline."
+          data-placeholder="Write your announcement here… Use the attachment button to attach images, videos or files inline."
           style={{
             width: '100%',
             // In focused mode, use flex: 1 to fill space perfectly, otherwise use fixed sizing
@@ -739,15 +776,44 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
 
   const displayList = view === 'archived' ? (canPost ? archived : historyList) : feedList
 
+  // ── Preload Images for Feed ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!displayList || displayList.length === 0) return
+    const urlsToPreload = new Set()
+    
+    displayList.forEach(ann => {
+      const content = ann.content || ''
+      const ATTACH_RE = /\[attachment:\s*([^|\]]+)(?:\|\s*([^\]]+))?\]/g
+      let match
+      while ((match = ATTACH_RE.exec(content)) !== null) {
+        const rawUrl = match[1].trim()
+        const renderUrl = rawUrl.replace('https://pub-b12f4572a0004391ac727c63af4321b8.r2.dev/', 'r2://')
+        if (renderUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i)) {
+          urlsToPreload.add(renderUrl)
+        }
+      }
+      // Legacy single attachment
+      if (ann.file_url) {
+        const renderUrl = ann.file_url.replace('https://pub-b12f4572a0004391ac727c63af4321b8.r2.dev/', 'r2://')
+        if (renderUrl.match(/\.(jpeg|jpg|gif|png|webp|bmp)$/i)) {
+          urlsToPreload.add(renderUrl)
+        }
+      }
+    })
+
+    // Preload silently to warm up the r2:// cache
+    urlsToPreload.forEach(url => {
+      const img = new window.Image()
+      img.src = url
+    })
+  }, [displayList])
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--page-bg)' }}>
 
       {/* ── Header ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 24px', background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)', flexShrink: 0,
-      }}>
+      <div className="flex items-center justify-between px-8 py-4 border-b shrink-0"
+        style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
@@ -977,6 +1043,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
                     pusherChannel={pusherChannel}
                     onArchive={() => {}}
                     onDelete={() => handlePermDelete(ann.id)}
+                    onView={() => setViewingAnnouncement(ann)}
                     isArchived={true}
                   />
                   {canPost && (

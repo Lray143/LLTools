@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Settings as SettingsIcon } from 'lucide-react'
 import { SettingsNav }        from './components/SettingsNav'
 import { AppearanceSection }  from './components/AppearanceSection'
 import { AccountSection }     from './components/AccountSection'
@@ -19,9 +20,18 @@ function Settings({ currentUser }) {
 
       {/* ── TOP HEADER ── */}
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Settings</h1>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>System configuration &amp; preferences</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: 'rgba(var(--theme-500-rgb,99,102,241),0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <SettingsIcon size={18} style={{ color: 'var(--theme-500)' }} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Settings</h1>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>System configuration &amp; preferences</p>
+          </div>
         </div>
       </div>
 
@@ -44,7 +54,6 @@ function Settings({ currentUser }) {
           flex: 1,
           overflowY: 'auto',
           padding: '32px 40px',
-          maxWidth: '680px',
         }}>
           {renderSection()}
         </div>

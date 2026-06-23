@@ -1,5 +1,5 @@
 export const DEPTS    = ["Sales", "HR", "Accounting", "Admin", "Warehouse"]
-export const STATUSES = ["Active", "On Leave", "Intern"]
+export const STATUSES = ["Active", "On Leave", "Resigned"]
 
 export const LEAVE_TYPES = [
   "Paid Leave",
@@ -38,7 +38,7 @@ export const avatarColors = [
 
 export const statusStyles = {
   Active:     'bg-green-50 text-green-600 border border-green-200',
-  Intern:     'bg-blue-50 text-blue-600 border border-blue-200',
+  Resigned:   'bg-gray-50 text-gray-500 border border-gray-200',
   'On Leave': 'bg-amber-50 text-amber-600 border border-amber-200',
 }
 

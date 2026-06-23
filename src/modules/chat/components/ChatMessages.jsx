@@ -308,7 +308,7 @@ const MessageItem = memo(function MessageItem({
                     <Reply size={14} />
                   </button>
                 )}
-                {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
+                {isMe && !msg.isUnsent && (!msg.attachments || msg.attachments.length === 0) && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
                   <button className="chat-action-btn p-1.5" title="Edit" onClick={() => {
                     setIsEditing(true)
                     setEditInput(msg.message.replace(/^\[reply\].*?\[\/reply\]\n?/, ''))
@@ -324,7 +324,7 @@ const MessageItem = memo(function MessageItem({
                     <Trash2 size={14} />
                   </button>
                   {showDeleteMenu && (
-                    <div className={`absolute z-50 bottom-full mb-1 ${isMe ? 'right-0' : 'left-0'} rounded-lg shadow-lg overflow-hidden flex flex-col text-sm w-48`}
+                    <div className={`absolute z-50 bottom-full ${isMe ? 'right-0' : 'left-0'} rounded-lg shadow-lg overflow-hidden flex flex-col text-sm w-48`}
                       style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
                       {isMe && !msg.isUnsent && (Date.now() - new Date(msg.createdAt).getTime()) < 15 * 60 * 1000 && (
                         <button className="px-3 py-2.5 text-left text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border-none bg-transparent cursor-pointer font-medium transition-colors"

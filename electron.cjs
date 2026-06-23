@@ -2,11 +2,11 @@ const { app, BrowserWindow, ipcMain, shell, protocol, net } = require('electron'
 const path = require('path')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const { autoUpdater } = require('electron-updater')
-const { uploadFileToR2 } = require('./r2.cjs')
+const { uploadFileToR2, getBucketSize } = require('./r2.cjs')
 const fs = require('fs')
 const crypto = require('crypto')
 const {
-  initDb, loginUser, syncCloud, wipeAllData,
+  initDb, loginUser, syncCloud, wipeAllData, getDatabaseSize,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
@@ -149,6 +149,10 @@ ipcMain.handle('employees:upsert',      (_, emp) => upsertEmployee(emp))
 ipcMain.handle('employees:archive',     (_, id)  => archiveEmployee(id))
 ipcMain.handle('employees:unarchive',   (_, id)  => unarchiveEmployee(id))
 ipcMain.handle('employees:permDelete',  (_, id)  => permanentDeleteEmployee(id))
+ipcMain.handle('employees:resetCredentials', async (_, employeeId) => {
+  const db = await import('./db.cjs')
+  return await db.resetEmployeeCredentials(employeeId)
+})
 
 // ── ATTENDANCE ────────────────────────────────────────────────────
 ipcMain.handle('attendance:getAll',    ()           => getAttendance())
@@ -194,13 +198,31 @@ ipcMain.handle('clinic:permDelete',   (_, id)   => permanentDeleteClinicLog(id))
 ipcMain.handle('users:getAll',         ()                    => getUsers())
 ipcMain.handle('users:updateRole',     (_, id, role)         => updateUserRole(id, role))
 ipcMain.handle('users:resetPassword',  (_, id, newPassword)  => resetUserPassword(id, newPassword))
-ipcMain.handle('users:updateCredentials', (_, id, username, password) => updateUserCredentials(id, username, password))
+ipcMain.handle('users:updateCredentials', (_, id, username, oldPassword, newPassword) => updateUserCredentials(id, username, oldPassword, newPassword))
 ipcMain.handle('users:delete',         (_, id)               => deleteUserAccount(id))
 ipcMain.handle('users:updateTheme',    (_, id, color, mode)  => updateUserTheme(id, color, mode))
 ipcMain.handle('users:heartbeat',      (_, id)               => heartbeatUser(id))
 ipcMain.handle('users:logout',         (_, id)               => logoutUser(id))
 
 ipcMain.handle('db:wipeAll',           ()                    => wipeAllData())
+
+ipcMain.handle('getSystemUsage', async () => {
+  let tursoBytes = 0
+  let r2Bytes = 0
+  try { tursoBytes = await getDatabaseSize() } catch(e) { console.error(e) }
+  try { r2Bytes = await getBucketSize() } catch(e) { console.error(e) }
+
+  const formatBytes = (bytes) => {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+  }
+
+  return {
+    turso: { bytes: tursoBytes, label: formatBytes(tursoBytes) },
+    r2: { bytes: r2Bytes, label: formatBytes(r2Bytes) },
+    pusher: { label: 'Active (200k msgs/day tier)' } // Pusher API doesn't expose limits easily
+  }
+})
 
 // ── ANNOUNCEMENTS ──────────────────────────────────────────────────
 ipcMain.handle('announcements:getAll',       (_, empId, incArch) => getAnnouncements(empId, incArch))
