@@ -97,6 +97,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
   // ── Pusher: instant updates on other clients (reactions, messages, edits) ─
   const myParticipantIdRef = useRef(myParticipantId)
   const loadSidebarDataRef = useRef(loadSidebarData)
+  const currentRoomIdRef   = useRef(null)
   useEffect(() => { myParticipantIdRef.current = myParticipantId }, [myParticipantId])
   useEffect(() => { loadSidebarDataRef.current = loadSidebarData }, [loadSidebarData])
 
@@ -175,12 +176,36 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       loadSidebarDataRef.current()
     })
 
+    channel.bind('message-seen', (data) => {
+      const myId = String(myParticipantIdRef.current)
+      if (String(data?.userId) === myId) return
+      if (!data?.roomId || !data?.userId) return
+      // Only update receipts for the room we're currently viewing
+      if (data.roomId !== currentRoomIdRef.current) return
+
+      setReadReceipts(prev => {
+        const newReceipt = {
+          userId: data.userId,
+          lastReadAt: data.lastReadAt,
+          userName: data.userName || '',
+        }
+        const idx = prev.findIndex(r => String(r.userId) === String(data.userId))
+        if (idx >= 0) {
+          const updated = [...prev]
+          updated[idx] = newReceipt
+          return updated
+        }
+        return [...prev, newReceipt]
+      })
+    })
+
     return () => {
       channel.unbind('user-online')
       channel.unbind('user-offline')
       channel.unbind('reaction-updated')
       channel.unbind('new-message')
       channel.unbind('message-updated')
+      channel.unbind('message-seen')
       pusher.unsubscribe('lltools-updates')
       pusher.disconnect()
     }
@@ -192,8 +217,22 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       ? selectedDept
       : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
     if (!roomId) return
+    const seenAt = new Date().toISOString()
     window.electronAPI.markChatAsRead(myParticipantId, roomId)
-      .then(loadSidebarData)
+      .then(() => {
+        loadSidebarData()
+        // Broadcast real-time seen receipt so the sender sees it instantly
+        window.electronAPI?.sendPusherEvent?.({
+          channel: 'lltools-updates',
+          event: 'message-seen',
+          data: {
+            roomId,
+            userId: myParticipantId,
+            lastReadAt: seenAt,
+            userName: currentUser.employeeName || currentUser.username,
+          },
+        }).catch(() => {})
+      })
       .catch(console.error)
   }, [selectedDept, selectedUser, activeTab])
 
@@ -381,7 +420,21 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         await window.electronAPI.sendDirectMessage(msgData)
       }
 
-      window.electronAPI.markChatAsRead(myParticipantId, roomId).catch(console.error)
+      const seenAt = new Date().toISOString()
+      window.electronAPI.markChatAsRead(myParticipantId, roomId)
+        .then(() => {
+          window.electronAPI?.sendPusherEvent?.({
+            channel: 'lltools-updates',
+            event: 'message-seen',
+            data: {
+              roomId,
+              userId: myParticipantId,
+              lastReadAt: seenAt,
+              userName: currentUser.employeeName || currentUser.username,
+            },
+          }).catch(() => {})
+        })
+        .catch(console.error)
       loadSidebarData()
       window.electronAPI?.sendPusherEvent?.({
         channel: 'lltools-updates',
@@ -500,6 +553,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
   const inputDisabled = activeTab === 'dms' && !selectedUser
   const currentRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
+  // Keep ref in sync so the Pusher message-seen handler can read the current room
+  useEffect(() => { currentRoomIdRef.current = currentRoomId }, [currentRoomId])
   const currentMessages = currentRoomId ? (messageCache[currentRoomId] || []) : []
 
   // Count total unreads for the header badge

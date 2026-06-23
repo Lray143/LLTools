@@ -378,9 +378,9 @@ const MessageItem = memo(function MessageItem({
             </div>
           )}
 
-          {/* Read receipts */}
-          {seenBy && (
-            <div className={`text-[10px] mt-1 w-full px-1 ${isMe ? 'text-right' : 'text-left'}`} style={{ color: 'var(--text-secondary)' }}>
+          {/* Read receipts — only show under messages the current user sent, like Messenger */}
+          {isMe && seenBy && (
+            <div className="text-[10px] mt-1 w-full px-1 text-right" style={{ color: 'var(--text-secondary)' }}>
               {activeTab === 'dms'
                 ? `Seen at ${formatTime(seenBy[0].time)}`
                 : `Seen by ${seenBy.map(u => u.name).join(', ')}`}
