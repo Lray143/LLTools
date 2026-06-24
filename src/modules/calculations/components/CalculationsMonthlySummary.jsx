@@ -3,8 +3,13 @@ import { logModuleActivity, buildActivityDetails } from '../../../lib/activityLo
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   ChevronDown, ChevronRight, Trash2, Receipt,
-  TrendingUp, TrendingDown, Calendar, Minus, Download,
+  TrendingUp, TrendingDown, Calendar, Minus, Download, Archive
 } from 'lucide-react'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '../../../components/ui/dialog'
+import { Button } from '../../../components/ui/button'
+import OrderArchiveDrawer from './OrderArchiveDrawer'
 import ExcelJS from 'exceljs'
 
 // ── Formatting helpers ────────────────────────────────────────────
@@ -531,7 +536,7 @@ async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
 }
 
 // ── Expanded month orders table ───────────────────────────────────
-function MonthOrdersTable({ orders, onDelete, onDateChange }) {
+function MonthOrdersTable({ orders, onArchiveClick, onDateChange }) {
   const [editingId, setEditingId] = useState(null)
   const [dateVal,   setDateVal]   = useState('')
   const inputRef = useRef(null)
@@ -619,11 +624,11 @@ function MonthOrdersTable({ orders, onDelete, onDateChange }) {
                 <td className="py-2 text-right font-bold text-gray-800">₱{fmt(order.grandTotal)}</td>
                 <td className="py-2 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => onDelete(order.id)}
-                    className="p-1 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
-                    title="Delete order"
+                    onClick={() => onArchiveClick(order)}
+                    className="p-1 rounded hover:bg-orange-50 text-gray-300 hover:text-orange-500 transition-colors"
+                    title="Archive order"
                   >
-                    <Trash2 size={12} />
+                    <Archive size={12} />
                   </button>
                 </td>
               </tr>
@@ -669,19 +674,61 @@ function TrendBadge({ current, previous }) {
 // ── Main component ────────────────────────────────────────────────
 export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0 }) {
   const [orders,         setOrders]         = useState([])
+  const [archivedOrders, setArchivedOrders] = useState([])
   const [loading,        setLoading]        = useState(true)
   const [expandedMonths, setExpandedMonths] = useState({})
-  const [exportingMonth, setExportingMonth] = useState(null) // key of month being exported
+  const [exportingMonth, setExportingMonth] = useState(null)
+  const [showArchive,    setShowArchive]    = useState(false)
+  const [confirmArchive, setConfirmArchive] = useState(null)
 
-  useEffect(() => {
-    window.electronAPI.getAllOrders()
-      .then((data) => setOrders(data ?? []))
-      .catch(() => setOrders([]))
+  const loadData = () => {
+    setLoading(true)
+    Promise.all([
+      window.electronAPI.getAllOrders(),
+      window.electronAPI.getArchivedOrders()
+    ])
+      .then(([active, arch]) => {
+        setOrders(active ?? [])
+        setArchivedOrders(arch ?? [])
+      })
+      .catch(() => { setOrders([]); setArchivedOrders([]) })
       .finally(() => setLoading(false))
-  }, [refreshKey])
+  }
 
-  const handleDelete = async (id) => {
-    const order = orders.find(o => o.id === id)
+  useEffect(() => { loadData() }, [refreshKey])
+
+  const handleArchive = async () => {
+    if (!confirmArchive) return
+    const id = confirmArchive.id
+    try {
+      await window.electronAPI.archiveOrder(id)
+      await logModuleActivity(currentUser, 'calculations', 'archive', `Order ${confirmArchive.seriesNumber}`, id, buildActivityDetails({
+        recordType: 'Saved order',
+        recordId: id,
+        table: 'saved_orders',
+        note: 'Archived saved order',
+      }))
+      setConfirmArchive(null)
+      loadData()
+    } catch (e) { console.error(e) }
+  }
+
+  const handleRestore = async (id) => {
+    const order = archivedOrders.find(o => o.id === id)
+    try {
+      await window.electronAPI.unarchiveOrder(id)
+      await logModuleActivity(currentUser, 'calculations', 'restore', order ? `Order ${order.seriesNumber}` : 'Saved order', id, buildActivityDetails({
+        recordType: 'Saved order',
+        recordId: id,
+        table: 'saved_orders',
+        note: 'Restored saved order from archive',
+      }))
+      loadData()
+    } catch (e) { console.error(e) }
+  }
+
+  const handlePermDelete = async (id) => {
+    const order = archivedOrders.find(o => o.id === id)
     try {
       await window.electronAPI.deleteOrder(id)
       await logModuleActivity(currentUser, 'calculations', 'permanent_delete', order ? `Order ${order.seriesNumber}` : 'Saved order', id, buildActivityDetails({
@@ -691,15 +738,13 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
         removedSnapshot: order ? {
           'Series #': order.seriesNumber ?? '—',
           Outlet: order.outletName ?? 'Default prices',
-          Date: order.orderDate ? formatDate(order.orderDate) : '—',
+          Date: order.createdAt ? formatDate(order.createdAt) : '—',
           'Grand total': order.grandTotal != null ? `₱${fmt(order.grandTotal)}` : '—',
         } : { ID: id },
-        note: 'Deleted saved order',
+        note: 'Permanently deleted saved order',
       }))
-      setOrders((prev) => prev.filter((o) => o.id !== id))
-    } catch (e) {
-      console.error(e)
-    }
+      loadData()
+    } catch (e) { console.error(e) }
   }
 
   const handleDateChange = async (id, dateStr) => {
@@ -846,9 +891,18 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
             <h3 className="font-semibold text-gray-800">Monthly Breakdown</h3>
             <p className="text-xs text-gray-400 mt-0.5">Click any month to expand · Use the export button to download</p>
           </div>
-          <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">
-            {monthGroups.length} month{monthGroups.length !== 1 ? 's' : ''}
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowArchive(true)}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors border border-gray-200 bg-white shadow-sm"
+            >
+              <Archive size={13} />
+              Archive ({archivedOrders.length})
+            </button>
+            <span className="text-xs text-gray-400 bg-gray-50 px-2.5 py-1 rounded-full">
+              {monthGroups.length} month{monthGroups.length !== 1 ? 's' : ''}
+            </span>
+          </div>
         </div>
 
         <div className="divide-y divide-gray-50">
@@ -919,7 +973,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
 
                 {/* Expanded orders */}
                 {isExpanded && (
-                  <MonthOrdersTable orders={month.orders} onDelete={handleDelete} onDateChange={handleDateChange} />
+                  <MonthOrdersTable orders={month.orders} onArchiveClick={setConfirmArchive} onDateChange={handleDateChange} />
                 )}
               </div>
             )
@@ -935,6 +989,41 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
         </div>
 
       </div>
+
+      {showArchive && (
+        <OrderArchiveDrawer
+          orders={archivedOrders}
+          onRestore={handleRestore}
+          onPermDelete={handlePermDelete}
+          onClose={() => setShowArchive(false)}
+        />
+      )}
+
+      {/* ── CONFIRM ARCHIVE DIALOG ── */}
+      <Dialog open={confirmArchive !== null} onOpenChange={val => { if (!val) setConfirmArchive(null) }}>
+        <DialogContent className="sm:max-w-sm bg-white border-0 outline-none focus:outline-none ring-0 p-6 z-[60]">
+          <DialogHeader>
+            <div className="flex flex-col items-center gap-2 pt-2 text-center">
+              <div className="w-11 h-11 rounded-full bg-orange-50 flex items-center justify-center mb-1">
+                <Archive className="w-5 h-5 text-orange-500" />
+              </div>
+              <DialogTitle className="text-gray-900 font-semibold text-base">Archive this order?</DialogTitle>
+            </div>
+          </DialogHeader>
+          <p className="text-sm text-gray-500 text-center px-1">
+            <span className="font-semibold text-gray-800">{confirmArchive?.seriesNumber}</span> will be moved to the archive. You can restore or permanently delete it there.
+          </p>
+          <DialogFooter className="gap-2 sm:justify-center mt-3">
+            <Button variant="outline" className="border-gray-200 text-gray-600" onClick={() => setConfirmArchive(null)}>
+              Cancel
+            </Button>
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={handleArchive}>
+              Move to Archive
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

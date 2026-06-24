@@ -1,9 +1,9 @@
 // src/modules/products/components/ArchivedProductsDrawer.jsx
 import { useState, useMemo } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { Archive, Search, RotateCcw, Trash2, X, AlertCircle } from 'lucide-react'
+import { Archive, RotateCcw, Trash2, X, AlertCircle } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
+import SearchBar from '../../../components/ui/SearchBar'
 import {
   Dialog,
   DialogContent,
@@ -94,11 +94,9 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
 
           {/* Search + Sort */}
           <div className="px-6 py-3 border-b border-gray-200 flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-              <Input
+            <div className="flex-1">
+              <SearchBar
                 placeholder="Search by description, barcode, or group..."
-                className="pl-9 bg-white border-gray-200 w-full focus:border-gray-300 focus:ring-0"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />

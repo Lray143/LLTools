@@ -1,35 +1,47 @@
 import { useState } from 'react'
-import { X, RotateCcw, Trash2, Archive, Tag, ChevronDown } from 'lucide-react'
+import { X, RotateCcw, Trash2, Archive, Tag, ChevronDown, Receipt, Calendar } from 'lucide-react'
 import { Button } from '../../../components/ui/button'
 import SearchBar from '../../../components/ui/SearchBar'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '../../../components/ui/dialog'
-import { getOutletColor } from '../outletConstants'
 
 const SORT_OPTIONS = [
-  { value: 'az',     label: 'A → Z' },
-  { value: 'za',     label: 'Z → A' },
   { value: 'newest', label: 'Newest first' },
   { value: 'oldest', label: 'Oldest first' },
+  { value: 'highest', label: 'Highest Total' },
+  { value: 'lowest', label: 'Lowest Total' },
 ]
 
-export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, onClose }) {
+const fmt = (n) =>
+  Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return (
+    d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) +
+    ' · ' +
+    d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+  )
+}
+
+export default function OrderArchiveDrawer({ orders, onRestore, onPermDelete, onClose }) {
   const [search,           setSearch]           = useState('')
-  const [sortBy,           setSortBy]           = useState('az')
+  const [sortBy,           setSortBy]           = useState('newest')
   const [sortOpen,         setSortOpen]         = useState(false)
   const [confirmDeleteOut, setConfirmDeleteOut] = useState(null)
 
-  const filtered = [...outlets]
+  const filtered = [...orders]
     .filter(o =>
-      o.name.toLowerCase().includes(search.toLowerCase()) ||
-      (o.address ?? '').toLowerCase().includes(search.toLowerCase())
+      (o.seriesNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+      (o.outletName || '').toLowerCase().includes(search.toLowerCase())
     )
     .sort((a, b) => {
-      if (sortBy === 'az')     return a.name.localeCompare(b.name)
-      if (sortBy === 'za')     return b.name.localeCompare(a.name)
-      if (sortBy === 'newest') return (b.archivedAt || b.id || 0) > (a.archivedAt || a.id || 0) ? 1 : -1
-      if (sortBy === 'oldest') return (a.archivedAt || a.id || 0) > (b.archivedAt || b.id || 0) ? 1 : -1
+      if (sortBy === 'newest') return new Date(b.createdAt) - new Date(a.createdAt)
+      if (sortBy === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt)
+      if (sortBy === 'highest') return (b.grandTotal || 0) - (a.grandTotal || 0)
+      if (sortBy === 'lowest') return (a.grandTotal || 0) - (b.grandTotal || 0)
       return 0
     })
 
@@ -52,9 +64,9 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Archived Outlets</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Archived Orders</h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {outlets.length} archived outlet{outlets.length !== 1 ? 's' : ''} · Restore or permanently delete
+                {orders.length} archived order{orders.length !== 1 ? 's' : ''} · Restore or permanently delete
               </p>
             </div>
             <Button
@@ -71,7 +83,7 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
           <div className="px-6 py-3 border-b border-gray-200 flex gap-2">
             <div className="flex-1">
               <SearchBar
-                placeholder="Search by name or address…"
+                placeholder="Search by series # or outlet…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -105,26 +117,26 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
 
-            {outlets.length === 0 && (
+            {orders.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
                 <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
                   <Archive className="w-7 h-7 text-gray-300 stroke-[1.5]" />
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-500">Archive is empty</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Removed outlets will appear here</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Removed orders will appear here</p>
                 </div>
               </div>
             )}
 
-            {outlets.length > 0 && filtered.length === 0 && (
+            {orders.length > 0 && filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
                 <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
                   <Search className="w-7 h-7 text-gray-300 stroke-[1.5]" />
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-500">No results for "{search}"</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Try a different name or address</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Try a different series # or outlet</p>
                 </div>
               </div>
             )}
@@ -132,46 +144,48 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
             {filtered.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 {filtered.map(o => {
-                  const colorClass = getOutletColor(o.name)
-                  const initial    = (o.name || '?').charAt(0).toUpperCase()
-                  const discounts  = o.discounts ?? []
                   return (
                     <div
                       key={o.id}
                       className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold ${colorClass}`}>
-                          {initial}
+                        <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
+                          <Receipt className="w-4 h-4 text-orange-500" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-800">{o.name}</p>
+                          <p className="text-sm font-medium text-gray-800">
+                            {o.seriesNumber} <span className="text-gray-400 font-normal">({o.outletName || 'Default'})</span>
+                          </p>
                           <p className="text-xs text-gray-400 flex items-center gap-1">
-                            <Tag size={9} />
-                            {discounts.length} discount{discounts.length !== 1 ? 's' : ''}
+                            <Calendar size={10} />
+                            {formatDate(o.createdAt)}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 gap-1 px-2.5"
-                          onClick={() => onRestore(o.id)}
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          Restore
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 gap-1 px-2.5"
-                          onClick={() => setConfirmDeleteOut(o)}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Delete
-                        </Button>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-gray-900 mr-2">₱{fmt(o.grandTotal)}</span>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 gap-1 px-2.5"
+                            onClick={() => onRestore(o.id)}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Restore
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 gap-1 px-2.5"
+                            onClick={() => setConfirmDeleteOut(o)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )
@@ -183,7 +197,7 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
           {/* Footer */}
           <div className="px-6 py-3 border-t border-gray-100 bg-white">
             <p className="text-xs text-gray-400 text-center">
-              Restore brings an outlet back to active · Permanent delete cannot be undone
+              Restore brings an order back to active · Permanent delete cannot be undone
             </p>
           </div>
         </div>
@@ -202,7 +216,7 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
           </DialogHeader>
           <p className="text-sm text-gray-500 text-center px-1">
             This action cannot be undone.{' '}
-            <span className="font-semibold text-gray-800">{confirmDeleteOut?.name}</span> will be completely removed from the database.
+            <span className="font-semibold text-gray-800">{confirmDeleteOut?.seriesNumber}</span> will be completely removed from the database.
           </p>
           <DialogFooter className="gap-2 sm:justify-center mt-3">
             <Button variant="outline" className="border-gray-200 text-gray-600" onClick={() => setConfirmDeleteOut(null)}>

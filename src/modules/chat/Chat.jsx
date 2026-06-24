@@ -44,6 +44,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
   const pendingRefresh = useRef(false)
 
   const canSeeAll = GLOBAL_ROLES.includes(currentUser?.role)
+  const canSeeSyncStatus = canSeeAll || ['Admin', 'HR'].includes(currentUser?.department)
   const myParticipantId = currentUser.employeeId || String(currentUser.id)
 
   // ── Sidebar data (unread counts + ordering) ───────────────────────────────
@@ -686,11 +687,13 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         </div>
         <div className="flex items-center gap-3">
           {/* Sync status indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '12px' }}>
-            <Wifi size={12} style={{ color: '#16a34a' }} />
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Synced</span>
-          </div>
+          {canSeeSyncStatus && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '12px' }}>
+              <Wifi size={12} style={{ color: '#16a34a' }} />
+              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Synced</span>
+            </div>
+          )}
 
           {/* Unread badge */}
           {totalUnreads > 0 && (

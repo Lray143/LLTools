@@ -21,6 +21,7 @@ const {
 
   getUsers, updateUserRole, resetUserPassword, updateUserCredentials, deleteUserAccount, updateUserTheme,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
+  getArchivedOrders, archiveOrder, unarchiveOrder,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,
   updateReportStatus, assignReport, addReportComment,
@@ -253,6 +254,9 @@ ipcMain.handle('orders:save',          (_, order)    => saveOrder(order))
 ipcMain.handle('orders:getByOutlet',   (_, outletId) => getOrdersByOutlet(outletId))
 ipcMain.handle('orders:getByDefault',  ()            => getOrdersByDefault())
 ipcMain.handle('orders:getAll',        ()            => getAllOrders())
+ipcMain.handle('orders:getArchived',   ()            => getArchivedOrders())
+ipcMain.handle('orders:archive',       (_, id)       => archiveOrder(id))
+ipcMain.handle('orders:unarchive',     (_, id)       => unarchiveOrder(id))
 ipcMain.handle('orders:delete',        (_, id)       => deleteOrder(id))
 ipcMain.handle('orders:updateDate',    (_, id, date) => updateOrderDate(id, date))
 

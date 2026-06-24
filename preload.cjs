@@ -108,7 +108,10 @@ window.electronAPI = {
   saveOrder:               (order)    => ipcRenderer.invoke('orders:save', order),
   getOrdersByOutlet:       (outletId) => ipcRenderer.invoke('orders:getByOutlet', outletId),
   getOrdersByDefault:      ()         => ipcRenderer.invoke('orders:getByDefault'),
-  getAllOrders:             ()         => ipcRenderer.invoke('orders:getAll'),
+  getAllOrders:            ()         => ipcRenderer.invoke('orders:getAll'),
+  getArchivedOrders:       ()         => ipcRenderer.invoke('orders:getArchived'),
+  archiveOrder:            (id)       => ipcRenderer.invoke('orders:archive', id),
+  unarchiveOrder:          (id)       => ipcRenderer.invoke('orders:unarchive', id),
   deleteOrder:             (id)       => ipcRenderer.invoke('orders:delete', id),
   updateOrderDate:         (id, date) => ipcRenderer.invoke('orders:updateDate', id, date),
 

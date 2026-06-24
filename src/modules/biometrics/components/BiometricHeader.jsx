@@ -1,5 +1,6 @@
-import { Search, User, Fingerprint } from 'lucide-react'
+import { User, Fingerprint } from 'lucide-react'
 import NotificationBell from '../../../components/ui/NotificationBell'
+import SearchBar from '../../../components/ui/SearchBar'
 
 export function BiometricHeader({ searchQuery, setSearchQuery, currentUser, refreshKey, onNavigate }) {
   return (
@@ -19,22 +20,8 @@ export function BiometricHeader({ searchQuery, setSearchQuery, currentUser, refr
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: 'var(--text-secondary)' }}
-          />
-          <input
-            placeholder="Search..."
-            className="pl-9 rounded-lg text-sm outline-none"
-            style={{
-              width: '14rem',
-              height: '34px',
-              fontSize: '13px',
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-primary)',
-            }}
+        <div style={{ width: '14rem' }}>
+          <SearchBar
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />

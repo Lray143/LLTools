@@ -1,8 +1,9 @@
 // src/modules/calculations/components/CalculationsToolbar.jsx
 import { useState, useRef, useEffect } from 'react'
-import { Search, User, Store, RotateCcw, BarChart2, Table2, ChevronDown, Check, Plus, Calculator } from 'lucide-react'
+import { User, Store, RotateCcw, BarChart2, Table2, ChevronDown, Check, Plus, Calculator } from 'lucide-react'
 import NotificationBell from '../../../components/ui/NotificationBell'
 import ModuleActivityLog from '../../../components/ui/ModuleActivityLog'
+import SearchBar from '../../../components/ui/SearchBar'
 
 // ── Shared inline styles (matches Employees / Outlets) ──────────────
 const displayPill = {
@@ -171,12 +172,9 @@ export default function CalculationsToolbar({
         </div>
         <div className="flex items-center gap-3">
           {/* Search — always visible */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
+          <div style={{ width: '14rem' }}>
+            <SearchBar
               placeholder="Search products…"
-              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-gray-300"
-              style={{ width: '14rem', height: '34px', fontSize: '13px' }}
               value={search}
               onChange={e => onSearchChange(e.target.value)}
             />

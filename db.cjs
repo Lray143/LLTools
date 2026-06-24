@@ -378,6 +378,7 @@ const initDb = async () => {
       subtotal       REAL NOT NULL DEFAULT 0,
       discounts_json TEXT NOT NULL DEFAULT '[]',
       grand_total    REAL NOT NULL DEFAULT 0,
+      is_archived    INTEGER DEFAULT 0,
       created_at     TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS leave_requests (
@@ -571,6 +572,9 @@ const initDb = async () => {
 
   // Migration: add file_url to announcements
   try { await run("ALTER TABLE announcements ADD COLUMN file_url TEXT DEFAULT NULL") } catch (_) {}
+
+  // Migration: add is_archived to saved_orders
+  try { await run("ALTER TABLE saved_orders ADD COLUMN is_archived INTEGER DEFAULT 0") } catch (_) {}
 
   // Migration: snapshot lunch hours onto attendance records for historical accuracy
   try { await run("ALTER TABLE attendance ADD COLUMN sched_lunch_start TEXT DEFAULT NULL") } catch (_) {}
@@ -1250,9 +1254,12 @@ const saveOrder = async (order) => run(`
     JSON.stringify(order.groups ?? []), order.subtotal ?? 0, JSON.stringify(order.discounts ?? []), order.grandTotal ?? 0,
     order.orderDate ?? null])
 
-const getOrdersByOutlet  = async (outletId) => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id = ?    ORDER BY created_at DESC`, [outletId])).map(mapOrder)
-const getOrdersByDefault = async ()          => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id IS NULL ORDER BY created_at DESC`)).map(mapOrder)
-const getAllOrders        = async ()          => (await queryAll(`SELECT * FROM saved_orders ORDER BY created_at DESC`)).map(mapOrder)
+const getOrdersByOutlet  = async (outletId) => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id = ? AND is_archived = 0 ORDER BY created_at DESC`, [outletId])).map(mapOrder)
+const getOrdersByDefault = async ()          => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id IS NULL AND is_archived = 0 ORDER BY created_at DESC`)).map(mapOrder)
+const getAllOrders       = async ()          => (await queryAll(`SELECT * FROM saved_orders WHERE is_archived = 0 ORDER BY created_at DESC`)).map(mapOrder)
+const getArchivedOrders  = async ()          => (await queryAll(`SELECT * FROM saved_orders WHERE is_archived = 1 ORDER BY created_at DESC`)).map(mapOrder)
+const archiveOrder       = async (id)        => run(`UPDATE saved_orders SET is_archived = 1 WHERE id = ?`, [id])
+const unarchiveOrder     = async (id)        => run(`UPDATE saved_orders SET is_archived = 0 WHERE id = ?`, [id])
 const deleteOrder        = async (id)        => run(`DELETE FROM saved_orders WHERE id=?`, [id])
 const updateOrderDate    = async (id, date)  => run(`UPDATE saved_orders SET created_at = ? WHERE id = ?`, [date, id])
 
@@ -1936,6 +1943,7 @@ module.exports = {
   upsertClinicLog, archiveClinicLog, unarchiveClinicLog, permanentDeleteClinicLog,
   getUsers, updateUserRole, resetUserPassword, resetEmployeeCredentials, deleteUserAccount, updateUserTheme, updateUserCredentials, heartbeatUser, logoutUser,
   saveOrder, getOrdersByOutlet, getOrdersByDefault, getAllOrders, deleteOrder, updateOrderDate,
+  getArchivedOrders, archiveOrder, unarchiveOrder,
   submitLeaveRequest, getLeaveRequests, getMyLeaveRequests, reviewLeaveRequest,
   createReport, getReports, getMyReports, getReportById,
   updateReportStatus, assignReport, addReportComment,

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, Search, User, Users, Bell, ChevronDown, Check, Calendar } from 'lucide-react'
+import { Plus, User, Users, Bell, ChevronDown, Check, Calendar } from 'lucide-react'
 
 import { ReviewModal }       from './components/ReviewModal'
 import { ViewDetailsModal }  from './components/ViewDetailsModal'
 import { LeaveTable }        from './components/LeaveTable'
 import { HR_ROLES }          from './components/leaveConstants'
 import { Button }            from '../../components/ui/button'
+import SearchBar             from '../../components/ui/SearchBar'
 import NotificationBell      from '../../components/ui/NotificationBell'
 
 const DEFAULT_LEAVE_GFORM =
@@ -383,12 +384,9 @@ export default function LeaveRequests({ currentUser, refreshKey = 0, onNavigate 
 
           {/* Search bar inside content instead of top header for spacing */}
           {isManageView && (
-            <div className="relative ml-auto">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-              <input
-                placeholder="Search..."
-                className="pl-9 rounded-lg text-sm outline-none"
-                style={{ width: '16rem', height: '36px', fontSize: '13px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+            <div style={{ width: '16rem' }}>
+              <SearchBar
+                placeholder="Search employees..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { Plus, Search, User, Users, ChevronDown, Check, Archive, BarChart2 } from 'lucide-react'
+import { Plus, User, Users, ChevronDown, Check, Archive, BarChart2 } from 'lucide-react'
 
 import { ReportModal }          from './components/ReportModal'
 import { ReportDetailsDrawer }  from './components/ReportDetailsDrawer'
 import { ReportTable }          from './components/ReportTable'
 import { REPORT_TYPES, REPORT_STATUSES, PRIORITIES, STATUS_CONFIG } from './components/reportConstants'
 import { Button }               from '../../components/ui/button'
+import SearchBar                from '../../components/ui/SearchBar'
 import { canManageReports }     from '../../lib/permissions'
 import NotificationBell         from '../../components/ui/NotificationBell'
 
@@ -414,12 +415,9 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
           <CustomSelect value={priorityFilter} onChange={setPriorityFilter} options={priorityOptions} minWidth="130px" />
 
           {/* Search */}
-          <div className="relative ml-auto">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-            <input
-              placeholder="Search..."
-              className="pl-9 rounded-lg text-sm outline-none"
-              style={{ width: '16rem', height: '36px', fontSize: '13px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+          <div style={{ width: '16rem', marginLeft: 'auto' }}>
+            <SearchBar
+              placeholder="Search reports..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />

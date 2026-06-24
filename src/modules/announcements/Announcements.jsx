@@ -8,6 +8,7 @@ import {
 import EmojiPicker from 'emoji-picker-react'
 import NotificationBell from '../../components/ui/NotificationBell'
 import AnnouncementCard from './components/AnnouncementCard'
+import SearchBar from '../../components/ui/SearchBar'
 import { canPostAnnouncements } from '../../lib/permissions'
 
 // ── Employee multi-select ─────────────────────────────────────────────────────
@@ -60,16 +61,12 @@ function EmployeeSelect({ employees, selected, onChange }) {
           maxHeight: 220, display: 'flex', flexDirection: 'column',
         }}>
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface-hover)', borderRadius: 8, padding: '4px 8px' }}>
-              <Search size={12} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />
-              <input
-                autoFocus
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search employees…"
-                style={{ flex: 1, background: 'none', border: 'none', outline: 'none', fontSize: 13, color: 'var(--text-primary)' }}
-              />
-            </div>
+            <SearchBar 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search employees…"
+              autoFocus
+            />
           </div>
           <div style={{ overflowY: 'auto', flex: 1 }}>
             <button
@@ -690,6 +687,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
   const [composing,      setComposing]      = useState(false)
   const [viewingAnnouncement, setViewingAnnouncement] = useState(null)
   const [filterHistory,  setFilterHistory]  = useState('all') // 'all' | 'acknowledged'
+  const [searchQuery,    setSearchQuery]    = useState('')
 
   const canPost = canPostAnnouncements(currentUser)
   const empId   = String(currentUser.employeeId || currentUser.id)
@@ -774,7 +772,10 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
     return archived
   }, [archived, filterHistory])
 
-  const displayList = view === 'archived' ? (canPost ? archived : historyList) : feedList
+  const displayListRaw = view === 'archived' ? (canPost ? archived : historyList) : feedList
+  const displayList = searchQuery.trim() === ''
+    ? displayListRaw
+    : displayListRaw.filter(a => (a.subject || '').toLowerCase().includes(searchQuery.trim().toLowerCase()))
 
   // ── Preload Images for Feed ────────────────────────────────────────────────
   useEffect(() => {
@@ -833,6 +834,15 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Search bar */}
+          <div style={{ width: 180 }}>
+            <SearchBar
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by subject..."
+            />
+          </div>
+
           {/* View toggle */}
           <div style={{ display: 'flex', background: 'var(--surface-hover)', borderRadius: 10, padding: 3, gap: 2 }}>
             {[

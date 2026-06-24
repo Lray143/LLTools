@@ -1,8 +1,9 @@
 // src/modules/outlets/Outlets.jsx
 import { useState, useEffect, useMemo } from 'react'
-import { Search, User, Store } from 'lucide-react'
+import { User, Store } from 'lucide-react'
 import NotificationBell from '../../components/ui/NotificationBell'
 import ModuleActivityLog from '../../components/ui/ModuleActivityLog'
+import SearchBar from '../../components/ui/SearchBar'
 import { logModuleActivity, buildActivityDetails, diffFields, snapshotFromFields, OUTLET_LOG_FIELDS } from '../../lib/activityLog'
 
 import OutletToolbar       from './components/OutletToolbar'
@@ -172,12 +173,9 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              placeholder="Search..."
-              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-gray-300"
-              style={{ width: '14rem', height: '34px', fontSize: '13px' }}
+          <div style={{ width: '14rem' }}>
+            <SearchBar
+              placeholder="Search outlets..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />

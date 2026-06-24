@@ -1,8 +1,9 @@
 // src/modules/products/Products.jsx
 import { useState } from 'react'
-import { Search, User, Package } from 'lucide-react'
+import { User, Package } from 'lucide-react'
 import NotificationBell from '../../components/ui/NotificationBell'
 import ModuleActivityLog from '../../components/ui/ModuleActivityLog'
+import SearchBar from '../../components/ui/SearchBar'
 import ProductsTable from './components/ProductsTable'
 
 export default function Products({ refreshKey = 0, currentUser, onNavigate }) {
@@ -26,12 +27,9 @@ export default function Products({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
-            <input
-              placeholder="Search..."
-              className="pl-9 rounded-lg text-sm outline-none"
-              style={{ width: '14rem', height: '34px', fontSize: '13px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+          <div style={{ width: '14rem' }}>
+            <SearchBar
+              placeholder="Search products..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />

@@ -1,7 +1,8 @@
 
 import { useState, useEffect, useCallback } from "react"
-import { Search, User, Stethoscope } from "lucide-react"
+import { User, Stethoscope } from "lucide-react"
 import NotificationBell from '../../components/ui/NotificationBell'
+import SearchBar from '../../components/ui/SearchBar'
 import NewEntryForm from "./components/NewEntryForm"
 import VisitsTable from "./components/VisitsTable"
 import VisitModal from "./components/VisitModal"
@@ -370,14 +371,11 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
+          <div style={{ width: '14rem' }}>
+            <SearchBar
               placeholder="Search name, ID, complaint…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 outline-none focus:border-orange-300 focus:border-2 transition-colors"
-              style={{ width: '14rem', height: '34px', fontSize: '13px' }}
             />
           </div>
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
