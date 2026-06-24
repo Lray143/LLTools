@@ -14,6 +14,10 @@ window.electronAPI = {
 
   getSystemUsage: () => ipcRenderer.invoke('getSystemUsage'),
 
+  // ── Native OS notifications (fires only when window is minimized) ───
+  showNativeNotification: (title, body) => ipcRenderer.invoke('system:showNativeNotification', { title, body }),
+
+
   // ── Module Activity Logs ──────────────────────────────────────────
   addModuleActivityLog:    (entry)              => ipcRenderer.invoke('activityLog:add', entry),
   getModuleActivityLogs:   (module, limit)      => ipcRenderer.invoke('activityLog:get', module, limit),

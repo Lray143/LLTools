@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, protocol, net } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, protocol, net, Notification } = require('electron')
 const path = require('path')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const { autoUpdater } = require('electron-updater')
@@ -318,6 +318,30 @@ ipcMain.handle('chat:sendPusherEvent', async (_, { channel, event, data }) => {
 
 ipcMain.handle('system:forceSync', () => {
   if (syncWorkerRef) syncWorkerRef.postMessage('sync-now')
+})
+
+// ── Native OS notifications (Facebook-style popup, bottom-right on Windows) ──
+// Only fires when the window is minimized — if it's visible, the in-app
+// NotificationBell badge/dropdown is enough and we don't want a duplicate popup.
+ipcMain.handle('system:showNativeNotification', (_, { title, body }) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return { shown: false }
+  if (!mainWindow.isMinimized()) return { shown: false }
+  if (!Notification.isSupported()) return { shown: false }
+
+  const notification = new Notification({
+    title: title || 'LLTools',
+    body: body || '',
+    icon: path.join(__dirname, 'public/Logo.png'),
+  })
+
+  notification.on('click', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+  })
+
+  notification.show()
+  return { shown: true }
 })
 
 ipcMain.handle('chat:markAsRead', async (_, userId, roomId) => {

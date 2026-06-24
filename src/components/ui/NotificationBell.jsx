@@ -72,6 +72,36 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
   const [open, setOpen] = useState(false)
   const wrapperRef      = useRef(null)
 
+  // ── Native OS popup tracking ────────────────────────────────────────────
+  // Tracks which IDs we've already fired a native notification for, so we
+  // don't re-notify every poll cycle — only on the first time an item shows
+  // up as unseen. Separate from the localStorage "seen" keys, which only
+  // update when the user actually clicks the item in the dropdown.
+  const notifiedIdsRef = useRef(new Set())
+  const firstFetchRef  = useRef(true)
+
+  const fireNative = useCallback((title, body) => {
+    window.electronAPI?.showNativeNotification?.(title, body).catch(() => {})
+  }, [])
+
+  // Given a list of unseen items, fires a native popup for any item whose ID
+  // hasn't been notified yet, then marks it as notified. Skips entirely on
+  // the very first fetch after mount/login so old unseen items don't all
+  // pop at once.
+  const notifyNew = useCallback((items, keyPrefix, buildMessage) => {
+    if (firstFetchRef.current) {
+      items.forEach(item => notifiedIdsRef.current.add(`${keyPrefix}-${item.id}`))
+      return
+    }
+    items.forEach(item => {
+      const key = `${keyPrefix}-${item.id}`
+      if (notifiedIdsRef.current.has(key)) return
+      notifiedIdsRef.current.add(key)
+      const msg = buildMessage(item)
+      if (msg) fireNative(msg.title, msg.body)
+    })
+  }, [fireNative])
+
   const isAdmin    = canManageReports(currentUser)
   const isHR       = canManageLeaves(currentUser)
   const userId     = currentUser?.id ?? currentUser?.username ?? 'anon'
@@ -93,7 +123,12 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
           const rows = (await window.electronAPI.getReports(false)) ?? []
           const pending = rows.filter(r => r.status === 'Pending')
           setIncomingReports(pending)
-          setUnseenInReports(getUnseenItems(pending, SEEN_REPORTS_KEY))
+          const unseen = getUnseenItems(pending, SEEN_REPORTS_KEY)
+          setUnseenInReports(unseen)
+          notifyNew(unseen, 'in-report', item => ({
+            title: 'New Report Submitted',
+            body: `${item.employeeName || item.employeeNo || 'An employee'} submitted: ${item.subject || 'Report'}`,
+          }))
         })(),
 
         (async () => {
@@ -101,7 +136,12 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
           const rows = (await window.electronAPI.getLeaveRequests()) ?? []
           const pending = rows.filter(l => l.status === 'Pending')
           setIncomingLeaves(pending)
-          setUnseenInLeaves(getUnseenItems(pending, SEEN_LEAVES_KEY))
+          const unseen = getUnseenItems(pending, SEEN_LEAVES_KEY)
+          setUnseenInLeaves(unseen)
+          notifyNew(unseen, 'in-leave', item => ({
+            title: 'New Leave Request',
+            body: `${item.employee_name || item.employee_no || 'An employee'} requested a ${item.leave_type || 'Leave'}`,
+          }))
         })(),
 
         // ── All users: status updates on their OWN reports ───────────────
@@ -111,7 +151,12 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
             // Only show acted-on items (not still pending)
             const acted = rows.filter(r => r.status !== 'Pending')
             setMyReports(acted)
-            setUnseenMyReports(getUnseenItems(acted, myRepKey))
+            const unseen = getUnseenItems(acted, myRepKey)
+            setUnseenMyReports(unseen)
+            notifyNew(unseen, 'my-report', item => ({
+              title: 'Report Update',
+              body: `Your report "${item.subject || item.reportNo}" was marked as ${item.status}.`,
+            }))
           } catch (_) {}
         })(),
 
@@ -121,7 +166,12 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
             const rows = (await window.electronAPI.getMyLeaveRequests(username)) ?? []
             const acted = rows.filter(l => l.status !== 'Pending')
             setMyLeaves(acted)
-            setUnseenMyLeaves(getUnseenItems(acted, myLeavKey))
+            const unseen = getUnseenItems(acted, myLeavKey)
+            setUnseenMyLeaves(unseen)
+            notifyNew(unseen, 'my-leave', item => ({
+              title: 'Leave Request Update',
+              body: `Your leave request for ${item.leave_type || 'Leave'} was ${item.status}.`,
+            }))
           } catch (_) {}
         })(),
 
@@ -133,7 +183,16 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
             if (chatData) {
               const depts = (chatData.departments || []).filter(d => d.unread).map(d => ({ ...d, isDept: true }))
               const dms = (chatData.dms || []).filter(d => d.unread).map(d => ({ ...d, isDept: false }))
-              setUnseenChats([...depts, ...dms])
+              const combined = [...depts, ...dms]
+              setUnseenChats(combined)
+              notifyNew(
+                combined.map(c => ({ ...c, id: `${c.roomId}-${c.lastMsgAt || ''}` })),
+                'chat',
+                item => ({
+                  title: item.isDept ? `New message in ${item.roomId}` : `New message from ${item.lastSenderName?.split(' ')[0] || 'Someone'}`,
+                  body: (item.lastMessage || '').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '') || 'Attachment',
+                })
+              )
             }
           } catch (_) {}
         })(),
@@ -148,14 +207,21 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
               return target.length === 0 || target.includes(empId)
             })
             setMyAnnouncements(relevant)
-            setUnseenAnnouncements(getUnseenItems(relevant, myAnnKey))
+            const unseen = getUnseenItems(relevant, myAnnKey)
+            setUnseenAnnouncements(unseen)
+            notifyNew(unseen, 'announcement', item => ({
+              title: item.is_urgent ? 'Urgent Announcement' : 'New Announcement',
+              body: `${item.author_name || 'HR'}: ${item.subject}`,
+            }))
           } catch (_) {}
         })(),
       ])
     } catch (e) {
       console.error('[NotificationBell] fetch error:', e)
+    } finally {
+      firstFetchRef.current = false
     }
-  }, [currentUser, isAdmin, isHR, myRepKey, myLeavKey, myAnnKey, empId])
+  }, [currentUser, isAdmin, isHR, myRepKey, myLeavKey, myAnnKey, empId, notifyNew])
 
   useEffect(() => { fetchData() }, [fetchData, refreshKey])
 
