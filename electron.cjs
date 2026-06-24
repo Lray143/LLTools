@@ -1,4 +1,10 @@
 const { app, BrowserWindow, ipcMain, shell, protocol, net, Notification } = require('electron')
+
+// Must be set before the app is ready / any window or notification is created.
+// Without this, Windows falls back to showing "Electron" as the notification
+// sender name in dev mode instead of your actual app name.
+app.setAppUserModelId('com.doublelbeauty.lltools')
+
 const path = require('path')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 const { autoUpdater } = require('electron-updater')
@@ -331,7 +337,9 @@ ipcMain.handle('system:showNativeNotification', (_, { title, body }) => {
   const notification = new Notification({
     title: title || 'LLTools',
     body: body || '',
-    icon: path.join(__dirname, 'public/Logo.png'),
+    // NOTE: swap to whichever file is your actual square app icon if this
+    // doesn't look right — public/icon.png vs public/Logo.png.
+    icon: path.join(__dirname, 'public/icon.png'),
   })
 
   notification.on('click', () => {
