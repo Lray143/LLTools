@@ -178,9 +178,13 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     })
 
     channel.bind('message-seen', (data) => {
-      const myId = String(myParticipantIdRef.current)
-      if (String(data?.userId) === myId) return
       if (!data?.roomId || !data?.userId) return
+      // Ignore our own read-receipt events (check both userId and employeeId)
+      const myId = String(myParticipantIdRef.current)
+      if (
+        String(data.userId) === myId ||
+        String(data.employeeId) === myId
+      ) return
       // Only update receipts for the room we're currently viewing
       if (data.roomId !== currentRoomIdRef.current) return
 
@@ -219,7 +223,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
     if (!roomId) return
     const seenAt = new Date().toISOString()
-    window.electronAPI.markChatAsRead(myParticipantId, roomId)
+    // Always use currentUser.id (users table PK) so receipts match getRoomReceipts join
+    window.electronAPI.markChatAsRead(currentUser.id, roomId)
       .then(() => {
         loadSidebarData()
         // Broadcast real-time seen receipt so the sender sees it instantly
@@ -228,7 +233,8 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           event: 'message-seen',
           data: {
             roomId,
-            userId: myParticipantId,
+            userId: currentUser.id,
+            employeeId: currentUser.employeeId,
             lastReadAt: seenAt,
             userName: currentUser.employeeName || currentUser.username,
           },
@@ -422,14 +428,16 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       }
 
       const seenAt = new Date().toISOString()
-      window.electronAPI.markChatAsRead(myParticipantId, roomId)
+      // Always use currentUser.id (users table PK) so receipts match getRoomReceipts join
+      window.electronAPI.markChatAsRead(currentUser.id, roomId)
         .then(() => {
           window.electronAPI?.sendPusherEvent?.({
             channel: 'lltools-updates',
             event: 'message-seen',
             data: {
               roomId,
-              userId: myParticipantId,
+              userId: currentUser.id,
+              employeeId: currentUser.employeeId,
               lastReadAt: seenAt,
               userName: currentUser.employeeName || currentUser.username,
             },

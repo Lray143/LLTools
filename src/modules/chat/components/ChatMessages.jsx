@@ -428,15 +428,26 @@ const ChatMessages = memo(function ChatMessages({
 
   const mySenderId = currentUser.employeeId || String(currentUser.id)
 
-  // Build read receipts lookup
+  // Build read receipts lookup — only attach to messages *I* sent
   const seenByMsgId = {}
   if (readReceipts && readReceipts.length > 0 && messages.length > 0) {
+    // All messages I sent, in order
+    const myMessages = messages.filter(m => String(m.senderId) === String(mySenderId))
+
     readReceipts.forEach(receipt => {
-      if (String(receipt.userId) === String(mySenderId)) return
+      // Skip my own receipt (compare against both userId and employeeId)
+      if (
+        String(receipt.userId) === String(mySenderId) ||
+        String(receipt.userId) === String(currentUser.id) ||
+        String(receipt.userId) === String(currentUser.employeeId)
+      ) return
+      if (!receipt.lastReadAt) return
+
+      // Find the last message *I* sent that the reader has seen
       let lastSeenMsg = null
-      for (let i = messages.length - 1; i >= 0; i--) {
-        if (new Date(receipt.lastReadAt) >= new Date(messages[i].createdAt)) {
-          lastSeenMsg = messages[i]
+      for (let i = myMessages.length - 1; i >= 0; i--) {
+        if (new Date(receipt.lastReadAt) >= new Date(myMessages[i].createdAt)) {
+          lastSeenMsg = myMessages[i]
           break
         }
       }
