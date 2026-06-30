@@ -5,11 +5,13 @@ export function BiometricStatCards({ stats }) {
     { label: 'Undertime',        value: stats.undertime,      color: '#d97706' },
     { label: 'Late & Undertime', value: stats.lateUndertime,  color: '#dc2626' },
     { label: 'Incomplete',       value: stats.incomplete,     color: '#7c3aed' },
+    { label: 'One Tap',          value: stats.oneTapOnly,     color: '#c026d3' },
+    { label: 'Worked Rest Day',  value: stats.workedDayOff,   color: '#0284c7' },
     { label: 'On Leave',         value: stats.onLeave,        color: '#2563eb' },
   ]
 
   return (
-    <div className="grid grid-cols-6 gap-3">
+    <div className="grid grid-cols-4 gap-3 lg:grid-cols-8">
       {cards.map((card) => (
         <div
           key={card.label}

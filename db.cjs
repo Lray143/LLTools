@@ -943,7 +943,9 @@ const getMyAttendance = async (employeeId) => queryAll(`
 `, [employeeId])
 
 const importAttendance = async (records) => {
-  // Wait if a background sync is currently running to prevent SQLITE_BUSY errors
+  // Pause the background sync worker so it doesn't race with our bulk writes
+  if (global.syncWorkerRef) global.syncWorkerRef.postMessage('pause');
+  // Also wait if a main-thread sync is currently running
   while (isSyncing) {
     await new Promise(r => setTimeout(r, 100));
   }
@@ -1007,7 +1009,7 @@ const importAttendance = async (records) => {
         const rowPlaceholders = `(${Array(argCountPerRow).fill('?').join(', ')})`
         const placeholders = Array(rowCount).fill(rowPlaceholders).join(', ')
         
-        const sql = `INSERT INTO ${table} (${columns}) VALUES ${placeholders}`
+        const sql = `INSERT OR IGNORE INTO ${table} (${columns}) VALUES ${placeholders}`
         
         let retries = 20
         while (retries > 0) {
@@ -1041,6 +1043,8 @@ const importAttendance = async (records) => {
     return { newEmployees, newRecords, skippedRecords }
   } finally {
     isBulkOperating = false;
+    // Resume background sync now that bulk writes are complete
+    if (global.syncWorkerRef) global.syncWorkerRef.postMessage('resume');
   }
 }
 

@@ -4,6 +4,7 @@ require('dotenv').config()
 
 let client = null
 let isSyncing = false
+let isPaused = false
 
 function getClient() {
   if (client) return client
@@ -23,7 +24,7 @@ function getClient() {
 }
 
 async function runSync() {
-  if (isSyncing) return
+  if (isSyncing || isPaused) return
   isSyncing = true
   try {
     const client = getClient()
@@ -49,6 +50,17 @@ parentPort.on('message', async (msg) => {
   }
 
   if (msg === 'sync-now') {
+    runSync().catch(() => {})
+  }
+
+  // Pause/resume sent by main thread during bulk import operations
+  if (msg === 'pause') {
+    isPaused = true
+  }
+
+  if (msg === 'resume') {
+    isPaused = false
+    // Sync immediately after resuming to pick up any changes
     runSync().catch(() => {})
   }
 })

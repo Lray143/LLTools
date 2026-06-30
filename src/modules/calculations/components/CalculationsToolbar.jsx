@@ -181,9 +181,6 @@ export default function CalculationsToolbar({
           </div>
           <ModuleActivityLog module="calculations" refreshKey={refreshKey} />
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
-          <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
-            <User className="w-4 h-4" />
-          </button>
         </div>
       </div>
 

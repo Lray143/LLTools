@@ -1,8 +1,14 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import {
   ChevronDown, ChevronRight, Clock, Calendar, TrendingUp, TrendingDown,
-  Minus, Users, Fingerprint, Info,
+  Minus, Users, Fingerprint, Info, X, Sun
 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog"
 import {
   resolveRecordHours,
   isCountableManhourRecord,
@@ -96,6 +102,69 @@ function TrendBadge({ current, previous }) {
       {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
       {pct}%
     </span>
+  )
+}
+
+function ExcludedRecordsModal({ isOpen, onClose, records }) {
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="outline-none focus:outline-none ring-0 focus:ring-0 p-0 gap-0 flex flex-col overflow-hidden shadow-xl" style={{ width: '800px', maxWidth: '95vw', maxHeight: '85vh', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} showCloseButton={false}>
+        <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+          <div>
+            <DialogTitle style={{ color: 'var(--text-primary)' }}>Excluded Taps</DialogTitle>
+            <p className="text-sm m-0 mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Records with taps that are excluded from DOLE totals (e.g. Worked on Day Off, One Tap Only, Incomplete).
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors border-none bg-transparent cursor-pointer" style={{ color: 'var(--text-secondary)' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-0">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10 shadow-sm" style={{ background: 'var(--surface)' }}>
+              <tr style={{ color: 'var(--text-secondary)' }}>
+                <th className="px-6 py-3 text-left font-semibold uppercase tracking-wide text-xs">Date</th>
+                <th className="px-6 py-3 text-left font-semibold uppercase tracking-wide text-xs">Employee</th>
+                <th className="px-6 py-3 text-left font-semibold uppercase tracking-wide text-xs">Status</th>
+                <th className="px-6 py-3 text-left font-semibold uppercase tracking-wide text-xs">Taps (In / Out)</th>
+                <th className="px-6 py-3 text-right font-semibold uppercase tracking-wide text-xs">Total Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((r, i) => {
+                const hrs = resolveRecordHours(r, 'actual')
+                const hasHours = r.shiftIn && r.shiftOut && hrs > 0
+                return (
+                  <tr key={`${r.employee_no}_${r.date}_${i}`} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td className="px-6 py-3 whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>{r.date}</td>
+                    <td className="px-6 py-3" style={{ color: 'var(--text-primary)' }}>
+                      <div className="font-medium">{r.name}</div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{r.employee_no} · {r.department}</div>
+                    </td>
+                    <td className="px-6 py-3 font-medium" style={{ color: 'var(--theme-500)' }}>{r.status}</td>
+                    <td className="px-6 py-3" style={{ color: 'var(--text-primary)' }}>
+                      <div className="text-xs">{r.shiftIn || '--'} / {r.shiftOut || '--'}</div>
+                    </td>
+                    <td className="px-6 py-3 text-right" style={{ color: hasHours ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                      <span className="text-xs font-medium">{hasHours ? `${hrs}h` : '—'}</span>
+                    </td>
+                  </tr>
+                )
+              })}
+              {records.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center" style={{ color: 'var(--text-secondary)' }}>
+                    No excluded taps found.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -213,7 +282,7 @@ function PeriodBreakdown({
   title, subtitle, groups, periodType,
   expandedKeys, onToggle,
   expandedDepts, onToggleDept,
-  employeeLookup, maxHours, emptyLabel, hoursMode,
+  employeeLookup, maxHours, emptyLabel, hoursMode, onViewExcluded
 }) {
   if (groups.length === 0) {
     return (
@@ -292,13 +361,32 @@ function PeriodBreakdown({
                   />
                 </div>
 
-                <div className="text-right shrink-0 w-40">
+                <div className="text-right shrink-0 min-w-[160px]">
                   <p className="font-bold text-sm m-0" style={{ color: 'var(--text-primary)' }}>
                     {fmtHours(group.hours)} hrs
                   </p>
-                  <p className="text-xs m-0 mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-                    avg {fmtHours(avgPerEmp)} / employee
-                  </p>
+                  <div className="flex items-center justify-end gap-2 mt-1">
+                    <p className="text-xs m-0" style={{ color: 'var(--text-secondary)' }}>
+                      avg {fmtHours(avgPerEmp)} / emp
+                    </p>
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if(group.excludedRows?.length > 0) onViewExcluded(group.excludedRows) 
+                      }}
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded border transition-colors flex items-center gap-1 ${
+                        group.excludedRows?.length > 0 
+                          ? 'border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 cursor-pointer'
+                          : 'border-transparent text-gray-400 cursor-default opacity-50'
+                      }`}
+                      title={group.excludedRows?.length > 0 ? "View excluded taps for this period" : "No excluded taps"}
+                    >
+                      <Info size={10} />
+                      {group.excludedRows?.length || 0} excluded taps
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -328,6 +416,8 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
   const [expandedDepts,  setExpandedDepts]  = useState({})
   const [employees,      setEmployees]      = useState([])
   const [hoursMode,      setHoursMode]      = useState('scheduled') // matches Attendance table default
+  const [includeDayOff,  setIncludeDayOff]  = useState(false)
+  const [excludedRecordsToShow, setExcludedRecordsToShow] = useState(null)
 
   // Re-fetch employees whenever DB syncs so names/numbers stay current
   useEffect(() => {
@@ -352,37 +442,54 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
     setExpandedDepts(prev => ({ ...prev, [key]: !prev[key] }))
   }, [])
 
-  const filtered = useMemo(() => {
-    const base = records.filter(r => isCountableManhourRecord(r, hoursMode))
-    if (selectedDept === 'All Departments') return base
-    return base.filter(r => r.department === selectedDept)
-  }, [records, selectedDept, hoursMode])
+  const allDeptRecords = useMemo(() => {
+    if (selectedDept === 'All Departments') return records
+    return records.filter(r => r.department === selectedDept)
+  }, [records, selectedDept])
 
   const { monthGroups, yearGroups, totals } = useMemo(() => {
     const monthMap = {}
     const yearMap  = {}
 
-    for (const r of filtered) {
+    let totalHours = 0
+    let totalRecords = 0
+    const allEmployees = new Set()
+
+    for (const r of allDeptRecords) {
       const monthKey = getMonthKey(r.date)
       const yearKey  = getYearKey(r.date)
-      const hours    = resolveRecordHours(r, hoursMode)
-      const empNo    = String(r.employee_no || r.id)
+      const isCountable = isCountableManhourRecord(r, hoursMode)
+        || (includeDayOff && r.status === 'Worked on Day Off' && resolveRecordHours(r, hoursMode) > 0)
+      const isExcludedTap = !isCountable && !['Absent', 'Day Off', 'Leave'].includes(r.status)
 
       if (!monthMap[monthKey]) {
-        monthMap[monthKey] = { key: monthKey, label: formatMonthKey(monthKey), rows: [], hours: 0, records: 0, employees: new Set() }
+        monthMap[monthKey] = { key: monthKey, label: formatMonthKey(monthKey), rows: [], excludedRows: [], hours: 0, records: 0, employees: new Set() }
       }
-      monthMap[monthKey].rows.push(r)
-      monthMap[monthKey].hours += hours
-      monthMap[monthKey].records += 1
-      monthMap[monthKey].employees.add(empNo)
-
       if (!yearMap[yearKey]) {
-        yearMap[yearKey] = { key: yearKey, label: yearKey, rows: [], hours: 0, records: 0, employees: new Set() }
+        yearMap[yearKey] = { key: yearKey, label: yearKey, rows: [], excludedRows: [], hours: 0, records: 0, employees: new Set() }
       }
-      yearMap[yearKey].rows.push(r)
-      yearMap[yearKey].hours += hours
-      yearMap[yearKey].records += 1
-      yearMap[yearKey].employees.add(empNo)
+
+      if (isCountable) {
+        const hours = resolveRecordHours(r, hoursMode)
+        const empNo = String(r.employee_no || r.id)
+
+        monthMap[monthKey].rows.push(r)
+        monthMap[monthKey].hours += hours
+        monthMap[monthKey].records += 1
+        monthMap[monthKey].employees.add(empNo)
+
+        yearMap[yearKey].rows.push(r)
+        yearMap[yearKey].hours += hours
+        yearMap[yearKey].records += 1
+        yearMap[yearKey].employees.add(empNo)
+
+        totalHours += hours
+        totalRecords += 1
+        allEmployees.add(empNo)
+      } else if (isExcludedTap) {
+        monthMap[monthKey].excludedRows.push(r)
+        yearMap[yearKey].excludedRows.push(r)
+      }
     }
 
     const finalize = (map) =>
@@ -393,21 +500,27 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
     const months = finalize(monthMap)
     const years  = finalize(yearMap)
 
-    const allEmployees = new Set(filtered.map(r => String(r.employee_no || r.id)))
-    const totalHours   = filtered.reduce((s, r) => s + resolveRecordHours(r, hoursMode), 0)
-
     return {
       monthGroups: months,
       yearGroups: years,
       totals: {
         hours: totalHours,
-        records: filtered.length,
+        records: totalRecords,
         employees: allEmployees.size,
         months: months.length,
         years: years.length,
       },
     }
-  }, [filtered, hoursMode])
+  }, [allDeptRecords, hoursMode, includeDayOff])
+
+  const excludedRecordsWithTaps = useMemo(() => {
+    return records.filter(r => {
+      if (['Absent', 'Day Off', 'Leave'].includes(r.status)) return false;
+      const countable = isCountableManhourRecord(r, hoursMode)
+        || (includeDayOff && r.status === 'Worked on Day Off' && resolveRecordHours(r, hoursMode) > 0)
+      return !countable;
+    }).sort((a, b) => a.date.localeCompare(b.date));
+  }, [records, hoursMode, includeDayOff]);
 
   const maxMonthHours = Math.max(...monthGroups.map(m => m.hours), 1)
   const maxYearHours  = Math.max(...yearGroups.map(y => y.hours), 1)
@@ -424,7 +537,7 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
     )
   }
 
-  if (filtered.length === 0) {
+  if (allDeptRecords.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3" style={{ color: 'var(--text-secondary)' }}>
         <p className="font-medium m-0" style={{ color: 'var(--text-primary)' }}>No records for this filter</p>
@@ -456,7 +569,7 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
               ? ' Using scheduled hours (clamped to shift start/end) — matches the Attendance table default.'
               : ' Using actual tap hours (raw in/out) — includes early arrival and late departure.'}
           </p>
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
             <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-secondary)' }}>
               Hour basis:
             </span>
@@ -484,6 +597,38 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
                 </button>
               ))}
             </div>
+
+            {/* Day-off toggle */}
+            <button
+              type="button"
+              onClick={() => setIncludeDayOff(v => !v)}
+              title={includeDayOff ? 'Click to exclude Worked on Day Off from totals' : 'Click to include Worked on Day Off hours in totals'}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                padding: '4px 10px', borderRadius: '6px', cursor: 'pointer',
+                fontSize: '11px', fontWeight: 600,
+                border: includeDayOff ? '1px solid var(--theme-500)' : '1px solid var(--border)',
+                background: includeDayOff ? 'rgba(var(--theme-500-rgb,99,102,241),0.12)' : 'var(--page-bg-alt)',
+                color: includeDayOff ? 'var(--theme-500)' : 'var(--text-secondary)',
+                transition: 'all 0.15s',
+              }}
+            >
+              <Sun size={11} />
+              Include Day-Off Work
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setExcludedRecordsToShow(excludedRecordsWithTaps)}
+              style={{
+                marginLeft: 'auto',
+                padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--border)',
+                background: 'var(--surface-hover)', cursor: 'pointer',
+                fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)'
+              }}
+            >
+              View All Excluded Taps ({excludedRecordsWithTaps.length})
+            </button>
           </div>
         </div>
       </div>
@@ -556,6 +701,7 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
         maxHours={maxMonthHours}
         emptyLabel="No monthly data available."
         hoursMode={hoursMode}
+        onViewExcluded={(records) => setExcludedRecordsToShow(records)}
       />
 
       <PeriodBreakdown
@@ -571,6 +717,7 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
         maxHours={maxYearHours}
         emptyLabel="No annual data available."
         hoursMode={hoursMode}
+        onViewExcluded={(records) => setExcludedRecordsToShow(records)}
       />
 
       <div
@@ -585,6 +732,12 @@ export default function BiometricManhoursSummary({ records = [], selectedDept = 
           {fmtHours(totals.hours)} hrs
         </span>
       </div>
+
+      <ExcludedRecordsModal 
+        isOpen={excludedRecordsToShow !== null} 
+        onClose={() => setExcludedRecordsToShow(null)} 
+        records={excludedRecordsToShow || []} 
+      />
     </div>
   )
 }

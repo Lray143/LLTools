@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect }    from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { DEPARTMENTS }                    from './biometricConstants'
 import { exportToXLSX }                   from './exportToXLSX'
 import { BiometricHeader }                from './components/BiometricHeader'
@@ -79,8 +79,8 @@ const mapRow = (r) => {
     totalHours : r.total_hours,
     schedStart,
     schedEnd,
-    lunchStart : r.lunch_start ?? '12:00',
-    lunchEnd   : r.lunch_end   ?? '13:00',
+    lunchStart : r.sched_lunch_start ?? r.lunch_start ?? '12:00',
+    lunchEnd   : r.sched_lunch_end   ?? r.lunch_end   ?? '13:00',
   }
 }
 
@@ -202,43 +202,48 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     records.map(r => isoYear(timeframeToISO(r.timeframe))).filter(Boolean)
   )].sort((a, b) => b - a)
 
-  // Filter records based on the current view mode, department, and search query.
-  const filteredRecords = records.filter(r => {
-    const iso = timeframeToISO(r.timeframe)
+  const filteredRecords = useMemo(() => {
+    return records.filter(r => {
+      const iso = timeframeToISO(r.timeframe)
 
-    const matchView = (() => {
-      if (viewMode === 'Daily') {
-        const d      = selectedDate instanceof Date ? selectedDate : new Date()
-        const selISO = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`
-        return iso === selISO
-      }
-      if (viewMode === 'Monthly') {
-        return isoYear(iso) === selectedYear && isoMonth(iso) === selectedMonth
-      }
-      if (viewMode === 'Yearly') {
-        return isoYear(iso) === selectedYearOnly
-      }
-      return true
-    })()
+      const matchView = (() => {
+        if (viewMode === 'Daily') {
+          const d      = selectedDate instanceof Date ? selectedDate : new Date()
+          const selISO = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`
+          return iso === selISO
+        }
+        if (viewMode === 'Monthly') {
+          return isoYear(iso) === selectedYear && isoMonth(iso) === selectedMonth
+        }
+        if (viewMode === 'Yearly') {
+          return isoYear(iso) === selectedYearOnly
+        }
+        return true
+      })()
 
-    const matchDept   = selectedDept === 'All Departments' || r.department === selectedDept
-    const matchSearch = !debouncedSearch ||
-      r.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-      String(r.id).toLowerCase().includes(debouncedSearch.toLowerCase())
+      const matchDept   = selectedDept === 'All Departments' || r.department === selectedDept
+      const matchSearch = !debouncedSearch ||
+        r.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+        String(r.id).toLowerCase().includes(debouncedSearch.toLowerCase())
 
-    return matchView && matchDept && matchSearch
-  })
+      return matchView && matchDept && matchSearch
+    })
+  }, [records, viewMode, selectedDate, selectedYear, selectedMonth, selectedYearOnly, selectedDept, debouncedSearch])
 
   // Tally up each status category for the stat cards at the top.
-  const stats = {
-    fullTime      : filteredRecords.filter(r => r.status === 'Full Time').length,
-    late          : filteredRecords.filter(r => r.status === 'Late').length,
-    undertime     : filteredRecords.filter(r => r.status === 'Undertime').length,
-    lateUndertime : filteredRecords.filter(r => r.status === 'Late & Undertime').length,
-    incomplete    : filteredRecords.filter(r => r.status === 'Incomplete').length,
-    absent        : filteredRecords.filter(r => r.status === 'Absent').length,
-    onLeave       : filteredRecords.filter(r => r.status === 'Leave').length,
-  }
+  const stats = useMemo(() => {
+    return {
+      fullTime      : filteredRecords.filter(r => r.status === 'Full Time').length,
+      late          : filteredRecords.filter(r => r.status === 'Late').length,
+      undertime     : filteredRecords.filter(r => r.status === 'Undertime').length,
+      lateUndertime : filteredRecords.filter(r => r.status === 'Late & Undertime').length,
+      incomplete    : filteredRecords.filter(r => r.status === 'Incomplete').length,
+      oneTapOnly    : filteredRecords.filter(r => r.status === 'One Tap Only').length,
+      workedDayOff  : filteredRecords.filter(r => r.status === 'Worked on Day Off').length,
+      absent        : filteredRecords.filter(r => r.status === 'Absent').length,
+      onLeave       : filteredRecords.filter(r => r.status === 'Leave').length,
+    }
+  }, [filteredRecords])
 
   async function handleFileImport(e) {
     const file = e.target.files?.[0]

@@ -1,4 +1,4 @@
-import { User, Clock } from 'lucide-react'
+import { Clock } from 'lucide-react'
 import NotificationBell from '../../../components/ui/NotificationBell'
 
 export function MyAttendanceHeader({ currentUser, refreshKey, onNavigate }) {
@@ -21,9 +21,6 @@ export function MyAttendanceHeader({ currentUser, refreshKey, onNavigate }) {
       <div className="flex items-center gap-3">
 
         <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
-        <button className="flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-lg transition-colors" style={{ width: '34px', height: '34px' }}>
-          <User className="w-4 h-4" />
-        </button>
       </div>
     </>
   )

@@ -1,4 +1,4 @@
-import { User, Fingerprint } from 'lucide-react'
+import { Fingerprint } from 'lucide-react'
 import NotificationBell from '../../../components/ui/NotificationBell'
 import SearchBar from '../../../components/ui/SearchBar'
 
@@ -27,14 +27,6 @@ export function BiometricHeader({ searchQuery, setSearchQuery, currentUser, refr
           />
         </div>
         <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
-        <button
-          className="flex items-center justify-center rounded-lg transition-colors"
-          style={{ width: '34px', height: '34px', color: 'var(--text-secondary)' }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-        >
-          <User className="w-4 h-4" />
-        </button>
       </div>
     </>
   )

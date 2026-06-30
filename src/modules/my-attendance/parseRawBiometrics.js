@@ -212,8 +212,12 @@ export function parseRawBiometrics(text, employeeMap = {}) {
 
     if (isDayOff && totalTaps === 0) {
       status = 'Day Off'
+    } else if (isDayOff && totalTaps > 0) {
+      status = 'Worked on Day Off'
     } else if (totalTaps === 0) {
       status = 'Absent'
+    } else if (totalTaps === 1) {
+      status = 'One Tap Only'
     } else if (!shiftIn || !shiftOut) {
       status = 'Incomplete'
     } else {

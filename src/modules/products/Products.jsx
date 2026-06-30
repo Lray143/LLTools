@@ -36,9 +36,6 @@ export default function Products({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
           <ModuleActivityLog module="products" refreshKey={refreshKey} />
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
-          <button className="flex items-center justify-center rounded-lg transition-colors" style={{ width: '34px', height: '34px', color: 'var(--text-secondary)' }}>
-            <User className="w-4 h-4" />
-          </button>
         </div>
       </div>
       <ProductsTable search={search} onSearchChange={setSearch} refreshKey={refreshKey} currentUser={currentUser} />
