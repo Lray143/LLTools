@@ -132,7 +132,7 @@ function ExtraTapsTooltip({ extraTaps }) {
           left         : pos.x + 14,
           transform    : 'translateY(-100%)',
           zIndex       : 99999,
-          background   : 'var(--page-bg-alt)',
+          background   : 'var(--surface)',
           border       : '1px solid var(--border)',
           color        : 'var(--text-primary)',
           borderRadius : '10px',

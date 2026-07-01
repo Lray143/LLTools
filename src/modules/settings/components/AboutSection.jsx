@@ -112,8 +112,8 @@ export function AboutSection() {
         <InfoChip value={`v${appVersion}`} />
       </SettingRow>
 
-      <SettingRow label="Developer" description="Built and maintained by the LLTools team: Lester Raymond M. Gulferic and Lawrence O. Dullo (Interns).">
-        <InfoChip value="Double L Development" />
+      <SettingRow label="Developer" description="Built and maintained by the LLTools team.">
+        <InfoChip value="Lester Raymond M. Gulferic and Lawrence O. Dullo (Interns)" />
       </SettingRow>
 
       <SettingRow label="Platform" description="Running on Electron + React + Vite.">

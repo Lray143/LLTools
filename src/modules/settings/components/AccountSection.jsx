@@ -316,10 +316,6 @@ export function AccountSection({ currentUser }) {
         <InfoChip value={currentUser?.position ?? '—'} />
       </SettingRow>
 
-      <SettingRow label="System Role" description="Your technical access level in LLTools.">
-        <InfoChip value={roleLabel} />
-      </SettingRow>
-
       {currentUser?.username === 'admin@doublel.com' && (
         <>
           <SettingRow label="Wipe Test Data" description="Delete all records (employees, products, chats, etc.) to prepare for production use.">
