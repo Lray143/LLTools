@@ -58,7 +58,7 @@ function useTransparentImage(src, threshold = 60) {
   return dataUrl
 }
 
-function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange, refreshKey = 0 }) {
+function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentUser, onPinChange, refreshKey = 0, moduleBadges = {} }) {
   const [isPinned, setIsPinned]   = useState(true)
   const [isHovered, setIsHovered] = useState(false)
   const [mascotSidebar, setMascotSidebar] = useState(document.documentElement.dataset.mascotSidebar || '')
@@ -105,9 +105,11 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
     onPinChange?.(next)
   }
 
-  function NavButton({ item }) {
+  function NavButton({ item, badge = 0 }) {
     const Icon = item.icon
     const isActive = activePage === item.id
+    // Don't show badge on the currently active module (user is already looking at it)
+    const showBadge = badge > 0 && !isActive
     return (
       <button
         onClick={() => setActivePage(item.id)}
@@ -124,19 +126,57 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         style={{
           background: isActive ? 'var(--sidebar-active)' : 'transparent',
           ...(isActive ? {} : {}),
+          position: 'relative',
         }}
         onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
         onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
       >
-        <Icon size={16} className="shrink-0" />
+        {/* Icon with badge dot when collapsed */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Icon size={16} />
+          {showBadge && !isExpanded && (
+            <span style={{
+              position: 'absolute',
+              top: '-4px', right: '-5px',
+              minWidth: '14px', height: '14px',
+              borderRadius: '99px',
+              background: 'var(--theme-500)',
+              border: '2px solid var(--sidebar-bg)',
+              color: '#fff',
+              fontSize: '8px', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1,
+              padding: '0 2px',
+            }}>
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
+        </div>
+        {/* Label + badge pill when expanded */}
         <span
           className={`
             whitespace-nowrap overflow-hidden transition-all duration-200
             ${isExpanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0'}
           `}
+          style={{ flex: 1 }}
         >
           {item.label}
         </span>
+        {showBadge && isExpanded && (
+          <span style={{
+            minWidth: '20px', height: '20px',
+            borderRadius: '99px',
+            background: 'var(--theme-500)',
+            color: '#fff',
+            fontSize: '11px', fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+            padding: '0 5px',
+            lineHeight: 1,
+          }}>
+            {badge > 99 ? '99+' : badge}
+          </span>
+        )}
       </button>
     )
   }
@@ -208,7 +248,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
             Overview
           </p>
           {navItems.length > 0 ? (
-            navItems.map((item) => <NavButton key={item.id} item={item} />)
+            navItems.map((item) => <NavButton key={item.id} item={item} badge={moduleBadges[item.id] ?? 0} />)
           ) : (
             <div className={`
               px-2 py-3 text-xs italic text-gray-500 text-center
@@ -234,7 +274,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
           `}>
             System
           </p>
-          {allowedModules.includes('chat') && <NavButton item={CHAT_ITEM} />}
+          {allowedModules.includes('chat') && <NavButton item={CHAT_ITEM} badge={moduleBadges['chat'] ?? 0} />}
           {allowedModules.includes('app-links') && <NavButton item={APP_LINKS_ITEM} />}
           <NavButton item={SETTINGS_ITEM} />
         </div>

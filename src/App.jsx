@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Pusher from 'pusher-js'
 import { Sparkles, Star, Heart, Zap, Bug } from 'lucide-react'
 import './App.css'
@@ -6,6 +6,7 @@ import './App.css'
 import LoginPage   from './components/ui/LoginPage'
 import UpdaterSplash from './components/ui/UpdaterSplash'
 import Sidebar     from './components/ui/Sidebar'
+import NotificationBell from './components/ui/NotificationBell'
 
 import Announcements  from './modules/announcements/Announcements'
 import Employees      from './modules/hrms/Employees'
@@ -165,6 +166,9 @@ function App() {
   // useEffect dependency so they automatically re-fetch fresh data.
   const [refreshKey,  setRefreshKey]  = useState(0)
   const [typingUsers, setTypingUsers] = useState({})
+  const typingTimersRef = useRef({})
+  const [moduleBadges, setModuleBadges] = useState({})
+  const handleBadgesChange = useCallback((counts) => setModuleBadges(counts), [])
 
   useEffect(() => {
     applyThemeToDocument(getSavedTheme())
@@ -217,7 +221,10 @@ function App() {
         return { ...prev, [data.roomId]: Array.from(roomTyping) }
       })
 
-      setTimeout(() => {
+      // Debounce: clear previous timer for this room before setting a new one
+      // so 10 keystrokes don't queue 10 overlapping timeouts in memory
+      clearTimeout(typingTimersRef.current[`${data.roomId}::${data.userName}`])
+      typingTimersRef.current[`${data.roomId}::${data.userName}`] = setTimeout(() => {
         setTypingUsers(prev => {
           const roomTyping = prev[data.roomId] ? new Set(prev[data.roomId]) : new Set()
           roomTyping.delete(data.userName)
@@ -364,6 +371,15 @@ function App() {
   return (
     <div className="flex h-screen relative" style={{ background: 'var(--page-bg)' }}>
       <ThemeDecorations />
+      {/* Hidden badge-counter bell — stays mounted across all pages so Sidebar always has fresh counts */}
+      <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
+        <NotificationBell
+          currentUser={currentUser}
+          refreshKey={refreshKey}
+          onNavigate={setActivePage}
+          onBadgesChange={handleBadgesChange}
+        />
+      </div>
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
@@ -371,6 +387,8 @@ function App() {
         allowedModules={allowedModules}
         currentUser={currentUser}
         refreshKey={refreshKey}
+        moduleBadges={moduleBadges}
+        onBadgesChange={handleBadgesChange}
       />
       <main className="flex-1 overflow-auto relative z-10">
         {renderPage()}

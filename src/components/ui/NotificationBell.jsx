@@ -49,7 +49,7 @@ const STATUS_ICON = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function NotificationBell({ currentUser, refreshKey, onNavigate }) {
+export default function NotificationBell({ currentUser, refreshKey, onNavigate, onBadgesChange }) {
   // Admin/HR incoming streams
   const [incomingReports,    setIncomingReports]    = useState([])
   const [incomingLeaves,     setIncomingLeaves]     = useState([])
@@ -67,10 +67,14 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
   const [unseenAnnouncements,setUnseenAnnouncements]= useState([])
 
   const [unseenChats,        setUnseenChats]        = useState([])
+  const [ephemeralNotifs,    setEphemeralNotifs]    = useState([])
   const [filter,             setFilter]             = useState('all') // 'all' | 'unread'
 
   const [open, setOpen] = useState(false)
   const wrapperRef      = useRef(null)
+  // Rooms the user has manually clicked/cleared — prevents the next poll from
+  // re-showing them as unread before the DB write has fully synced.
+  const localClearedRoomsRef = useRef(new Set())
 
   // ── Native OS popup tracking ────────────────────────────────────────────
   // Tracks which IDs we've already fired a native notification for, so we
@@ -83,6 +87,20 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
   const fireNative = useCallback((title, body) => {
     window.electronAPI?.showNativeNotification?.(title, body).catch(() => {})
   }, [])
+
+  const notifyEphemeral = useCallback((title, body, route) => {
+    fireNative(title, body)
+    setEphemeralNotifs(prev => {
+      const newNotif = {
+        id: `eph-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        _stream: 'ephemeral',
+        _unread: true,
+        _sortTime: Date.now(),
+        title, body, route
+      }
+      return [newNotif, ...prev]
+    })
+  }, [fireNative])
 
   // Given a list of unseen items, fires a native popup for any item whose ID
   // hasn't been notified yet, then marks it as notified. Skips entirely on
@@ -181,8 +199,9 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
             const chatUserId = currentUser.employeeId || String(currentUser.id)
             const chatData = await window.electronAPI.getChatSidebarData(chatUserId)
             if (chatData) {
-              const depts = (chatData.departments || []).filter(d => d.unread).map(d => ({ ...d, isDept: true }))
-              const dms = (chatData.dms || []).filter(d => d.unread).map(d => ({ ...d, isDept: false }))
+              const cleared = localClearedRoomsRef.current
+              const depts = (chatData.departments || []).filter(d => d.unread && !cleared.has(d.roomId)).map(d => ({ ...d, isDept: true }))
+              const dms = (chatData.dms || []).filter(d => d.unread && !cleared.has(d.roomId)).map(d => ({ ...d, isDept: false }))
               const combined = [...depts, ...dms]
               setUnseenChats(combined)
               notifyNew(
@@ -225,6 +244,149 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
 
   useEffect(() => { fetchData() }, [fetchData, refreshKey])
 
+  // ── Emit per-module badge counts to parent (Sidebar) ─────────────────────
+  useEffect(() => {
+    if (!onBadgesChange) return
+    onBadgesChange({
+      announcements: unseenAnnouncements.length,
+      reports:       unseenInReports.length + unseenMyReports.length,
+      leaves:        unseenInLeaves.length  + unseenMyLeaves.length,
+      chat:          unseenChats.length     + ephemeralNotifs.filter(e => e.route === 'chat').length,
+    })
+  }, [unseenAnnouncements, unseenInReports, unseenMyReports, unseenInLeaves, unseenMyLeaves, unseenChats, ephemeralNotifs, onBadgesChange])
+
+  // ── Fast chat-only poll (every 5s) ────────────────────────────────────────
+  // The main fetchData only runs when refreshKey changes (DB sync cycle).
+  // This secondary poll ensures the bell badge updates promptly when a new
+  // chat message arrives via Pusher, without waiting for the full sync round-trip.
+  useEffect(() => {
+    if (!currentUser) return
+    const chatPoll = async () => {
+      try {
+        const chatUserId = currentUser.employeeId || String(currentUser.id)
+        const chatData = await window.electronAPI.getChatSidebarData(chatUserId)
+        if (chatData) {
+          const cleared = localClearedRoomsRef.current
+          const depts = (chatData.departments || []).filter(d => d.unread && !cleared.has(d.roomId)).map(d => ({ ...d, isDept: true }))
+          const dms = (chatData.dms || []).filter(d => d.unread && !cleared.has(d.roomId)).map(d => ({ ...d, isDept: false }))
+          setUnseenChats([...depts, ...dms])
+        }
+      } catch (_) {}
+    }
+    const interval = setInterval(chatPoll, 5000)
+    return () => clearInterval(interval)
+  }, [currentUser])
+
+  // ── Real-time Pusher listener for all new notification events ─────────────
+  // This gives instant native OS popups without waiting for the DB sync cycle.
+  useEffect(() => {
+    if (!currentUser || !import.meta.env.VITE_PUSHER_KEY) return
+    const Pusher = window.Pusher || (typeof require !== 'undefined' ? null : null)
+
+    // Use dynamic import to avoid duplicate Pusher connections
+    import('pusher-js').then(({ default: PusherLib }) => {
+      const pusher = new PusherLib(import.meta.env.VITE_PUSHER_KEY, {
+        cluster: import.meta.env.VITE_PUSHER_CLUSTER,
+      })
+      const channel = pusher.subscribe('lltools-updates')
+      const myId    = String(currentUser.employeeId || currentUser.id || '')
+      const myName  = (currentUser.employeeName || currentUser.username || '').split(' ')[0].toLowerCase()
+      const myNo    = currentUser.username || ''
+
+      // ─ Report: new comment on a report I filed or previously commented on ─
+      channel.bind('report-comment-added', (data) => {
+        if (String(data.commenterName) === (currentUser.employeeName || currentUser.username)) return
+        const iMineReport   = data.reportEmployeeNo === myNo
+        const iPrevCommenter = (data.prevCommenterNames || []).includes(currentUser.employeeName || currentUser.username)
+        if (iMineReport || isAdmin || iPrevCommenter) {
+          notifyEphemeral(
+            iMineReport ? 'New comment on your report' : `Comment on ${data.reportNo}`,
+            `${data.commenterName}: ${data.commentSnippet || '…'}`,
+            'reports'
+          )
+        }
+      })
+
+      // ─ Report: assigned to me ─
+      channel.bind('report-assigned', (data) => {
+        const myFullName = currentUser.employeeName || currentUser.username || ''
+        if (data.assignedTo === myFullName) {
+          notifyEphemeral(
+            'Report Assigned to You',
+            `${data.reportNo}: ${data.subject || 'A report has been assigned to you'}`,
+            'reports'
+          )
+        }
+      })
+
+      // ─ Announcement: someone acknowledged MY post ─
+      channel.bind('announcement-acknowledged', (data) => {
+        if (String(data.authorId) !== myId) return
+        notifyEphemeral(
+          'Announcement Acknowledged',
+          `${data.employeeName} acknowledged "${data.announcementSubject}"`,
+          'announcements'
+        )
+      })
+
+      // ─ Announcement: new comment — notify author + previous commenters + parent author ─
+      channel.bind('new-announcement-comment', (data) => {
+        if (!data.announcementId || String(data.employeeId) === myId) return
+        const isAuthor       = String(data.authorId) === myId
+        const isPrevCommenter = (data.prevCommenterIds || []).map(String).includes(myId)
+        const isParentAuthor  = String(data.parentAuthorId) === myId
+        if (isAuthor || isPrevCommenter || isParentAuthor) {
+          const label = isParentAuthor ? 'replied to your comment' : 'commented on an announcement'
+          notifyEphemeral(
+            isAuthor ? 'New comment on your announcement' : `${data.employeeName} ${label}`,
+            data.content ? (data.content).slice(0, 100) : '…',
+            'announcements'
+          )
+        }
+      })
+
+      // ─ Announcement comment: someone reacted to MY comment ─
+      channel.bind('announcement-comment-reacted', (data) => {
+        if (String(data.commentAuthorId) !== myId) return
+        notifyEphemeral(
+          'Reaction on your comment',
+          `${data.reactorName} reacted ${data.reaction} to your comment`,
+          'announcements'
+        )
+      })
+
+      // ─ Chat: @mention or @everyone or reply-to-me ─
+      channel.bind('new-message', (data) => {
+        if (!data || String(data.senderId) === myId) return
+        const mentions        = (data.mentions || []).map(m => m.toLowerCase())
+        const isMentioned     = mentions.includes(myName)
+        const isEveryone      = !!data.mentionsEveryone
+        const isReplyToMe     = data.replyToSenderId && String(data.replyToSenderId) === myId
+        const senderFirst     = (data.senderName || 'Someone').split(' ')[0]
+        const roomLabel       = data.message?.department ? `#${data.message.department}` : 'DM'
+
+        if (isMentioned || isEveryone) {
+          notifyEphemeral(
+            isEveryone ? `${senderFirst} mentioned @everyone in ${roomLabel}` : `${senderFirst} mentioned you in ${roomLabel}`,
+            (data.message?.message || 'Sent an attachment').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '').slice(0, 100),
+            'chat'
+          )
+        } else if (isReplyToMe) {
+          notifyEphemeral(
+            `${senderFirst} replied to your message`,
+            (data.message?.message || 'Sent an attachment').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '').slice(0, 100),
+            'chat'
+          )
+        }
+      })
+
+      return () => {
+        pusher.unsubscribe('lltools-updates')
+        pusher.disconnect()
+      }
+    }).catch(() => {})
+  }, [currentUser, isAdmin, empId, notifyEphemeral])
+
   // Close on outside click
   useEffect(() => {
     if (!open) return
@@ -249,9 +411,18 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     } else if (stream === 'my-leave') {
       markSeen(myLeavKey, item.id)
       setUnseenMyLeaves(prev => prev.filter(l => l.id !== item.id))
+    } else if (stream === 'ephemeral') {
+      setEphemeralNotifs(prev => prev.filter(n => n.id !== item.id))
+      if (item.route && onNavigate) onNavigate(item.route)
+      setOpen(false)
+      return
     } else if (stream === 'chat') {
       const chatUserId = currentUser.employeeId || String(currentUser.id)
-      window.electronAPI.markChatAsRead(chatUserId, item.roomId).catch(() => {})
+      window.electronAPI.markChatAsRead(currentUser.id, item.roomId).catch(() => {})
+      // Track locally so the fast-poll doesn't re-show it before the DB write syncs
+      localClearedRoomsRef.current.add(item.roomId)
+      // Clear the local cleared set after 10s (enough time for DB write to sync)
+      setTimeout(() => localClearedRoomsRef.current.delete(item.roomId), 10000)
       setUnseenChats(prev => prev.filter(c => c.roomId !== item.roomId))
       if (onNavigate) onNavigate('chat')
       return // skip the report/leave navigation below
@@ -283,7 +454,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     // Mark chats as read
     const chatUserId = currentUser?.employeeId || String(currentUser?.id)
     unseenChats.forEach(c => {
-      window.electronAPI.markChatAsRead(chatUserId, c.roomId).catch(() => {})
+      window.electronAPI.markChatAsRead(currentUser.id, c.roomId).catch(() => {})
     })
 
     setUnseenInReports([])
@@ -292,6 +463,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
     setUnseenMyLeaves([])
     setUnseenChats([])
     setUnseenAnnouncements([])
+    setEphemeralNotifs([])
   }
 
   // ── Build combined list ───────────────────────────────────────────────────
@@ -342,13 +514,15 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
         _unread: true,
         _sortTime: a.created_at ?? 0,
       })),
+    // Real-time ephemeral events
+    ...ephemeralNotifs,
   ]
     .sort((a, b) => new Date(b._sortTime) - new Date(a._sortTime))
     .slice(0, 30)
 
   const filteredItems = filter === 'unread' ? allItems.filter(i => i._unread) : allItems
 
-  const totalUnseen = unseenInReports.length + unseenInLeaves.length + unseenMyReports.length + unseenMyLeaves.length + unseenChats.length + unseenAnnouncements.length
+  const totalUnseen = unseenInReports.length + unseenInLeaves.length + unseenMyReports.length + unseenMyLeaves.length + unseenChats.length + unseenAnnouncements.length + ephemeralNotifs.filter(n => n._unread).length
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -374,17 +548,18 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
       >
         <Bell className="w-4 h-4" />
 
-        {/* Red badge */}
+        {/* Badge — always visible on any theme/sidebar color */}
         {totalUnseen > 0 && (
           <span style={{
-            position: 'absolute', top: '3px', right: '3px',
-            minWidth: '15px', height: '15px', borderRadius: '8px',
+            position: 'absolute', top: '2px', right: '2px',
+            minWidth: '16px', height: '16px', borderRadius: '8px',
             background: '#ef4444', color: '#fff',
-            fontSize: '9px', fontWeight: 700,
+            fontSize: '9px', fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 3px', lineHeight: 1,
-            border: '1.5px solid var(--page-bg)',
-            boxShadow: '0 1px 4px rgba(239,68,68,0.4)',
+            // Solid white border always looks crisp on both light AND dark sidebar backgrounds
+            border: '2px solid #fff',
+            boxShadow: '0 1px 6px rgba(0,0,0,0.4), 0 0 0 1px rgba(239,68,68,0.3)',
           }}>
             {totalUnseen > 99 ? '99+' : totalUnseen}
           </span>
@@ -501,6 +676,11 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                   accentColor = isInReport ? '#f97316' : '#6366f1'
                   avatarBg    = 'var(--page-bg-alt)'
                   avatarInitial = String(item.employeeName || item.employee_name || item.employeeNo || item.employee_no || '?').charAt(0).toUpperCase()
+                } else if (item._stream === 'ephemeral') {
+                  Icon        = Bell
+                  accentColor = 'var(--theme-500)'
+                  avatarBg    = 'rgba(var(--theme-500-rgb,99,102,241),0.1)'
+                  avatarInitial = <Bell size={24} color={accentColor} />
                 } else {
                   const status  = item.status ?? 'Pending'
                   accentColor   = STATUS_COLOR[status] ?? '#6b7280'
@@ -532,6 +712,9 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate }
                   const status = item.status ?? ''
                   boldText = 'Your report'
                   mainText = ` "${item.subject || item.reportNo}" was marked as ${status}.`
+                } else if (item._stream === 'ephemeral') {
+                  boldText = item.title
+                  mainText = ` ${item.body}`
                 } else {
                   const status = item.status ?? ''
                   boldText = 'Your leave request'

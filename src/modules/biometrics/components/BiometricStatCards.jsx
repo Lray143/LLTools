@@ -1,4 +1,4 @@
-export function BiometricStatCards({ stats }) {
+export function BiometricStatCards({ stats, isLoading }) {
   const cards = [
     { label: 'Full Time',        value: stats.fullTime,       color: '#16a34a' },
     { label: 'Late',             value: stats.late,           color: 'var(--theme-500)' },
@@ -12,6 +12,20 @@ export function BiometricStatCards({ stats }) {
 
   return (
     <div className="grid grid-cols-4 gap-3 lg:grid-cols-8">
+      <style>{`
+        @keyframes statSkeletonPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .stat-skeleton {
+          height: 36px;
+          width: 50px;
+          margin-top: 4px;
+          border-radius: 8px;
+          background-color: var(--border);
+          animation: statSkeletonPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+      `}</style>
       {cards.map((card) => (
         <div
           key={card.label}
@@ -24,9 +38,13 @@ export function BiometricStatCards({ stats }) {
           >
             {card.label}
           </p>
-          <p className="text-3xl font-semibold m-0" style={{ color: card.color }}>
-            {card.value}
-          </p>
+          {isLoading ? (
+            <div className="stat-skeleton" />
+          ) : (
+            <p className="text-3xl font-semibold m-0" style={{ color: card.color }}>
+              {card.value}
+            </p>
+          )}
         </div>
       ))}
     </div>

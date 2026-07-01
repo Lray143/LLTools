@@ -192,7 +192,7 @@ function SortIcon({ colKey, sortKey, sortDir }) {
 const PAGE_SIZE  = 10
 const ROW_HEIGHT = 52
 
-export function BiometricTable({ records, total, viewMode }) {
+export function BiometricTable({ records, total, viewMode, isLoading }) {
   const [page,      setPage]      = useState(1)
   const [sortKey,   setSortKey]   = useState('date')
   const [sortDir,   setSortDir]   = useState('desc')
@@ -274,6 +274,18 @@ export function BiometricTable({ records, total, viewMode }) {
         minHeight  : 0,
       }}
     >
+      <style>{`
+        @keyframes bioTableSkeletonPulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .bio-skeleton-cell {
+          height: 14px;
+          border-radius: 6px;
+          background-color: var(--border);
+          animation: bioTableSkeletonPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+      `}</style>
       {/* Title bar */}
       <div className="px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <p className="font-medium" style={{ fontSize: '14px', color: 'var(--text-primary)' }}>
@@ -353,7 +365,33 @@ export function BiometricTable({ records, total, viewMode }) {
           </thead>
 
           <tbody>
-            {records.length === 0 ? (
+            {isLoading ? (
+              <>
+                {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                  <tr key={'skeleton-' + i} style={{
+                    background  : i % 2 === 0 ? 'var(--surface)' : 'var(--surface-hover)',
+                    borderBottom: '1px solid var(--border)',
+                    height      : ROW_HEIGHT + 'px',
+                  }}>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '30px' }} /></td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '130px' }} /></td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '100px' }} /></td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '140px' }} /></td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '60px' }} /></td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '60px' }} /></td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '60px' }} /></td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '60px' }} /></td>
+                    <td className="px-4">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div className="bio-skeleton-cell" style={{ width: '70px', height: '14px' }} />
+                        <div className="bio-skeleton-cell" style={{ width: '40px', height: '8px' }} />
+                      </div>
+                    </td>
+                    <td className="px-4"><div className="bio-skeleton-cell" style={{ width: '80px', borderRadius: '12px' }} /></td>
+                  </tr>
+                ))}
+              </>
+            ) : records.length === 0 ? (
               <>
                 <tr>
                   <td colSpan={10} className="text-center"

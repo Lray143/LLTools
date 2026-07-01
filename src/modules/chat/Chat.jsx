@@ -445,12 +445,25 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         })
         .catch(console.error)
       loadSidebarData()
+
+      // ── Parse message for @mentions and reply-to so the bell can target correctly ──
+      const mentionedNames = [...finalMsgText.matchAll(/@(\w+)/g)].map(m => m[1].toLowerCase())
+      const mentionsEveryone = mentionedNames.includes('everyone')
+      const replyMatch = finalMsgText.match(/\[reply\]([^|]+)\|/)  // [reply]SenderName|snippet[/reply]
+      const replyToSenderName = replyMatch ? replyMatch[1].trim() : null
+      const replyToSenderId   = replyTo?.senderId ?? null
+
       window.electronAPI?.sendPusherEvent?.({
         channel: 'lltools-updates',
         event: 'new-message',
         data: {
           roomId,
           senderId: myParticipantId,
+          senderName,
+          mentions: mentionedNames,
+          mentionsEveryone,
+          replyToSenderName,
+          replyToSenderId,
           message: {
             id: msgId,
             senderId: myParticipantId,

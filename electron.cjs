@@ -436,7 +436,7 @@ ipcMain.handle('chat:openR2File', async (_, fileName) => {
       const { downloadFileFromR2 } = require('./r2.cjs')
       const fileBuffer = await downloadFileFromR2(fileName)
       if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-      fs.writeFileSync(localPath, fileBuffer)
+      await fs.promises.writeFile(localPath, fileBuffer)
       await shell.openPath(localPath)
     } catch (err) {
       console.error(`[openR2File] Failed:`, err)
@@ -510,7 +510,7 @@ ipcMain.handle('attachments:save', async (_, { name, buffer }) => {
   const ext = path.extname(name) || ''
   const filename = `${crypto.randomUUID()}${ext}`
   const filepath = path.join(uploadsDir, filename)
-  fs.writeFileSync(filepath, buffer)
+  await fs.promises.writeFile(filepath, buffer)
   return { path: filepath }
 })
 ipcMain.handle('attachments:open', async (_, filepath) => {

@@ -13,6 +13,7 @@ const LOCAL_DB_PATH = path.join(app.getPath('userData'), 'lltools-turso.db')
 // Lazily initialized — NOT created at require-time to avoid crashing Electron
 // when the Turso cloud server is unreachable (OS error 10060).
 let client = null
+let isRecovering = false
 
 function getClient() {
   if (client) return client
@@ -24,12 +25,46 @@ function getClient() {
     })
     console.log('[DB] Client created (cloud sync enabled)')
   } catch (err) {
+    if (err.message && err.message.includes('InvalidLocalState') && !isRecovering) {
+      console.warn('[DB] InvalidLocalState detected during init. Auto-recovering...')
+      return recoverDatabase()
+    }
     console.warn('[DB] Cloud connection failed, falling back to local-only:', err.message)
     client = createClient({
       url: `file:${LOCAL_DB_PATH}`,
     })
   }
   return client
+}
+
+function recoverDatabase() {
+  isRecovering = true
+  console.log('[DB] FATAL CORRUPTION DETECTED. Auto-recovering from Turso cloud...')
+  if (client) {
+    try { client.close() } catch (e) {}
+    client = null
+  }
+  
+  const fs = require('fs')
+  const files = [
+    LOCAL_DB_PATH,
+    `${LOCAL_DB_PATH}-shm`,
+    `${LOCAL_DB_PATH}-wal`,
+    `${LOCAL_DB_PATH}-info`
+  ]
+  
+  for (const f of files) {
+    try {
+      if (fs.existsSync(f)) fs.unlinkSync(f)
+    } catch (e) {
+      console.warn(`[DB] Failed to delete ${f} during recovery:`, e.message)
+    }
+  }
+  
+  console.log('[DB] Local files wiped. Re-initializing cloud client...')
+  const newClient = getClient()
+  isRecovering = false
+  return newClient
 }
 
 // ── Helper wrappers ───────────────────────────────────────────────────────────
@@ -43,6 +78,16 @@ const executeWithRetry = async (sql, args = []) => {
     } catch (err) {
       const msg = err.message || ''
       const code = err.code || ''
+      
+      if ((msg.includes('SQLITE_CORRUPT') || code === 'SQLITE_CORRUPT' || msg.includes('malformed')) && !isRecovering) {
+        console.warn(`[DB] Caught corruption during execution. Triggering auto-recovery...`)
+        recoverDatabase()
+        retries--
+        if (retries === 0) throw err
+        await new Promise(r => setTimeout(r, 1000))
+        continue
+      }
+
       if (msg.includes('PermissionDenied') || msg.includes('Access is denied') || msg.includes('EBUSY') || msg.includes('database is locked') || msg.includes('WalConflict') || msg.includes('SQLITE_BUSY') || code === 'SQLITE_BUSY') {
         retries--
         if (retries === 0) throw err
@@ -542,6 +587,10 @@ const initDb = async () => {
     CREATE INDEX IF NOT EXISTS idx_outlets_name ON outlets(name);
     CREATE INDEX IF NOT EXISTS idx_products_sort ON products(group_id, sort_order, created_at);
     CREATE INDEX IF NOT EXISTS idx_activity_module ON module_activity_logs(module, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance(date);
+    CREATE INDEX IF NOT EXISTS idx_announcements_status ON announcements(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_ann_acks_ann_id ON announcement_acknowledgements(announcement_id);
+    CREATE INDEX IF NOT EXISTS idx_report_comments_report ON report_comments(report_id);
   `)
       break // success — exit retry loop
     } catch (err) {
@@ -1052,7 +1101,7 @@ const importAttendanceRawText = async (text) => {
   const { parseRawBiometrics } = require('./parseRawBiometrics.cjs');
   
   // 1. Fetch fresh employee map for parsing rules
-  const allEmps = await queryAll('SELECT * FROM employees');
+  const allEmps = await queryAll('SELECT id, employee_no, shift_start, shift_end, lunch_start, lunch_end, day_offs, day_schedule FROM employees');
   const empMap = {};
   for (const e of allEmps) {
     let daySchedule = null
@@ -1093,16 +1142,18 @@ const mapProduct = (p) => ({
 })
 
 const getProductGroups = async () => {
-  const groups = await queryAll(`SELECT * FROM product_groups WHERE status = 'Active' ORDER BY sort_order, created_at`)
-  const result = []
-  for (const g of groups) {
-    const rows = await queryAll(
-      `SELECT * FROM products WHERE group_id = ? AND status = 'Active' ORDER BY sort_order, created_at`,
-      [g.id]
-    )
-    result.push({ id: g.id, name: g.name, rows: rows.map(mapProduct) })
-  }
-  return result
+  // Fetch groups and all their products in two queries (no N+1 loop)
+  const [groups, allProducts] = await Promise.all([
+    queryAll(`SELECT * FROM product_groups WHERE status = 'Active' ORDER BY sort_order, created_at`),
+    queryAll(`SELECT * FROM products WHERE status = 'Active' ORDER BY sort_order, created_at`),
+  ])
+  // Group products by group_id in memory — avoids a query per group
+  const productsByGroup = allProducts.reduce((acc, p) => {
+    if (!acc[p.group_id]) acc[p.group_id] = []
+    acc[p.group_id].push(mapProduct(p))
+    return acc
+  }, {})
+  return groups.map(g => ({ id: g.id, name: g.name, rows: productsByGroup[g.id] ?? [] }))
 }
 
 const getArchivedProducts = async () => {
@@ -1373,12 +1424,37 @@ const updateReportStatus = async (id, status, changedBy) => {
 const assignReport = async (id, assignedTo) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
   await run(`UPDATE reports SET assigned_to=?, updated_at=? WHERE id=?`, [assignedTo, now, id])
+  // Notify the assignee so they see it in their bell immediately
+  if (global.pusherTrigger) {
+    const report = await queryOne(`SELECT report_no, subject, employee_name FROM reports WHERE id = ?`, [id])
+    global.pusherTrigger('lltools-updates', 'report-assigned', {
+      reportId: id,
+      reportNo: report?.report_no ?? '',
+      subject: report?.subject ?? '',
+      assignedTo,
+    })
+  }
 }
 
 const addReportComment = async (comment) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
   await run(`INSERT INTO report_comments (id, report_id, user_id, username, comment, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
     [comment.id, comment.reportId, comment.userId ?? null, comment.username ?? '', comment.comment ?? '', now])
+  // Notify: the employee who filed the report + all previous commenters (except the person just commenting)
+  if (global.pusherTrigger) {
+    const report = await queryOne(`SELECT report_no, subject, employee_no, employee_name FROM reports WHERE id = ?`, [comment.reportId])
+    const prevCommenters = await queryAll(`SELECT DISTINCT username FROM report_comments WHERE report_id = ? AND username != ?`, [comment.reportId, comment.username ?? ''])
+    global.pusherTrigger('lltools-updates', 'report-comment-added', {
+      reportId: comment.reportId,
+      reportNo: report?.report_no ?? '',
+      subject: report?.subject ?? '',
+      commenterName: comment.username ?? '',
+      commentSnippet: (comment.comment ?? '').slice(0, 80),
+      reportEmployeeNo: report?.employee_no ?? '',
+      reportEmployeeName: report?.employee_name ?? '',
+      prevCommenterNames: prevCommenters.map(c => c.username),
+    })
+  }
 }
 
 const getReportComments   = async (reportId) => (await queryAll(`SELECT * FROM report_comments WHERE report_id=? ORDER BY created_at ASC`, [reportId])).map(c => ({
@@ -1551,7 +1627,7 @@ const markChatAsRead = async (userId, roomId) => {
     INSERT INTO chat_read_receipts (user_id, room_id, last_read_at)
     VALUES (?, ?, datetime('now'))
     ON CONFLICT(user_id, room_id) DO UPDATE SET last_read_at = datetime('now')
-  `, [userId, roomId])
+  `, [String(userId), String(roomId)])
 }
 
 const getChatSidebarData = async (userId) => {
@@ -1577,12 +1653,16 @@ const getChatSidebarData = async (userId) => {
     WHERE rn = 1
   `, [`DM_${userId}_%`, `DM_%_${userId}`])
 
-  // Get the user's read receipts
+  // Find the actual users.id in case the passed userId is an employee_id
+  const userRow = await queryOne(`SELECT id FROM users WHERE employee_id = ? OR id = ?`, [userId, userId])
+  const actualUserId = userRow ? String(userRow.id) : String(userId)
+
+  // Get the user's read receipts checking both string variants
   const receipts = await queryAll(`
     SELECT room_id, last_read_at 
     FROM chat_read_receipts 
-    WHERE user_id = ?
-  `, [userId])
+    WHERE user_id = ? OR user_id = ?
+  `, [String(userId), actualUserId])
 
   const receiptMap = receipts.reduce((acc, r) => {
     acc[r.room_id] = r.last_read_at
@@ -1719,7 +1799,7 @@ const wipeAllData = async () => {
       'report_comments', 'report_status_logs', 'department_chats',
       'direct_messages', 'chat_read_receipts', 'module_activity_logs', 'outlet_product_prices', 'outlets',
       'products', 'product_groups', 'employees',
-      'announcements', 'announcement_acknowledgements', 'announcement_comments', 'announcement_reactions'
+      'announcements', 'announcement_acknowledgements', 'announcement_comments', 'announcement_reactions', 'announcement_reads'
     ];
     for (const t of tables) {
       try { await run(`DELETE FROM ${t}`) } catch(e){}
@@ -1844,6 +1924,19 @@ const acknowledgeAnnouncement = async (announcementId, employeeId, employeeName)
     INSERT OR IGNORE INTO announcement_acknowledgements (id, announcement_id, employee_id, employee_name)
     VALUES (?, ?, ?, ?)
   `, [id, announcementId, employeeId, employeeName]);
+  // Notify the HR/Admin who posted the announcement
+  if (global.pusherTrigger) {
+    const ann = await queryOne(`SELECT author_id, author_name, subject FROM announcements WHERE id = ?`, [announcementId]);
+    if (ann) {
+      global.pusherTrigger('lltools-updates', 'announcement-acknowledged', {
+        announcementId,
+        announcementSubject: ann.subject ?? '',
+        authorId: ann.author_id ?? '',
+        authorName: ann.author_name ?? '',
+        employeeName,
+      });
+    }
+  }
 }
 
 const getAnnouncementAcknowledgements = async (announcementId) => {
@@ -1902,13 +1995,35 @@ const addAnnouncementComment = async (announcementId, employeeId, employeeName, 
   `, [id, announcementId, employeeId, employeeName, content, parentId]);
   
   if (global.pusherTrigger) {
-    global.pusherTrigger('lltools-updates', 'new-announcement-comment', { announcementId, id, content, employeeName });
+    // Fetch the announcement author and all previous commenters so the bell can target correctly
+    const ann = await queryOne(`SELECT author_id, author_name, subject FROM announcements WHERE id = ?`, [announcementId]);
+    const prevCommenters = await queryAll(
+      `SELECT DISTINCT employee_id, employee_name FROM announcement_comments WHERE announcement_id = ? AND employee_id != ?`,
+      [announcementId, employeeId]
+    );
+    // If this is a reply to a specific comment, include the parent comment author
+    let parentAuthorId = null, parentAuthorName = null;
+    if (parentId) {
+      const parentComment = await queryOne(`SELECT employee_id, employee_name FROM announcement_comments WHERE id = ?`, [parentId]);
+      parentAuthorId = parentComment?.employee_id ?? null;
+      parentAuthorName = parentComment?.employee_name ?? null;
+    }
+    global.pusherTrigger('lltools-updates', 'new-announcement-comment', {
+      announcementId, id, content, employeeName, employeeId,
+      announcementSubject: ann?.subject ?? '',
+      authorId: ann?.author_id ?? '',
+      authorName: ann?.author_name ?? '',
+      prevCommenterIds: prevCommenters.map(c => c.employee_id),
+      parentAuthorId,
+      parentAuthorName,
+    });
   }
   return await queryOne(`SELECT * FROM announcement_comments WHERE id = ?`, [id]);
 }
 
 const reactToAnnouncementComment = async (commentId, employeeId, employeeName, reaction) => {
   const existing = await queryOne(`SELECT id FROM announcement_reactions WHERE comment_id = ? AND employee_id = ? AND reaction = ?`, [commentId, employeeId, reaction]);
+  const isRemoving = !!existing;
   if (existing) {
     await run(`DELETE FROM announcement_reactions WHERE id = ?`, [existing.id]);
   } else {
@@ -1916,7 +2031,21 @@ const reactToAnnouncementComment = async (commentId, employeeId, employeeName, r
     await run(`INSERT INTO announcement_reactions (id, comment_id, employee_id, reaction) VALUES (?, ?, ?, ?)`, [id, commentId, employeeId, reaction]);
   }
   if (global.pusherTrigger) {
-    global.pusherTrigger('lltools-updates', 'new-announcement-comment', { commentId }); // triggering same event string to prompt refresh
+    // Fire a specific event so the comment author can be notified (only when adding, not removing)
+    const comment = await queryOne(`SELECT employee_id, employee_name, announcement_id FROM announcement_comments WHERE id = ?`, [commentId]);
+    // Trigger UI refresh for everyone
+    global.pusherTrigger('lltools-updates', 'new-announcement-comment', { commentId });
+    // Only notify the comment author when someone ADDS a reaction (not removes)
+    if (!isRemoving && comment && comment.employee_id !== employeeId) {
+      global.pusherTrigger('lltools-updates', 'announcement-comment-reacted', {
+        commentId,
+        announcementId: comment.announcement_id,
+        commentAuthorId: comment.employee_id,
+        commentAuthorName: comment.employee_name,
+        reactorName: employeeName,
+        reaction,
+      });
+    }
   }
 }
 

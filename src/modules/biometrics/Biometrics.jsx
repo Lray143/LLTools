@@ -7,6 +7,30 @@ import { BiometricFilterBar }             from './components/BiometricFilterBar'
 import { BiometricTable }                 from './components/BiometricTable'
 import BiometricManhoursSummary           from './components/BiometricManhoursSummary'
 
+// ── Global Import State ─────────────────────────────────────────
+// Persists the "Importing..." state even if the user clicks away to another module and returns.
+let globalIsImporting = false
+let globalImportError = ''
+let globalImportSuccess = ''
+let importClearTimeout = null
+const importListeners = new Set()
+
+function setGlobalImportState(isImporting, error = '', success = '') {
+  globalIsImporting = isImporting
+  globalImportError = error
+  globalImportSuccess = success
+  importListeners.forEach(listener => listener())
+
+  if (importClearTimeout) clearTimeout(importClearTimeout)
+  if (!isImporting && (error || success)) {
+    importClearTimeout = setTimeout(() => {
+      globalImportError = ''
+      globalImportSuccess = ''
+      importListeners.forEach(listener => listener())
+    }, 8000) // Auto-dismiss after 8 seconds
+  }
+}
+
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December',
@@ -154,6 +178,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
 
   const [records,     setRecords]     = useState([])
   const [employeeMap, setEmployeeMap] = useState({})
+  const [isLoading,   setIsLoading]   = useState(true)
 
   const [searchQuery,      setSearchQuery]      = useState('')
   const [debouncedSearch,  setDebouncedSearch]  = useState('')
@@ -171,28 +196,43 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
   const [selectedYear,     setSelectedYear]     = useState(new Date().getFullYear())
   const [selectedYearOnly, setSelectedYearOnly] = useState(new Date().getFullYear())
 
-  const [importError,   setImportError]   = useState('')
-  const [importSuccess, setImportSuccess] = useState('')
-
-  const [isImporting,   setIsImporting]   = useState(false)
+  const [importError,   setImportError]   = useState(globalImportError)
+  const [importSuccess, setImportSuccess] = useState(globalImportSuccess)
+  const [isImporting,   setIsImporting]   = useState(globalIsImporting)
 
   const fileInputRef = useRef(null)
+
+  // Listen to background import progress
+  useEffect(() => {
+    const listener = () => {
+      setIsImporting(globalIsImporting)
+      setImportError(globalImportError)
+      setImportSuccess(globalImportSuccess)
+    }
+    importListeners.add(listener)
+    return () => importListeners.delete(listener)
+  }, [])
 
   // On mount: load all attendance rows from the DB and map them to UI shape.
   // extra_taps is parsed inside mapRow, so extraTaps will be correct right away.
   useEffect(() => {
     async function load() {
-      const [rows, empRows] = await Promise.all([
-        window.electronAPI.getAttendance(),
-        window.electronAPI.getEmployees(),
-      ])
-      const mapped = rows.map(mapRow)
-      setRecords(mapped)
-      setEmployeeMap(buildEmployeeMap(empRows))
+      setIsLoading(true)
+      try {
+        const [rows, empRows] = await Promise.all([
+          window.electronAPI.getAttendance(),
+          window.electronAPI.getEmployees(),
+        ])
+        const mapped = rows.map(mapRow)
+        setRecords(mapped)
+        setEmployeeMap(buildEmployeeMap(empRows))
 
-      // Jump the date picker to the most recent record in the DB.
-      const latest = latestDateIn(mapped)
-      if (latest) setSelectedDate(isoToDate(latest))
+        // Jump the date picker to the most recent record in the DB.
+        const latest = latestDateIn(mapped)
+        if (latest) setSelectedDate(isoToDate(latest))
+      } finally {
+        setIsLoading(false)
+      }
     }
     load()
   }, [refreshKey])
@@ -248,9 +288,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
   async function handleFileImport(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    setIsImporting(true)
-    setImportError('')
-    setImportSuccess('')
+    setGlobalImportState(true, '', '')
 
     const reader = new FileReader()
     reader.onload = async (evt) => {
@@ -263,35 +301,35 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
         const result = await window.electronAPI.importAttendanceRawText(evt.target.result)
 
         if (result.parsedCount === 0) {
-          setImportError('No records could be read. Check the file matches the expected device format.')
-          setIsImporting(false)
+          setGlobalImportState(false, 'No records could be read. Check the file matches the expected device format.', '')
           return
         }
 
-        // Re-load from DB — mapRow will parse extra_taps back into the extraTaps array
-        // automatically, so we don't need to track it in a separate lookup anymore.
-        const rows   = await window.electronAPI.getAttendance()
-        const mapped = rows.map(mapRow)
-        setRecords(mapped)
-
-        // Jump to the most recent date in the newly imported batch.
-        const latest = latestDateIn(mapped)
-        if (latest) setSelectedDate(isoToDate(latest))
-
-        setImportSuccess(
-          `Imported ${result.newRecords} records from ${file.name}` +
+        // Generate success message
+        const successMsg = `Imported ${result.newRecords} records from ${file.name}` +
           (result.skippedRecords > 0 ? ` · ${result.skippedRecords} already existed (skipped)` : '') +
           (result.newEmployees   > 0 ? ` · ${result.newEmployees} new employee stubs created`   : '')
-        )
+
+        // Update global state
+        setGlobalImportState(false, '', successMsg)
+
+        // Attempt to reload records immediately if the component is still mounted.
+        // (If the user navigated away, the mount effect will automatically load the new data when they return).
+        try {
+          const rows   = await window.electronAPI.getAttendance()
+          const mapped = rows.map(mapRow)
+          setRecords(mapped)
+          const latest = latestDateIn(mapped)
+          if (latest) setSelectedDate(isoToDate(latest))
+        } catch (_) {
+          // Ignore state update errors on unmounted component
+        }
       } catch (err) {
-        setImportError(`Import error: ${err.message}`)
-      } finally {
-        setIsImporting(false)
+        setGlobalImportState(false, `Import error: ${err.message}`, '')
       }
     }
     reader.onerror = () => {
-      setImportError('Could not read the file.')
-      setIsImporting(false)
+      setGlobalImportState(false, 'Could not read the file.', '')
     }
     reader.readAsText(file)
     e.target.value = ''
@@ -360,8 +398,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
           availableYears={availableYears}
           isImporting={isImporting}
           onImportClick={() => {
-            setImportError('')
-            setImportSuccess('')
+            setGlobalImportState(false, '', '')
             fileInputRef.current?.click()
           }}
           onExport={handleExport}
@@ -390,13 +427,14 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
           <BiometricManhoursSummary records={records} selectedDept={selectedDept} refreshKey={refreshKey} />
         ) : (
           <>
-            <BiometricStatCards stats={stats} />
+            <BiometricStatCards stats={stats} isLoading={isLoading} />
 
             <BiometricTable
               key={debouncedSearch + '|' + selectedDept + '|' + viewMode}
               records={filteredRecords}
               total={filteredRecords.length}
               viewMode={viewMode}
+              isLoading={isLoading}
             />
           </>
         )}
