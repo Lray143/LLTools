@@ -814,11 +814,9 @@ const createEmployeeAccount = async (employeeId, employeeNo, dept) => {
 // ── USER MANAGEMENT ────────────────────────────────────────────────────────────
 const heartbeatUser = async (userId) => {
   if (!userId) return
-  try {
-    await run(`UPDATE users SET last_active = datetime('now') WHERE id = ?`, [userId])
-  } catch (err) {
-    console.error('Heartbeat error:', err)
-  }
+  // Disabled: The users table lacks a last_active column, and polling this
+  // triggers unnecessary Turso cloud syncs for all clients.
+  // Real-time presence is handled purely via Pusher user-online events.
 }
 
 const logoutUser = async (userId) => {

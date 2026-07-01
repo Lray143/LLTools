@@ -391,7 +391,7 @@ ipcMain.handle('chat:uploadAttachment', async (_, fileData, fileName, mimeType, 
 
   // ── Step 1: Save locally first so the image shows IMMEDIATELY (even offline)
   const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads')
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+  await fs.promises.mkdir(uploadsDir, { recursive: true })
   const ext = path.extname(fileName) || ''
   const localName = `${Date.now()}-${crypto.randomUUID()}${ext}`
   const localPath = path.join(uploadsDir, localName)
@@ -435,7 +435,7 @@ ipcMain.handle('chat:openR2File', async (_, fileName) => {
     try {
       const { downloadFileFromR2 } = require('./r2.cjs')
       const fileBuffer = await downloadFileFromR2(fileName)
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+      await fs.promises.mkdir(uploadsDir, { recursive: true })
       await fs.promises.writeFile(localPath, fileBuffer)
       await shell.openPath(localPath)
     } catch (err) {
@@ -506,7 +506,7 @@ autoUpdater.on('update-downloaded', (info) => {
 // ── ATTACHMENTS ───────────────────────────────────────────────────
 ipcMain.handle('attachments:save', async (_, { name, buffer }) => {
   const uploadsDir = path.join(app.getPath('userData'), 'uploads')
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+  await fs.promises.mkdir(uploadsDir, { recursive: true })
   const ext = path.extname(name) || ''
   const filename = `${crypto.randomUUID()}${ext}`
   const filepath = path.join(uploadsDir, filename)
@@ -598,8 +598,8 @@ app.whenReady().then(async () => {
       const fileBuffer = await downloadFileFromR2(fileName)
       
       // Save to cache for next time
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-      fs.writeFileSync(localPath, fileBuffer)
+      await fs.promises.mkdir(uploadsDir, { recursive: true })
+      await fs.promises.writeFile(localPath, fileBuffer)
       
       return net.fetch(`file:///${localPath.replace(/\\/g, '/')}`)
     } catch (err) {
