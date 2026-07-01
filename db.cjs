@@ -161,7 +161,7 @@ const syncCloud = async () => {
       const { BrowserWindow } = require('electron');
       const windows = BrowserWindow.getAllWindows();
       if (windows.length > 0) {
-        windows[0].webContents.send('db-synced');
+        windows[0].webContents.send('db:synced');
       }
     }
     lastDataVersion = currentVersion;
@@ -1675,7 +1675,9 @@ const getChatSidebarData = async (userId) => {
       lastSenderName: d.last_sender_name,
       lastMessage: d.last_message,
       lastFileUrl: d.last_file_url,
-      unread: String(d.last_sender_id) !== String(userId) && (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
+      unread: d.last_msg_at != null &&
+              String(d.last_sender_id) !== String(userId) &&
+              (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
     })),
     dms: allDms.map(d => ({
       roomId: d.room_id,
@@ -1684,7 +1686,9 @@ const getChatSidebarData = async (userId) => {
       lastSenderName: d.last_sender_name,
       lastMessage: d.last_message,
       lastFileUrl: d.last_file_url,
-      unread: String(d.last_sender_id) !== String(userId) && (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
+      unread: d.last_msg_at != null &&
+              String(d.last_sender_id) !== String(userId) &&
+              (!receiptMap[d.room_id] || d.last_msg_at > receiptMap[d.room_id])
     }))
   }
 }
@@ -1815,7 +1819,7 @@ const wipeAllData = async () => {
     const { BrowserWindow } = require('electron');
     const windows = BrowserWindow.getAllWindows();
     if (windows.length > 0) {
-      windows[0].webContents.send('db-synced');
+      windows[0].webContents.send('db:synced');
     }
   } finally {
     isBulkOperating = false;

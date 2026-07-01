@@ -374,6 +374,7 @@ function App() {
           refreshKey={refreshKey}
           onNavigate={setActivePage}
           onBadgesChange={handleBadgesChange}
+          suppressNative={false}
         />
       </div>
       <Sidebar

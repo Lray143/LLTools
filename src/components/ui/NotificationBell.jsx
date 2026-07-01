@@ -47,9 +47,7 @@ const STATUS_ICON = {
   'Pending':      Clock,
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-export default function NotificationBell({ currentUser, refreshKey, onNavigate, onBadgesChange }) {
+export default function NotificationBell({ currentUser, refreshKey, onNavigate, onBadgesChange, suppressNative = true }) {
   // Admin/HR incoming streams
   const [incomingReports,    setIncomingReports]    = useState([])
   const [incomingLeaves,     setIncomingLeaves]     = useState([])
@@ -84,9 +82,17 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
   const notifiedIdsRef = useRef(new Set())
   const firstFetchRef  = useRef(true)
 
+  // Reset notification tracking whenever the logged-in user changes (e.g. re-login without page reload)
+  const currentUserKey = currentUser?.id ?? currentUser?.username ?? null
+  useEffect(() => {
+    firstFetchRef.current = true
+    notifiedIdsRef.current = new Set()
+  }, [currentUserKey])
+
   const fireNative = useCallback((title, body) => {
+    if (suppressNative) return
     window.electronAPI?.showNativeNotification?.(title, body).catch(() => {})
-  }, [])
+  }, [suppressNative])
 
   const notifyEphemeral = useCallback((title, body, route) => {
     fireNative(title, body)
@@ -281,11 +287,13 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
   // This gives instant native OS popups without waiting for the DB sync cycle.
   useEffect(() => {
     if (!currentUser || !import.meta.env.VITE_PUSHER_KEY) return
-    const Pusher = window.Pusher || (typeof require !== 'undefined' ? null : null)
 
-    // Use dynamic import to avoid duplicate Pusher connections
+    // Hoist pusher outside .then() so the useEffect cleanup can disconnect it.
+    // Previously the cleanup was returned from inside .then() which React never sees.
+    let pusher = null
+
     import('pusher-js').then(({ default: PusherLib }) => {
-      const pusher = new PusherLib(import.meta.env.VITE_PUSHER_KEY, {
+      pusher = new PusherLib(import.meta.env.VITE_PUSHER_KEY, {
         cluster: import.meta.env.VITE_PUSHER_CLUSTER,
       })
       const channel = pusher.subscribe('lltools-updates')
@@ -379,12 +387,15 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
           )
         }
       })
+    }).catch(() => {})
 
-      return () => {
+    // Cleanup: this is returned directly from useEffect so React will call it
+    return () => {
+      if (pusher) {
         pusher.unsubscribe('lltools-updates')
         pusher.disconnect()
       }
-    }).catch(() => {})
+    }
   }, [currentUser, isAdmin, empId, notifyEphemeral])
 
   // Close on outside click
@@ -417,8 +428,8 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
       setOpen(false)
       return
     } else if (stream === 'chat') {
-      const chatUserId = currentUser.employeeId || String(currentUser.id)
-      window.electronAPI.markChatAsRead(currentUser.id, item.roomId).catch(() => {})
+      const chatUserId = currentUser?.employeeId || String(currentUser?.id)
+      window.electronAPI.markChatAsRead(chatUserId, item.roomId).catch(() => {})
       // Track locally so the fast-poll doesn't re-show it before the DB write syncs
       localClearedRoomsRef.current.add(item.roomId)
       // Clear the local cleared set after 10s (enough time for DB write to sync)
@@ -451,10 +462,10 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
     markAllSeen(myLeavKey, myLeaves.map(l => l.id))
     markAllSeen(myAnnKey, myAnnouncements.map(a => a.id))
     
-    // Mark chats as read
+    // Mark chats as read — use chatUserId (employeeId || id) to match the key used everywhere else
     const chatUserId = currentUser?.employeeId || String(currentUser?.id)
     unseenChats.forEach(c => {
-      window.electronAPI.markChatAsRead(currentUser.id, c.roomId).catch(() => {})
+      window.electronAPI.markChatAsRead(chatUserId, c.roomId).catch(() => {})
     })
 
     setUnseenInReports([])
@@ -686,7 +697,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
                   accentColor   = STATUS_COLOR[status] ?? '#6b7280'
                   Icon          = STATUS_ICON[status] || (isMyReport ? FileText : CalendarClock)
                   avatarBg      = 'var(--page-bg-alt)'
-                  avatarInitial = String(currentUser.employeeName || currentUser.username || '?').charAt(0).toUpperCase()
+                  avatarInitial = String(currentUser?.employeeName || currentUser?.username || '?').charAt(0).toUpperCase()
                 }
 
                 // --- Text Formatting (Inline Flow) ---

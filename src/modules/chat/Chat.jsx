@@ -45,7 +45,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
   const canSeeAll = GLOBAL_ROLES.includes(currentUser?.role)
   const canSeeSyncStatus = canSeeAll || ['Admin', 'HR'].includes(currentUser?.department)
-  const myParticipantId = currentUser.employeeId || String(currentUser.id)
+  const myParticipantId = currentUser?.employeeId || String(currentUser?.id || '')
 
   // ── Sidebar data (unread counts + ordering) ───────────────────────────────
   const loadSidebarData = useCallback(async () => {
@@ -124,6 +124,15 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           return next
         })
       }
+    })
+
+    channel.bind('request-status', () => {
+      // Someone just logged in, tell them we are online
+      window.electronAPI?.sendPusherEvent?.({
+        channel: 'lltools-updates',
+        event: 'user-online',
+        data: { userId: myParticipantIdRef.current },
+      }).catch(() => {})
     })
 
     channel.bind('reaction-updated', (data) => {
@@ -207,6 +216,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     return () => {
       channel.unbind('user-online')
       channel.unbind('user-offline')
+      channel.unbind('request-status')
       channel.unbind('reaction-updated')
       channel.unbind('new-message')
       channel.unbind('message-updated')
@@ -250,6 +260,13 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         channel: 'lltools-updates',
         event: 'user-online',
         data: { userId: myParticipantId },
+      }).catch(() => {})
+      
+      // Also request others to broadcast their status so we know who is online
+      window.electronAPI?.sendPusherEvent?.({
+        channel: 'lltools-updates',
+        event: 'request-status',
+        data: {},
       }).catch(() => {})
     }
 

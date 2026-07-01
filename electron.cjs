@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain, shell, protocol, net, Notification } = requ
 // Must be set before the app is ready / any window or notification is created.
 // Without this, Windows falls back to showing "Electron" as the notification
 // sender name in dev mode instead of your actual app name.
-app.setAppUserModelId('com.lltools.app')
+app.setAppUserModelId('com.doublel.lltools')
 
 const path = require('path')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
@@ -36,6 +36,7 @@ const {
   getDepartmentChats, sendDepartmentChat, getDirectMessages, sendDirectMessage,
   updateChatFileUrl, updateDmFileUrl,
   markChatAsRead, getChatSidebarData, getRoomReceipts,
+  toggleReaction, editMessage, unsendMessage, deleteMessageForMe,
   refreshUser, heartbeatUser, logoutUser,
   getAppLinks, getAppLink, upsertAppLink,
   addModuleActivityLog, getModuleActivityLogs,
@@ -116,7 +117,7 @@ function createWindow() {
     title: 'LLTools',
     width: 1280,
     height: 800,
-    icon: path.join(__dirname, 'public/Logo.png'),
+    icon: path.join(__dirname, 'public/icon_large.png'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -142,11 +143,22 @@ function createWindow() {
   })
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────
-ipcMain.handle('auth:login', (_, creds) => loginUser(creds.username, creds.password))
+// ── AUTH ────────────────────────────────────────────────────────────────
+ipcMain.handle('auth:login', async (_, creds) => {
+  try {
+    return await loginUser(creds.username, creds.password)
+  } catch (err) {
+    console.error('[auth:login]', err)
+    throw new Error(err.message || 'Login failed')
+  }
+})
 ipcMain.handle('auth:refresh', async (_, id) => {
-  const db = await import('./db.cjs')
-  return await db.refreshUser(id)
+  try {
+    return await refreshUser(id)
+  } catch (err) {
+    console.error('[auth:refresh]', err)
+    throw new Error(err.message || 'Session refresh failed')
+  }
 })
 
 // ── EMPLOYEES ─────────────────────────────────────────────────────
@@ -272,6 +284,24 @@ ipcMain.handle('leaves:getAll',  ()                    => getLeaveRequests())
 ipcMain.handle('leaves:getMine', (_, employeeId)       => getMyLeaveRequests(employeeId))
 ipcMain.handle('leaves:review',  (_, id, status, note, reviewedBy) => reviewLeaveRequest(id, status, note, reviewedBy))
 
+// ── CHATS ───────────────────────────────────────────────────────────────
+ipcMain.handle('chat:getMessages', async (_, dept) => {
+  try { return await getDepartmentChats(dept) }
+  catch (err) { console.error('[chat:getMessages]', err); throw err }
+})
+ipcMain.handle('chat:sendMessage', async (_, msgData) => {
+  try { await sendDepartmentChat(msgData); return { success: true } }
+  catch (err) { console.error('[chat:sendMessage]', err); throw err }
+})
+ipcMain.handle('chat:getDMs', async (_, roomId) => {
+  try { return await getDirectMessages(roomId) }
+  catch (err) { console.error('[chat:getDMs]', err); throw err }
+})
+ipcMain.handle('chat:sendDM', async (_, msgData) => {
+  try { await sendDirectMessage(msgData); return { success: true } }
+  catch (err) { console.error('[chat:sendDM]', err); throw err }
+})
+
 // ── REPORTS ───────────────────────────────────────────────────────
 ipcMain.handle('reports:create',        (_, report)                    => createReport(report))
 ipcMain.handle('reports:update',        (_, report)                    => updateReport(report))
@@ -287,25 +317,6 @@ ipcMain.handle('reports:archive',       (_, id)                        => archiv
 ipcMain.handle('reports:unarchive',     (_, id)                        => unarchiveReport(id))
 ipcMain.handle('reports:permanentDelete', (_, id)                      => permanentDeleteReport(id))
 
-// ── CHATS ─────────────────────────────────────────────────────────
-ipcMain.handle('chat:getMessages', async (_, dept) => {
-  const db = await import('./db.cjs')
-  return await db.getDepartmentChats(dept)
-})
-ipcMain.handle('chat:sendMessage', async (_, msgData) => {
-  const db = await import('./db.cjs')
-  await db.sendDepartmentChat(msgData)
-  // Background worker handles the sync
-})
-ipcMain.handle('chat:getDMs', async (_, roomId) => {
-  const db = await import('./db.cjs')
-  return await db.getDirectMessages(roomId)
-})
-ipcMain.handle('chat:sendDM', async (_, msgData) => {
-  const db = await import('./db.cjs')
-  await db.sendDirectMessage(msgData)
-  // Background worker handles the sync
-})
 
 ipcMain.handle('chat:sendPusherEvent', async (_, { channel, event, data }) => {
   if (pusherDisabled) return { success: false, reason: 'Pusher disabled' }
@@ -337,7 +348,6 @@ ipcMain.handle('system:showNativeNotification', (_, { title, body }) => {
   const notification = new Notification({
     title: title || 'LLTools',
     body: body || '',
-    icon: path.join(__dirname, 'public/icon.png'),
   })
 
   notification.on('click', () => {
@@ -351,35 +361,36 @@ ipcMain.handle('system:showNativeNotification', (_, { title, body }) => {
 })
 
 ipcMain.handle('chat:markAsRead', async (_, userId, roomId) => {
-  const db = await import('./db.cjs')
-  await db.markChatAsRead(userId, roomId)
-  // We DO NOT force db.syncCloud() here because it locks the database
-  // and prevents getChatMessages from loading instantly when switching channels.
-  // The background 2-second interval sync will pick this up automatically.
+  try {
+    await markChatAsRead(userId, roomId)
+    // We DO NOT force db.syncCloud() here because it locks the database
+    // and prevents getChatMessages from loading instantly when switching channels.
+    // The background 2-second interval sync will pick this up automatically.
+  } catch (err) { console.error('[chat:markAsRead]', err) }
 })
 ipcMain.handle('chat:getSidebarData', async (_, userId) => {
-  const db = await import('./db.cjs')
-  return await db.getChatSidebarData(userId)
+  try { return await getChatSidebarData(userId) }
+  catch (err) { console.error('[chat:getSidebarData]', err); return null }
 })
 ipcMain.handle('chat:getRoomReceipts', async (_, roomId) => {
-  const db = await import('./db.cjs')
-  return await db.getRoomReceipts(roomId)
+  try { return await getRoomReceipts(roomId) }
+  catch (err) { console.error('[chat:getRoomReceipts]', err); return [] }
 })
 ipcMain.handle('chat:toggleReaction', async (_, msgId, userId, userName, emoji, isDm) => {
-  const db = await import('./db.cjs')
-  return await db.toggleReaction(msgId, userId, userName, emoji, isDm)
+  try { return await toggleReaction(msgId, userId, userName, emoji, isDm) }
+  catch (err) { console.error('[chat:toggleReaction]', err); throw err }
 })
 ipcMain.handle('chat:editMessage', async (_, msgId, userId, newText, isDm) => {
-  const db = await import('./db.cjs')
-  return await db.editMessage(msgId, userId, newText, isDm)
+  try { return await editMessage(msgId, userId, newText, isDm) }
+  catch (err) { console.error('[chat:editMessage]', err); throw err }
 })
 ipcMain.handle('chat:unsendMessage', async (_, msgId, userId, isDm) => {
-  const db = await import('./db.cjs')
-  return await db.unsendMessage(msgId, userId, isDm)
+  try { return await unsendMessage(msgId, userId, isDm) }
+  catch (err) { console.error('[chat:unsendMessage]', err); throw err }
 })
 ipcMain.handle('chat:deleteForMe', async (_, msgId, userId, isDm) => {
-  const db = await import('./db.cjs')
-  return await db.deleteMessageForMe(msgId, userId, isDm)
+  try { return await deleteMessageForMe(msgId, userId, isDm) }
+  catch (err) { console.error('[chat:deleteForMe]', err); throw err }
 })
 ipcMain.handle('chat:uploadAttachment', async (_, fileData, fileName, mimeType, msgId, msgType) => {
   let buffer
