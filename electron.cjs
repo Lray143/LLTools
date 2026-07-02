@@ -164,7 +164,16 @@ ipcMain.handle('auth:refresh', async (_, id) => {
 // ── EMPLOYEES ─────────────────────────────────────────────────────
 ipcMain.handle('employees:getAll',      ()       => getEmployees())
 ipcMain.handle('employees:getArchived', ()       => getArchivedEmployees())
-ipcMain.handle('employees:upsert',      (_, emp) => upsertEmployee(emp))
+ipcMain.handle('employees:upsert', async (_, emp) => {
+  try {
+    return await upsertEmployee(emp)
+  } catch (err) {
+    if (err.message && err.message.includes('UNIQUE constraint failed: employees.employee_no')) {
+      throw new Error(`Employee No. "${emp.employee_no}" is already taken by another employee.`)
+    }
+    throw err
+  }
+})
 ipcMain.handle('employees:archive',     (_, id)  => archiveEmployee(id))
 ipcMain.handle('employees:unarchive',   (_, id)  => unarchiveEmployee(id))
 ipcMain.handle('employees:permDelete',  (_, id)  => permanentDeleteEmployee(id))
