@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain, shell, protocol, net, Notification } = requ
 // Must be set before the app is ready / any window or notification is created.
 // Without this, Windows falls back to showing "Electron" as the notification
 // sender name in dev mode instead of your actual app name.
-app.setAppUserModelId('com.doublel.lltools')
+app.setAppUserModelId('com.lltools.app')
 
 const path = require('path')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
@@ -117,7 +117,7 @@ function createWindow() {
     title: 'LLTools',
     width: 1280,
     height: 800,
-    icon: path.join(__dirname, 'public/icon_large.png'),
+    icon: path.join(__dirname, 'public/icon.ico'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
