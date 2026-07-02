@@ -97,7 +97,7 @@ function Avatar({ name, size = 40 }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       background: colors[idx], color: '#fff',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.38, fontWeight: 700, letterSpacing: '-0.5px',
+      fontSize: size * 0.38, fontWeight: 500, letterSpacing: '-0.5px',
     }}>
       {getInitials(name)}
     </div>
@@ -119,7 +119,7 @@ function AnalyticsModal({ acks, reads, requiresAck, onClose }) {
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-primary)' }}>Post Analytics</span>
+          <span style={{ fontWeight: 500, fontSize: 18, color: 'var(--text-primary)' }}>Post Analytics</span>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
              <Trash2 size={16} style={{opacity: 0}} />
           </button>
@@ -132,7 +132,7 @@ function AnalyticsModal({ acks, reads, requiresAck, onClose }) {
               onClick={() => setTab('acks')}
               style={{
                 flex: 1, padding: '10px 0', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontWeight: 600, fontSize: 14,
+                fontWeight: 500, fontSize: 14,
                 color: tab === 'acks' ? 'var(--theme-500)' : 'var(--text-secondary)',
                 borderBottom: tab === 'acks' ? '2px solid var(--theme-500)' : '2px solid transparent',
                 transition: 'all 200ms'
@@ -145,7 +145,7 @@ function AnalyticsModal({ acks, reads, requiresAck, onClose }) {
             onClick={() => setTab('reads')}
             style={{
               flex: 1, padding: '10px 0', border: 'none', background: 'transparent', cursor: 'pointer',
-              fontWeight: 600, fontSize: 14,
+              fontWeight: 500, fontSize: 14,
               color: tab === 'reads' ? 'var(--text-primary)' : 'var(--text-secondary)',
               borderBottom: tab === 'reads' ? '2px solid var(--text-primary)' : '2px solid transparent',
               transition: 'all 200ms'
@@ -164,7 +164,7 @@ function AnalyticsModal({ acks, reads, requiresAck, onClose }) {
                 <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
                   <Avatar name={a.employee_name} size={32} />
                   <div>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{a.employee_name}</p>
+                    <p style={{ margin: 0, fontWeight: 500, fontSize: 14, color: 'var(--text-primary)' }}>{a.employee_name}</p>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{relativeTime(a.acknowledged_at)}</p>
                   </div>
                   <CheckCircle size={16} style={{ marginLeft: 'auto', color: '#16a34a' }} />
@@ -181,7 +181,7 @@ function AnalyticsModal({ acks, reads, requiresAck, onClose }) {
                 <div key={r.employee_id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
                   <Avatar name={r.employee_name} size={32} />
                   <div>
-                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{r.employee_name}</p>
+                    <p style={{ margin: 0, fontWeight: 500, fontSize: 14, color: 'var(--text-primary)' }}>{r.employee_name}</p>
                     <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>{relativeTime(r.read_at)}</p>
                   </div>
                 </div>
@@ -193,7 +193,7 @@ function AnalyticsModal({ acks, reads, requiresAck, onClose }) {
         <button onClick={onClose} style={{
           marginTop: 16, padding: '8px', borderRadius: 10, border: 'none',
           background: 'var(--surface-hover)', color: 'var(--text-primary)',
-          fontWeight: 600, fontSize: 14, cursor: 'pointer',
+          fontWeight: 500, fontSize: 14, cursor: 'pointer',
         }}>Close</button>
       </div>
     </div>
@@ -283,31 +283,32 @@ export default function AnnouncementCard({
     <>
       {showAckModal && <AnalyticsModal acks={acks} reads={reads} requiresAck={requiresAck} onClose={() => setShowAckModal(false)} />}
 
-      <div style={{
-        background: 'var(--surface)',
-        border: `1px solid ${isUrgent ? 'rgba(239,68,68,0.3)' : 'var(--border)'}`,
-        borderRadius: 16,
-        overflow: 'hidden',
-        boxShadow: isUrgent
-          ? '0 2px 20px rgba(239,68,68,0.08)'
-          : '0 1px 8px rgba(0,0,0,0.05)',
-        transition: 'box-shadow 200ms',
-        opacity: isArchived ? 0.75 : 1,
-      }}>
+      <div 
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderTop: isUrgent ? '3px solid #ef4444' : '1px solid var(--border)',
+          borderRadius: 16,
+          overflow: 'hidden',
+          boxShadow: '0 1px 8px rgba(0,0,0,0.05)',
+          transition: 'all 200ms ease',
+          opacity: isArchived ? 0.75 : 1,
+        }}
+        onMouseEnter={e => {
+          if (!focused) {
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.08)'
+            if (isUrgent) e.currentTarget.style.boxShadow = '0 12px 24px rgba(239,68,68,0.12)'
+          }
+        }}
+        onMouseLeave={e => {
+          if (!focused) {
+            e.currentTarget.style.transform = 'none'
+            e.currentTarget.style.boxShadow = '0 1px 8px rgba(0,0,0,0.05)'
+          }
+        }}
+      >
 
-        {/* Urgent stripe */}
-        {isUrgent && (
-          <div style={{
-            background: 'linear-gradient(90deg, #ef4444, #f97316)',
-            padding: '6px 16px',
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            <AlertTriangle size={13} color="#fff" />
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-              Urgent Announcement
-            </span>
-          </div>
-        )}
 
         <div
           style={{ padding: '16px 20px', cursor: focused ? 'default' : 'pointer' }}
@@ -323,16 +324,26 @@ export default function AnnouncementCard({
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
+                <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--text-primary)' }}>
                   {announcement.author_name}
                 </span>
                 <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
+                  fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 20,
                   background: 'rgba(var(--theme-500-rgb,99,102,241),0.1)',
                   color: 'var(--theme-500)',
                 }}>
                   HR / Admin
                 </span>
+                {isUrgent && (
+                  <span style={{
+                    fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 20,
+                    background: 'rgba(239,68,68,0.1)',
+                    color: '#ef4444',
+                    display: 'flex', alignItems: 'center', gap: 4
+                  }}>
+                    <AlertTriangle size={11} /> URGENT
+                  </span>
+                )}
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)', marginLeft: 'auto' }}>
                   {relativeTime(announcement.created_at)}
                 </span>
@@ -377,7 +388,7 @@ export default function AnnouncementCard({
               <button
                 onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
                 title="Permanently Delete"
-                style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: '#ef4444', fontSize: 12, fontWeight: 600 }}
+                style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: '#ef4444', fontSize: 12, fontWeight: 500 }}
               >
                 <Trash2 size={12} /> Delete
               </button>
@@ -387,7 +398,7 @@ export default function AnnouncementCard({
           {/* Subject */}
           <h3 style={{
             margin: '0',
-            fontSize: 17, fontWeight: 800,
+            fontSize: 17, fontWeight: 500,
             color: 'var(--text-primary)',
             lineHeight: 1.3,
           }}>
@@ -477,7 +488,7 @@ export default function AnnouncementCard({
                         }}>
                           <Paperclip size={16} style={{ color: 'var(--theme-500)', flexShrink: 0 }} />
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
                               {customName || decodeURIComponent(renderUrl.split('/').pop().split('?')[0]) || 'Attached File'}
                             </span>
                             {(renderUrl.startsWith('attachment://') || renderUrl.startsWith('r2://')) ? (
@@ -491,7 +502,7 @@ export default function AnnouncementCard({
                                   }
                                 }}
                                 style={{
-                                  fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)',
+                                  fontSize: 12, fontWeight: 500, textDecoration: 'underline', color: 'var(--theme-500)',
                                   background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left'
                                 }}
                               >
@@ -499,7 +510,7 @@ export default function AnnouncementCard({
                               </button>
                             ) : (
                               <a href={renderUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                                style={{ fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)' }}>
+                                style={{ fontSize: 12, fontWeight: 500, textDecoration: 'underline', color: 'var(--theme-500)' }}>
                                 Download File
                               </a>
                             )}
@@ -550,16 +561,16 @@ export default function AnnouncementCard({
                       }}>
                         <Paperclip size={16} style={{ color: 'var(--theme-500)', flexShrink: 0 }} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', wordBreak: 'break-all' }}>
                             {decodeURIComponent(renderUrl.split('/').pop().split('?')[0]) || 'Attached File'}
                           </span>
                           {(renderUrl.startsWith('r2://') || renderUrl.startsWith('attachment://')) ? (
                           <button onClick={(e) => { e.stopPropagation(); window.electronAPI?.openR2File?.(renderUrl.replace('r2://', '')) }}
-                            style={{ fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+                            style={{ fontSize: 12, fontWeight: 500, textDecoration: 'underline', color: 'var(--theme-500)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
                             Download File
                           </button>
                         ) : (
-                          <a href={renderUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, fontWeight: 600, textDecoration: 'underline', color: 'var(--theme-500)' }}>Download File</a>
+                          <a href={renderUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, fontWeight: 500, textDecoration: 'underline', color: 'var(--theme-500)' }}>Download File</a>
                         )}
                         </div>
                       </div>
@@ -588,7 +599,7 @@ export default function AnnouncementCard({
                 disabled={hasAcknowledged || acknowledging}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: hasAcknowledged ? 'default' : 'pointer',
+                  padding: '6px 14px', borderRadius: 20, fontWeight: 500, fontSize: 13, cursor: hasAcknowledged ? 'default' : 'pointer',
                   border: hasAcknowledged ? '1.5px solid #16a34a' : '1.5px solid var(--theme-500)',
                   background: hasAcknowledged ? 'rgba(22,163,74,0.08)' : 'rgba(var(--theme-500-rgb,99,102,241),0.08)',
                   color: hasAcknowledged ? '#16a34a' : 'var(--theme-500)',
@@ -609,7 +620,7 @@ export default function AnnouncementCard({
                 onClick={() => setShowComments(o => !o)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '6px 14px', borderRadius: 20, fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                  padding: '6px 14px', borderRadius: 20, fontWeight: 500, fontSize: 13, cursor: 'pointer',
                   border: '1.5px solid var(--border)',
                   background: showComments ? 'var(--surface-hover)' : 'transparent',
                   color: 'var(--text-secondary)',
@@ -640,19 +651,19 @@ export default function AnnouncementCard({
                   marginTop: 12, padding: '12px 16px', borderRadius: 10,
                   background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
                 }}>
-                  <p style={{ margin: '0 0 10px', fontWeight: 600, fontSize: 14, color: '#ef4444' }}>
+                  <p style={{ margin: '0 0 10px', fontWeight: 500, fontSize: 14, color: '#ef4444' }}>
                     {isArchived ? 'Permanently delete this announcement?' : 'Archive this announcement?'}
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); onDelete(); }}
-                      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}
                     >
                       Yes, {isArchived ? 'Delete' : 'Archive'}
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
-                      style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-hover)', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+                      style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-hover)', color: 'var(--text-secondary)', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}
                     >
                       Cancel
                     </button>

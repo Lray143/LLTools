@@ -366,7 +366,7 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
             <Stethoscope size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Clinic Log</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>Clinic Log</h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Employee health &amp; visit records</p>
           </div>
         </div>

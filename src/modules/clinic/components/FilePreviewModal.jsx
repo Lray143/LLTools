@@ -17,8 +17,27 @@ function getFileType(att) {
  *          { useModal: false }     when the native handler was invoked.
  */
 export async function resolveAttachment(att) {
+  const isImage = getFileType(att) === 'image'
+
+  if (att.path && att.path.startsWith('r2://')) {
+    if (isImage || getFileType(att) === 'pdf') {
+      // Use in-app modal for images and PDFs, using the r2:// protocol directly
+      return { useModal: true, att: { ...att, dataUrl: att.path } }
+    } else {
+      // Open other files natively
+      window.electronAPI.openR2File(att.path.replace('r2://', ''))
+      return { useModal: false }
+    }
+  }
+
   // Prefer native OS handler via Electron (safest for PDFs)
   if (window.electronAPI && att.path) {
+    if (isImage) {
+      // Use attachment:// scheme to bypass Chromium file:// restrictions for local absolute paths
+      // Note: Use three slashes so the Windows drive letter isn't treated as a hostname
+      const safePath = att.path.replace(/\\/g, '/')
+      return { useModal: true, att: { ...att, dataUrl: `attachment:///${safePath}` } }
+    }
     window.electronAPI.openAttachment(att.path)
     return { useModal: false }
   }

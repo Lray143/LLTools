@@ -74,7 +74,7 @@ function EmployeeSelect({ employees, selected, onChange }) {
               onClick={() => { onChange([]); setOpen(false) }}
               style={{
                 width: '100%', padding: '8px 12px', textAlign: 'left', background: selected.length === 0 ? 'rgba(var(--theme-500-rgb,99,102,241),0.08)' : 'transparent',
-                border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500,
                 color: selected.length === 0 ? 'var(--theme-500)' : 'var(--text-primary)',
               }}
             >
@@ -385,7 +385,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Megaphone size={18} style={{ color: 'var(--theme-500)' }} />
-          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>New Announcement</span>
+          <span style={{ fontWeight: 500, fontSize: 15, color: 'var(--text-primary)' }}>New Announcement</span>
         </div>
         {!focused && (
           <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
@@ -397,7 +397,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
       {/* Subject */}
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Subject *
           </label>
           <div style={{ position: 'relative' }} data-emoji-container>
@@ -446,7 +446,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
 
       {/* Receive */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Receive
         </label>
         <EmployeeSelect employees={employees} selected={targetIds} onChange={setTargetIds} />
@@ -463,7 +463,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
           background: 'var(--surface)',
           paddingBottom: 4,
         }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Content *
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }} data-emoji-container>
@@ -625,7 +625,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
             onClick={() => opt.set(v => !v)}
             style={{
               display: 'inline-flex', alignItems: 'center',
-              padding: '6px 14px', borderRadius: 24, fontSize: 13, fontWeight: 600,
+              padding: '6px 14px', borderRadius: 24, fontSize: 13, fontWeight: 500,
               cursor: 'pointer', border: '1.5px solid',
               borderColor: opt.val ? 'var(--theme-500)' : 'transparent',
               background:   opt.val ? 'rgba(var(--theme-500-rgb,99,102,241),0.08)' : 'var(--surface-hover)',
@@ -654,7 +654,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
               ? 'var(--surface-hover)' : 'var(--theme-500)',
             color: (!subject.trim() || !hasContent || submitting || isUploading)
               ? 'var(--text-secondary)' : '#fff',
-            fontWeight: 700, fontSize: 14, transition: 'all 200ms',
+            fontWeight: 500, fontSize: 14, transition: 'all 200ms',
           }}
         >
           {submitting ? 'Posting…' : 'Post Announcement'}
@@ -664,7 +664,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
           style={{
             padding: '10px 16px', borderRadius: 10, border: '1px solid var(--border)',
             background: 'var(--surface-hover)', color: 'var(--text-secondary)',
-            fontWeight: 600, fontSize: 14, cursor: 'pointer',
+            fontWeight: 500, fontSize: 14, cursor: 'pointer',
           }}
         >
           Cancel
@@ -824,7 +824,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
             <Megaphone size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>
               Announcements
             </h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -853,7 +853,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
                 key={tab.id}
                 onClick={() => setView(tab.id)}
                 style={{
-                  padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500,
                   background: view === tab.id ? 'var(--surface)' : 'transparent',
                   color: view === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
                   boxShadow: view === tab.id ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
@@ -880,7 +880,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
           overflow: 'hidden' // Hide outer scroll, let the editor scroll
         }}>
           <div style={{
-            maxWidth: 1400, width: '100%', margin: '0 auto',
+            maxWidth: 960, width: '100%', margin: '0 auto',
             flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0
           }}>
             {/* Back button */}
@@ -889,7 +889,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600,
+                color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500,
                 padding: '4px 0', marginBottom: 20, flexShrink: 0
               }}
             >
@@ -915,7 +915,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
           overflow: 'hidden'
         }}>
           <div style={{
-            maxWidth: 1400, width: '100%', margin: '0 auto',
+            maxWidth: 960, width: '100%', margin: '0 auto',
             flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0
           }}>
             <button
@@ -923,7 +923,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600,
+                color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500,
                 padding: '4px 0', marginBottom: 20, flexShrink: 0
               }}
             >
@@ -947,21 +947,30 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
       {/* ── Body (Feed) ── */}
       {!composing && !viewingAnnouncement && (
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 32px' }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Compose box — only show the collapsed trigger button when NOT composing */}
           {canPost && view === 'feed' && (
             <button
               onClick={() => setComposing(true)}
               style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', display: 'flex', alignItems: 'center', gap: 12,
                 padding: '12px 16px', borderRadius: 14, cursor: 'pointer',
-                background: 'var(--surface)', border: '1.5px dashed var(--border)',
-                color: 'var(--text-secondary)', fontSize: 14,
-                transition: 'all 200ms',
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                color: 'var(--text-secondary)', fontSize: 14, fontWeight: 500,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                transition: 'all 200ms ease',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--theme-500)'; e.currentTarget.style.color = 'var(--theme-500)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+              onMouseEnter={e => { 
+                e.currentTarget.style.borderColor = 'var(--theme-500)'
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(var(--theme-500-rgb,99,102,241), 0.15)'
+                e.currentTarget.style.transform = 'translateY(-1px)'
+              }}
+              onMouseLeave={e => { 
+                e.currentTarget.style.borderColor = 'var(--border)'
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.03)'
+                e.currentTarget.style.transform = 'none'
+              }}
             >
               <div style={{
                 width: 32, height: 32, borderRadius: '50%',
@@ -982,7 +991,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
               border: '1px solid rgba(var(--theme-500-rgb,99,102,241),0.15)',
             }}>
               <Archive size={15} style={{ color: 'var(--theme-500)' }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
                 Archived announcements are stored for record-keeping. Only HR/Admin can permanently delete them.
               </span>
             </div>
@@ -995,7 +1004,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <History size={15} style={{ color: 'var(--theme-500)' }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>
                   Your collection of announcements you have seen and acknowledged.
                 </span>
               </div>
@@ -1005,7 +1014,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
                 style={{
                   padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)',
                   background: 'var(--surface)', color: 'var(--text-primary)',
-                  fontSize: 12, fontWeight: 600, outline: 'none', cursor: 'pointer'
+                  fontSize: 12, fontWeight: 500, outline: 'none', cursor: 'pointer'
                 }}
               >
                 <option value="all">All Seen</option>
@@ -1032,7 +1041,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
               }}>
                 <Megaphone size={30} style={{ color: 'var(--text-secondary)', opacity: 0.5 }} />
               </div>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
+              <p style={{ margin: 0, fontWeight: 500, fontSize: 16, color: 'var(--text-primary)' }}>
                 {view === 'archived' ? (canPost ? 'No archived announcements' : 'No announcements seen yet') : 'No announcements yet'}
               </p>
               <p style={{ margin: '6px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>
@@ -1063,7 +1072,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
                         alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6,
                         padding: '5px 12px', borderRadius: 8, border: '1px solid var(--border)',
                         background: 'var(--surface-hover)', color: 'var(--text-secondary)',
-                        fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        fontSize: 12, fontWeight: 500, cursor: 'pointer',
                       }}
                     >
                       <ArchiveRestore size={12} /> Restore to Feed

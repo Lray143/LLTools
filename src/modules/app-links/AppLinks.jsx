@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link2, Save, ExternalLink, CheckCircle } from 'lucide-react'
 import { Button } from '../../components/ui/button'
+import { ensureProtocol, isValidUrl, toTitleCase } from '../../lib/validation'
 
 const DEFAULT_LEAVE_GFORM =
   'https://docs.google.com/forms/d/e/1FAIpQLSfSBRl4zYfbTMCJzOfYz_bEK4y6LuV2cpu518K-xPbjWKibnA/viewform?embedded=true'
@@ -120,7 +121,14 @@ export default function AppLinks({ currentUser, refreshKey = 0 }) {
       return
     }
 
-    const normalizedUrl = normalizeFormUrl(draft.url)
+    const urlWithProtocol = ensureProtocol(draft.url)
+    if (!isValidUrl(urlWithProtocol)) {
+      setErrorMsg('Please enter a valid URL.')
+      setTimeout(() => setErrorMsg(''), 4000)
+      return
+    }
+
+    const normalizedUrl = normalizeFormUrl(urlWithProtocol)
     const payload = {
       key: link.key,
       label: draft.label?.trim() || link.label || 'Leave Request Form',
@@ -174,7 +182,7 @@ export default function AppLinks({ currentUser, refreshKey = 0 }) {
             <Link2 size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>App Links</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>App Links</h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
               Manage URLs used across the app. Changes sync to all users automatically.
             </p>
@@ -245,6 +253,7 @@ export default function AppLinks({ currentUser, refreshKey = 0 }) {
                     <input
                       value={draft.label}
                       onChange={e => updateDraft(link.key, 'label', e.target.value)}
+                      onBlur={() => updateDraft(link.key, 'label', toTitleCase(draft.label))}
                       className="w-full rounded-lg text-sm outline-none px-3"
                       style={{
                         height: '38px',

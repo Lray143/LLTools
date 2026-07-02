@@ -9,18 +9,36 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../../components/ui/select"
+import { toSentenceCase } from "../../../lib/validation"
 
 export function LeaveModal({ open, onClose, onSubmit, loading }) {
   const [form, setForm] = useState({
     leave_type: LEAVE_TYPES[0], start_date: '', end_date: '', reason: '',
   })
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    if (open) setForm({ leave_type: LEAVE_TYPES[0], start_date: '', end_date: '', reason: '' })
+    if (open) {
+      setForm({
+        leave_type: LEAVE_TYPES[0],
+        start_date: "",
+        end_date: "",
+        reason: "",
+      })
+      setError("")
+    }
   }, [open])
 
-  function handleSubmit() {
-    if (!form.start_date || !form.end_date || form.end_date < form.start_date) return
+  async function handleSubmit() {
+    if (!form.start_date || !form.end_date) {
+      setError("Start Date and End Date are required.")
+      return
+    }
+    if (new Date(form.end_date) < new Date(form.start_date)) {
+      setError("End Date cannot be before Start Date.")
+      return
+    }
+    setError("")
     onSubmit(form)
   }
 
@@ -104,6 +122,7 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
               <textarea
                 value={form.reason}
                 onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                onBlur={() => setForm(f => ({ ...f, reason: toSentenceCase(f.reason) }))}
                 placeholder="Briefly explain the reason for your leave..."
                 rows={3}
                 className="w-full p-3 border rounded-lg text-sm outline-none resize-y"
@@ -114,21 +133,18 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
         </div>
 
         {/* Footer */}
-        <div className="px-8 pb-8 flex justify-end gap-2">
-          <Button variant="outline" className="text-sm h-10" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={loading || !form.start_date || !form.end_date}
-            className="border-0 text-sm h-10 px-6 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-            style={{ background: 'var(--theme-500)', color: '#fff' }}
-          >
-            {loading ? 'Submitting…' : 'Submit Request'}
-          </Button>
+        <div className="px-8 pb-8 flex flex-col gap-2">
+          {error && <div className="text-red-500 text-xs font-medium text-right w-full">{error}</div>}
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" className="text-sm h-10" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }} onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading} className="border-0 text-sm h-10 px-6 disabled:opacity-50 transition-colors" style={{ background: 'var(--theme-500)', color: '#fff' }}>
+              {loading ? 'Submitting…' : 'Submit Request'}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   )
 }
-

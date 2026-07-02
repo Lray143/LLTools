@@ -9,6 +9,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../../components/ui/select"
+import { toSentenceCase, toTitleCase } from "../../../lib/validation"
 
 const emptyForm = () => ({
   report_type: REPORT_TYPES[0],
@@ -27,6 +28,7 @@ const emptyForm = () => ({
 
 export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
   const [form, setForm] = useState(emptyForm())
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (open) {
@@ -44,6 +46,7 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
       } else {
         setForm(emptyForm())
       }
+      setError("")
     }
   }, [open, editReport])
 
@@ -141,7 +144,7 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2 flex flex-col gap-1.5">
                 <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Subject *</label>
-                <Input value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Brief subject..." className="text-sm h-10" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+                <Input value={form.subject} onChange={e => set('subject', e.target.value)} onBlur={() => set('subject', toSentenceCase(form.subject))} placeholder="Brief subject..." className="text-sm h-10" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Priority</label>
@@ -163,7 +166,7 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
               <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
                 Branch <span className="font-normal opacity-70">(optional)</span>
               </label>
-              <Input value={form.branch} onChange={e => set('branch', e.target.value)} placeholder="e.g. Main Office, Warehouse A..." className="text-sm h-10" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <Input value={form.branch} onChange={e => set('branch', e.target.value)} onBlur={() => set('branch', toTitleCase(form.branch))} placeholder="e.g. Main Office, Warehouse A..." className="text-sm h-10" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
             </div>
 
             {/* Description */}
@@ -177,8 +180,8 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
               <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)' }}>
                 <p className="text-[11px] font-semibold uppercase tracking-widest m-0" style={{ color: 'var(--theme-500)' }}>Material Request Details</p>
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2 flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Item Name</label><Input value={form.itemName} onChange={e => set('itemName', e.target.value)} className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
-                  <div className="flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Quantity</label><Input type="number" value={form.quantity} onChange={e => set('quantity', e.target.value)} className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
+                  <div className="col-span-2 flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Item Name</label><Input value={form.itemName} onChange={e => set('itemName', e.target.value)} onBlur={() => set('itemName', toTitleCase(form.itemName))} className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
+                  <div className="flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Quantity</label><Input type="number" min="1" value={form.quantity} onChange={e => set('quantity', e.target.value)} onBlur={() => set('quantity', Math.max(1, Number(form.quantity) || 1))} className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Unit</label><Input value={form.unit} onChange={e => set('unit', e.target.value)} placeholder="pcs, kg, etc." className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
@@ -192,7 +195,7 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
               <div className="rounded-xl p-4 flex flex-col gap-3" style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)' }}>
                 <p className="text-[11px] font-semibold uppercase tracking-widest m-0" style={{ color: '#dc2626' }}>Accident / Incident Details</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Employee Involved</label><Input value={form.employeeInvolved} onChange={e => set('employeeInvolved', e.target.value)} className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
+                  <div className="flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Employee Involved</label><Input value={form.employeeInvolved} onChange={e => set('employeeInvolved', e.target.value)} onBlur={() => set('employeeInvolved', toTitleCase(form.employeeInvolved))} className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
                   <div className="flex flex-col gap-1"><label className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>Date of Accident</label><Input type="date" value={form.accidentDate} onChange={e => set('accidentDate', e.target.value)} className="text-sm h-9" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -260,13 +263,16 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
         </div>
 
         {/* Footer */}
-        <div className="px-8 pb-8 flex justify-end gap-2">
-          <Button variant="outline" className="text-sm h-10" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={loading || !form.subject.trim()} className="border-0 text-sm h-10 px-6 disabled:opacity-50 disabled:pointer-events-none transition-colors" style={{ background: 'var(--theme-500)', color: '#fff' }}>
-            {loading ? 'Saving…' : (editReport ? 'Save Changes' : 'Submit Report')}
-          </Button>
+        <div className="px-8 pb-8 flex flex-col gap-2">
+          {error && <div className="text-red-500 text-xs font-medium text-right w-full">{error}</div>}
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="outline" className="text-sm h-10" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }} onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading} className="border-0 text-sm h-10 px-6 disabled:opacity-50 disabled:pointer-events-none transition-colors" style={{ background: 'var(--theme-500)', color: '#fff' }}>
+              {loading ? 'Saving…' : (editReport ? 'Save Changes' : 'Submit Report')}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

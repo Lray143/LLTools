@@ -115,7 +115,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         onClick={() => setActivePage(item.id)}
         title={!isExpanded ? item.label : undefined}
         className={`
-          w-full flex items-center py-2 rounded-md text-sm mb-1
+          w-full flex items-center text-left py-2 rounded-md text-sm mb-1
           transition-all duration-200
           ${isExpanded ? 'justify-start gap-3 px-3' : 'justify-center px-0'}
           ${isActive

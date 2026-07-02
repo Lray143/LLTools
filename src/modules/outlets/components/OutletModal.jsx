@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../../components/ui/select'
 import { DISCOUNT_PRESETS } from '../outletConstants'
+import { toTitleCase } from '../../../lib/validation'
 
 const emptyDiscount = (index) => ({ id: crypto.randomUUID(), name: `Discount ${index + 1}`, value: '' })
 
@@ -111,6 +112,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
                   placeholder="e.g. Main Branch – Makati"
                   value={name}
                   onChange={e => { setName(e.target.value); setErrors(p => ({ ...p, name: '' })) }}
+                  onBlur={() => setName(n => toTitleCase(n))}
                   className={`bg-white text-sm h-9 ${errors.name ? 'border-red-400' : 'border-gray-200'}`}
                 />
                 {errors.name && <p className="text-xs text-red-500 -mt-0.5">{errors.name}</p>}
@@ -187,6 +189,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
                   placeholder="e.g. 123 Ayala Ave, Makati City"
                   value={address}
                   onChange={e => setAddress(e.target.value)}
+                  onBlur={() => setAddress(a => toTitleCase(a))}
                   className="bg-white border-gray-200 text-sm h-9"
                 />
               </div>
@@ -225,6 +228,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
                       <Input
                         value={d.name}
                         onChange={e => updateDiscount(d.id, 'name', e.target.value)}
+                        onBlur={() => updateDiscount(d.id, 'name', toTitleCase(d.name))}
                         placeholder="Discount name (e.g. Senior Citizen)"
                         className={`bg-white text-sm h-9 ${errors[`d_name_${i}`] ? 'border-red-400' : 'border-gray-200'}`}
                       />

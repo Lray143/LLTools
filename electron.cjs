@@ -117,6 +117,7 @@ function createWindow() {
     title: 'LLTools',
     width: 1280,
     height: 800,
+    show: false,          // Don't show until content is ready
     icon: path.join(__dirname, 'public/icon.ico'),
     webPreferences: {
       nodeIntegration: true,
@@ -126,11 +127,62 @@ function createWindow() {
     }
   })
   mainWindow.removeMenu()
+
+  // ── Retry logic for network-service crash / blank page ──────────────
+  let loadAttempts = 0
+  const MAX_RETRIES = 5
+  const RETRY_DELAY_MS = 1500
+
+  function loadApp() {
+    loadAttempts++
+    if (isDev) {
+      mainWindow.loadURL('http://localhost:5173')
+    } else {
+      mainWindow.loadFile(path.join(__dirname, 'dist/index.html'))
+    }
+  }
+
+  // Retry on explicit load failures (ERR_CONNECTION_REFUSED, network crash, etc.)
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Window] Load failed (attempt ${loadAttempts}/${MAX_RETRIES}): ${errorCode} ${errorDescription} — ${validatedURL}`)
+    if (loadAttempts < MAX_RETRIES) {
+      setTimeout(() => loadApp(), RETRY_DELAY_MS)
+    } else {
+      // Give up, show window as-is so user can at least see DevTools
+      mainWindow.show()
+    }
+  })
+
+  // Once loaded, verify the page isn't blank (network service crash can cause an empty body)
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.executeJavaScript('document.body?.children?.length || 0')
+      .then((childCount) => {
+        if (childCount === 0 && loadAttempts < MAX_RETRIES) {
+          console.warn(`[Window] Page loaded but body is empty (attempt ${loadAttempts}/${MAX_RETRIES}), reloading...`)
+          setTimeout(() => loadApp(), RETRY_DELAY_MS)
+        } else {
+          // Content is ready — show the window
+          mainWindow.show()
+        }
+      })
+      .catch(() => {
+        // JS execution failed, show window anyway
+        mainWindow.show()
+      })
+  })
+
+  // Fallback: if the window still hasn't shown after 15s, force-show it
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+      console.warn('[Window] Force-showing window after timeout')
+      mainWindow.show()
+    }
+  }, 15000)
+
+  loadApp()
+
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173')
     mainWindow.webContents.openDevTools()
-  } else {
-    mainWindow.loadFile(path.join(__dirname, 'dist/index.html'))
   }
 
   // Open external links in default browser
@@ -570,14 +622,25 @@ autoUpdater.on('update-downloaded', (info) => {
 })
 
 // ── ATTACHMENTS ───────────────────────────────────────────────────
-ipcMain.handle('attachments:save', async (_, { name, buffer }) => {
-  const uploadsDir = path.join(app.getPath('userData'), 'uploads')
+ipcMain.handle('attachments:save', async (_, { name, buffer, type }) => {
+  const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads') // Use chat-uploads so r2:// protocol can serve it
   await fs.promises.mkdir(uploadsDir, { recursive: true })
   const ext = path.extname(name) || ''
-  const filename = `${crypto.randomUUID()}${ext}`
+  const filename = `${Date.now()}-${crypto.randomUUID()}${ext}`
   const filepath = path.join(uploadsDir, filename)
   await fs.promises.writeFile(filepath, buffer)
-  return { path: filepath }
+
+  // Upload to R2 in the background
+  setImmediate(async () => {
+    try {
+      const { uploadFileToR2 } = require('./r2.cjs')
+      await uploadFileToR2(buffer, filename, type || 'application/octet-stream')
+    } catch (err) {
+      console.error('[R2] Background upload for generic attachment failed:', err)
+    }
+  })
+
+  return { path: `r2://${filename}` }
 })
 ipcMain.handle('attachments:open', async (_, filepath) => {
   await shell.openPath(filepath)
@@ -640,7 +703,11 @@ app.whenReady().then(async () => {
   // registerSchemesAsPrivileged (called before ready) makes this trusted & streamable
   protocol.handle('attachment', (request) => {
     // Strip the scheme prefix to get the raw absolute file path
-    const filePath = decodeURIComponent(request.url.slice('attachment://'.length))
+    let filePath = decodeURIComponent(request.url.slice('attachment://'.length))
+    // If the path starts with a slash and a drive letter (e.g., /C:/), remove the leading slash
+    if (filePath.match(/^\/[A-Za-z]:\//)) {
+      filePath = filePath.slice(1)
+    }
     return net.fetch(`file:///${filePath}`)
   })
 

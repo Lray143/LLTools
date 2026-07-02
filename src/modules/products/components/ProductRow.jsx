@@ -1,6 +1,7 @@
 // src/modules/products/components/ProductRow.jsx
 import { useRef, useState, memo } from 'react'
 import { Trash2, RotateCcw } from 'lucide-react'
+import { toTitleCase, digitsOnly } from '../../../lib/validation'
 
 const BASE_FIELDS = [
   { key: 'productNo',   label: 'No#',              type: 'text',   align: 'left'   },
@@ -17,7 +18,7 @@ const cellBase = {
 }
 
 // ── Regular editable cell ─────────────────────────────────────────
-function EditableCell({ value, type, align, onCommit, editMode }) {
+function EditableCell({ value, type, align, onCommit, editMode, fieldKey }) {
   const [editing, setEditing] = useState(false)
   const [draft,   setDraft]   = useState(value)
   const inputRef = useRef(null)
@@ -33,7 +34,12 @@ function EditableCell({ value, type, align, onCommit, editMode }) {
 
   const commit = () => {
     setEditing(false)
-    const parsed = type === 'number' ? parseFloat(draft) || 0 : draft.trim()
+    let parsed = type === 'number' ? parseFloat(draft) || 0 : draft.trim()
+    // Auto-format based on field
+    if (fieldKey === 'caseBarcode' || fieldKey === 'itemBarcode') parsed = digitsOnly(parsed)
+    else if (fieldKey === 'productNo') parsed = String(parsed).toUpperCase()
+    else if (fieldKey === 'description') parsed = toTitleCase(parsed)
+    else if (fieldKey === 'qty') parsed = Math.max(0, Math.round(Number(parsed) || 0))
     onCommit(parsed)
   }
 
@@ -195,6 +201,7 @@ const ProductRow = memo(function ProductRow({
           value={row[field.key]}
           type={field.type}
           align={field.align}
+          fieldKey={field.key}
           onCommit={(val) => onUpdateCell(groupId, row.id, field.key, val)}
           editMode={editMode && !isOutletMode}
         />
