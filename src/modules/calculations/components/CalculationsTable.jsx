@@ -308,7 +308,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
 
           {showAddOutlet && (
             <OutletModal
-              outlet={{}}
+              outlet={null}
               onSave={handleAddOutletSave}
               onClose={() => setShowAddOutlet(false)}
               regions={[...new Set(outlets.map(o => o.region).filter(Boolean))].sort()}

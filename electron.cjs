@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, protocol, net, Notification } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, protocol, net, Notification, dialog } = require('electron')
 
 // Must be set before the app is ready / any window or notification is created.
 // Without this, Windows falls back to showing "Electron" as the notification
@@ -413,8 +413,11 @@ ipcMain.handle('chat:uploadAttachment', async (_, fileData, fileName, mimeType, 
   // ── Step 1: Save locally first so the image shows IMMEDIATELY (even offline)
   const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads')
   await fs.promises.mkdir(uploadsDir, { recursive: true })
-  const ext = path.extname(fileName) || ''
-  const localName = `${Date.now()}-${crypto.randomUUID()}${ext}`
+  
+  const safeName = fileName.replace(/[^a-zA-Z0-9.\- ]/g, '_')
+  const shortId = crypto.randomUUID().split('-')[0]
+  const localName = `${Date.now()}-${shortId}-${safeName}`
+  
   const localPath = path.join(uploadsDir, localName)
   await fs.promises.writeFile(localPath, buffer)
 
@@ -461,6 +464,48 @@ ipcMain.handle('chat:openR2File', async (_, fileName) => {
       await shell.openPath(localPath)
     } catch (err) {
       console.error(`[openR2File] Failed:`, err)
+    }
+  }
+})
+
+function getCleanFileName(rawName) {
+  const parts = rawName.split('-')
+  if (parts.length >= 3 && /^\d+$/.test(parts[0]) && parts[1].length === 8) {
+    return parts.slice(2).join('-')
+  }
+  return rawName
+}
+
+ipcMain.handle('chat:saveAttachment', async (_, filePath) => {
+  const cleanName = getCleanFileName(path.basename(filePath))
+  const defaultPath = path.join(app.getPath('downloads'), cleanName)
+  const { canceled, filePath: savePath } = await dialog.showSaveDialog({ defaultPath })
+  if (!canceled && savePath) {
+    await fs.promises.copyFile(filePath, savePath)
+  }
+})
+
+ipcMain.handle('chat:saveR2File', async (_, fileName) => {
+  const cleanName = getCleanFileName(fileName)
+  const defaultPath = path.join(app.getPath('downloads'), cleanName)
+  const { canceled, filePath: savePath } = await dialog.showSaveDialog({ defaultPath })
+  
+  if (!canceled && savePath) {
+    const uploadsDir = path.join(app.getPath('userData'), 'chat-uploads')
+    const localPath = path.join(uploadsDir, fileName)
+    
+    if (fs.existsSync(localPath)) {
+      await fs.promises.copyFile(localPath, savePath)
+    } else {
+      try {
+        const { downloadFileFromR2 } = require('./r2.cjs')
+        const fileBuffer = await downloadFileFromR2(fileName)
+        await fs.promises.writeFile(savePath, fileBuffer)
+        await fs.promises.mkdir(uploadsDir, { recursive: true })
+        await fs.promises.writeFile(localPath, fileBuffer)
+      } catch (err) {
+        console.error(`[saveR2File] Failed:`, err)
+      }
     }
   }
 })

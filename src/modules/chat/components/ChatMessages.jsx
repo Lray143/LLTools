@@ -247,24 +247,47 @@ const MessageItem = memo(function MessageItem({
                           <span className="text-xs truncate">Attachment</span>
                         </div>
                         {(renderUrl.startsWith('attachment://') || renderUrl.startsWith('r2://')) ? (
-                          <button
-                            onClick={() => {
-                              if (renderUrl.startsWith('attachment://')) {
-                                window.electronAPI?.openAttachment?.(renderUrl.replace('attachment://', ''))
-                              } else if (renderUrl.startsWith('r2://')) {
-                                window.electronAPI?.openR2File?.(renderUrl.replace('r2://', ''))
-                              }
-                            }}
-                            className="text-xs font-semibold underline hover:opacity-80 cursor-pointer bg-transparent border-none p-0 text-left"
-                            style={{ color: 'inherit' }}
-                          >
-                            Open File
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                if (renderUrl.startsWith('attachment://')) {
+                                  window.electronAPI?.openAttachment?.(renderUrl.replace('attachment://', ''))
+                                } else if (renderUrl.startsWith('r2://')) {
+                                  window.electronAPI?.openR2File?.(renderUrl.replace('r2://', ''))
+                                }
+                              }}
+                              className="text-xs font-semibold underline hover:opacity-80 cursor-pointer bg-transparent border-none p-0 text-left"
+                              style={{ color: 'inherit' }}
+                            >
+                              Open File
+                            </button>
+                            <span className="text-gray-400 text-[10px]">|</span>
+                            <button
+                              onClick={() => {
+                                if (renderUrl.startsWith('attachment://')) {
+                                  window.electronAPI?.saveAttachment?.(renderUrl.replace('attachment://', ''))
+                                } else if (renderUrl.startsWith('r2://')) {
+                                  window.electronAPI?.saveR2File?.(renderUrl.replace('r2://', ''))
+                                }
+                              }}
+                              className="text-xs font-semibold underline hover:opacity-80 cursor-pointer bg-transparent border-none p-0 text-left"
+                              style={{ color: 'inherit' }}
+                            >
+                              Download
+                            </button>
+                          </div>
                         ) : (
-                          <a href={renderUrl} target="_blank" rel="noreferrer"
-                            className="text-xs font-semibold underline hover:opacity-80">
-                            Open File
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <a href={renderUrl} target="_blank" rel="noreferrer"
+                              className="text-xs font-semibold underline hover:opacity-80">
+                              Open File
+                            </a>
+                            <span className="text-gray-400 text-[10px]">|</span>
+                            <a href={renderUrl} download
+                              className="text-xs font-semibold underline hover:opacity-80">
+                              Download
+                            </a>
+                          </div>
                         )}
                       </div>
                     )}

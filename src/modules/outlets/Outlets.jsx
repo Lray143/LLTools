@@ -106,7 +106,21 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
   }
 
   const handleRestore = async (id) => {
+    const outlet = archivedOutlets.find(o => o.id === id)
     await window.electronAPI.unarchiveOutlet(id)
+    await logModuleActivity(currentUser, 'outlets', 'restore', outlet?.name ?? 'Outlet', id, buildActivityDetails({
+      recordType: 'Outlet',
+      recordId: id,
+      table: 'outlets',
+      snapshot: outlet ? snapshotFromFields({
+        name: outlet.name,
+        address: outlet.address,
+        region: outlet.region,
+        status: outlet.status,
+        discounts: outlet.discounts,
+      }, OUTLET_LOG_FIELDS) : null,
+      note: 'Restored from archive',
+    }))
     await load()
   }
 

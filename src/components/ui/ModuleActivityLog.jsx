@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { History, X, Plus, Pencil, Archive, Trash2, Clock, User, Hash, ChevronDown, ChevronUp } from 'lucide-react'
+import { History, X, Plus, Pencil, Archive, Trash2, Clock, User, Hash, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 import { ACTIVITY_ACTION_META, ACTIVITY_MODULE_LABELS, parseActivityDetails } from '../../lib/activityLog'
 
 const ACTION_ICONS = {
   add:              Plus,
   edit:             Pencil,
   archive:          Archive,
+  restore:          RotateCcw,
   permanent_delete: Trash2,
 }
 
@@ -124,18 +125,54 @@ function ChangesTable({ changes }) {
   )
 }
 
-function ActionBadge({ action }) {
-  const meta = ACTIVITY_ACTION_META[action] ?? { label: action, color: 'var(--text-secondary)' }
+const ACTION_BADGE_STYLES = {
+  add:              { color: '#15803d', background: '#dcfce7', border: '#86efac' },
+  edit:             { color: '#c2410c', background: '#fff7ed', border: '#fdba74' },
+  archive:          { color: '#92400e', background: '#fef3c7', border: '#fcd34d' },
+  restore:          { color: '#0369a1', background: '#e0f2fe', border: '#7dd3fc' },
+  permanent_delete: { color: '#b91c1c', background: '#fee2e2', border: '#fca5a5' },
+}
+
+function ActionBadge({ action, details }) {
+  // For older DB records that have null action, try to infer it from the stored details
+  let resolvedAction = action
+  if (!resolvedAction && details) {
+    try {
+      const parsed = typeof details === 'string' ? JSON.parse(details) : details
+      if (parsed?.removedSnapshot) resolvedAction = 'archive'
+      else if (parsed?.snapshot)    resolvedAction = 'add'
+      else if (parsed?.changes)     resolvedAction = 'edit'
+    } catch { /* ignore parse errors */ }
+  }
+
+  if (!resolvedAction) {
+    return (
+      <span
+        className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.15em]"
+        style={{ color: '#6b7280', background: '#f3f4f6', border: '1px solid #d1d5db' }}
+      >
+        —
+      </span>
+    )
+  }
+
+  const style = ACTION_BADGE_STYLES[resolvedAction]
+  if (style) {
+    return (
+      <span
+        className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.15em]"
+        style={{ color: style.color, background: style.background, border: `1px solid ${style.border}` }}
+      >
+        {ACTIVITY_ACTION_META[resolvedAction]?.label ?? resolvedAction}
+      </span>
+    )
+  }
   return (
     <span
       className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.15em]"
-      style={{
-        color: meta.color,
-        background: `color-mix(in srgb, ${meta.color} 12%, var(--surface))`,
-        border: `1px solid ${meta.color}`,
-      }}
+      style={{ color: '#374151', background: '#f3f4f6', border: '1px solid #d1d5db' }}
     >
-      {meta.label}
+      {resolvedAction}
     </span>
   )
 }
@@ -298,7 +335,7 @@ function ActivityLogDrawer({ module, refreshKey, onClose }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <ActionBadge action={entry.action} />
+                          <ActionBadge action={entry.action} details={entry.details} />
                           <span className="text-xs flex items-center gap-1" style={{ color: 'var(--text-secondary)' }}>
                             <Clock size={10} />
                             {formatWhen(entry.createdAt)}

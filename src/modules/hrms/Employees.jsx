@@ -264,6 +264,21 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
 
   async function handleUnarchive(emp) {
     await window.electronAPI.unarchiveEmployee(emp.id)
+    await logModuleActivity(currentUser, 'employees', 'restore', emp?.name ?? 'Employee', emp.id, buildActivityDetails({
+      recordType: 'Employee',
+      recordId: emp.id,
+      employeeNo: emp?.employee_no,
+      table: 'employees',
+      snapshot: emp ? snapshotFromFields({
+        employee_no: emp.employee_no,
+        name: emp.name,
+        dept: emp.dept,
+        role: emp.role,
+        contact: emp.contact,
+        daySchedule: emp.daySchedule,
+      }, EMPLOYEE_LOG_FIELDS) : { Name: emp?.name ?? '—' },
+      note: 'Restored from archive',
+    }))
     await loadEmployees()
   }
 

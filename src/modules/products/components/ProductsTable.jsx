@@ -314,8 +314,18 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
 
   const handleRestore = (id) => {
     window.electronAPI.restoreProduct(id)
+    const row = archivedRows.find((r) => r.id === id)
     setArchivedRows((prev) => prev.filter((r) => r.id !== id))
     window.electronAPI.getProductGroups().then(setGroups).catch(() => {})
+    if (currentUser && row) {
+      logModuleActivity(currentUser, 'products', 'restore', row.description?.trim() || 'Product', id, buildActivityDetails({
+        recordType: 'Product',
+        recordId: id,
+        table: 'products',
+        snapshot: snapshotFromFields(row, PRODUCT_ROW_FIELDS),
+        note: 'Restored from archive',
+      }))
+    }
   }
 
   const handlePermanentDelete = (id) => {

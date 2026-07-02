@@ -101,7 +101,12 @@ const executeWithRetry = async (sql, args = []) => {
 
 const queryAll = async (sql, params = []) => {
   const result = await executeWithRetry(sql, params)
-  return result.rows.map(r => Object.fromEntries(Object.entries(r)))
+  const cols = result.columns
+  return result.rows.map(r => {
+    const obj = {}
+    for (let i = 0; i < cols.length; i++) obj[cols[i]] = r[i]
+    return obj
+  })
 }
 
 const queryOne = async (sql, params = []) => {

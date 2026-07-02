@@ -182,6 +182,7 @@ export const ACTIVITY_ACTION_META = {
   add:              { label: 'Added',    color: '#16a34a' },
   edit:             { label: 'Edited',   color: 'var(--theme-500)' },
   archive:          { label: 'Archived', color: '#d97706' },
+  restore:          { label: 'Restored', color: '#0284c7' },
   permanent_delete: { label: 'Deleted',  color: '#dc2626' },
 }
 

@@ -827,25 +827,33 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
     )
   }
 
-  // ── Empty ─────────────────────────────────────────────────────────
-  if (orders.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
-        <Receipt size={40} className="text-gray-200" />
-        <p className="font-medium text-gray-500">No saved orders yet</p>
-        <p className="text-sm text-center max-w-xs">
-          Orders saved from the receipt modal will appear here, grouped by month.
-        </p>
-      </div>
-    )
-  }
-
   // ── Render ────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
 
-      {/* All-time stat cards */}
-      <div className="grid grid-cols-3 gap-4">
+      {orders.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8">
+          <div className="flex justify-end mb-8">
+            <button
+              onClick={() => setShowArchive(true)}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors border border-gray-200 bg-white shadow-sm"
+            >
+              <Archive size={13} />
+              Archive ({archivedOrders.length})
+            </button>
+          </div>
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+            <Receipt size={40} className="text-gray-200" />
+            <p className="font-medium text-gray-500">No saved orders yet</p>
+            <p className="text-sm text-center max-w-xs">
+              Orders saved from the receipt modal will appear here, grouped by month.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* All-time stat cards */}
+          <div className="grid grid-cols-3 gap-4">
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
@@ -989,6 +997,8 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
         </div>
 
       </div>
+      </>
+      )}
 
       {showArchive && (
         <OrderArchiveDrawer
