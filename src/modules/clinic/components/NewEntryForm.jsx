@@ -4,6 +4,7 @@ import { Button } from "../../../components/ui/button"
 import { Input } from "../../../components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
 import { COMPLAINT_GROUPS } from "./clinicConstants"
+import { toTitleCase, clampNumber, toSentenceCase, formatBP } from "../../../lib/validation"
 
 // ── Inlined helpers ────────────────────────────────────────────────────────────
 const avatarColors = [
@@ -378,6 +379,17 @@ function ComplaintAutocomplete({ value, onChange }) {
 
 // ── Main form ─────────────────────────────────────────────────────────────────
 export default function NewEntryForm({ form, set, saved, onSave, employees = [] }) {
+  const [error, setError] = useState("")
+
+  const handleSaveClick = () => {
+    if (!form.employee?.trim()) {
+      setError("Employee Name is required.")
+      return
+    }
+    setError("")
+    onSave()
+  }
+
   return (
     <div className="w-full h-full bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 overflow-y-auto">
 
@@ -434,6 +446,7 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
             placeholder="e.g. 35"
             value={form.age}
             onChange={e => set("age", e.target.value)}
+            onBlur={() => set("age", clampNumber(form.age, 1, 120))}
             className="bg-white border-gray-200 h-9"
           />
         </div>
@@ -475,6 +488,7 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
               placeholder="120/80"
               value={form.bp}
               onChange={e => set("bp", e.target.value)}
+              onBlur={() => set("bp", formatBP(form.bp))}
               className="bg-white border-gray-200 h-9 pl-9"
             />
           </div>
@@ -486,6 +500,7 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
               placeholder="36.5"
               value={form.temp}
               onChange={e => set("temp", e.target.value)}
+              onBlur={() => set("temp", clampNumber(form.temp, 30, 45))}
               className="bg-white border-gray-200 h-9 pl-9"
             />
           </div>
@@ -496,6 +511,7 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
               placeholder="Pulse (e.g. 72)"
               value={form.pulse}
               onChange={e => set("pulse", e.target.value)}
+              onBlur={() => set("pulse", clampNumber(form.pulse, 30, 250))}
               className="bg-white border-gray-200 h-9 pl-10"
             />
           </div>
@@ -506,6 +522,7 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
               placeholder="98"
               value={form.spo2}
               onChange={e => set("spo2", e.target.value)}
+              onBlur={() => set("spo2", clampNumber(form.spo2, 50, 100))}
               className="bg-white border-gray-200 h-9 pl-12"
             />
           </div>
@@ -519,6 +536,7 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
           placeholder="Treatment or medication given..."
           value={form.treatment}
           onChange={e => set("treatment", e.target.value)}
+          onBlur={() => set("treatment", toSentenceCase(form.treatment))}
           className="w-full min-h-[70px] px-3 py-2.5 text-sm border border-gray-200 rounded-md bg-white resize-none outline-none focus:border-orange-400 transition-colors"
         />
       </div>
@@ -533,12 +551,15 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
       </div>
 
       {/* ── Save button ── */}
-      <Button
-        onClick={onSave}
-        className={`w-full h-9 text-sm font-medium flex-shrink-0 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"} text-white`}
-      >
-        {saved ? "✓ Record Saved!" : "Save Clinic Record"}
-      </Button>
+      <div className="flex flex-col gap-2 mt-2">
+        {error && <div className="text-red-500 text-xs font-medium text-center">{error}</div>}
+        <Button
+          onClick={handleSaveClick}
+          className={`w-full h-9 text-sm font-medium flex-shrink-0 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"} text-white`}
+        >
+          {saved ? "✓ Record Saved!" : "Save Clinic Record"}
+        </Button>
+      </div>
 
     </div>
   )

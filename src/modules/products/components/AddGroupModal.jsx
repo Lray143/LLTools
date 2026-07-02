@@ -11,7 +11,7 @@ export default function AddGroupModal({ onAdd, onClose }) {
   }, [])
 
   const handleSubmit = () => {
-    const trimmed = name.trim()
+    const trimmed = name.trim().toUpperCase()
     if (!trimmed) return
     onAdd(trimmed)
     onClose()

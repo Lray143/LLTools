@@ -22,7 +22,7 @@ export default function Products({ refreshKey = 0, currentUser, onNavigate }) {
             <Package size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Products</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>Products</h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Product list &amp; catalog management</p>
           </div>
         </div>

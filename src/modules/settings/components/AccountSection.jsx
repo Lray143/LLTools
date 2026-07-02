@@ -230,6 +230,7 @@ export function AccountSection({ currentUser }) {
                 placeholder="Enter new username"
                 value={newUsername}
                 onChange={e => setNewUsername(e.target.value)}
+                onBlur={() => setNewUsername(u => u.trim())}
                 className="text-sm h-10 mt-1"
                 style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
               />

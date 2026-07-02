@@ -19,12 +19,14 @@ function LoginPage({ onLogin }) {
   const handleSubmit = async () => {
     setError("");
 
-    if (!username.trim()) { setError("Please enter your username."); return; }
+    const trimmedUser = username.trim();
+    if (!trimmedUser) { setError("Please enter your username."); return; }
     if (!password.trim()) { setError("Please enter your password.");  return; }
 
+    setUsername(trimmedUser);
     setIsLoading(true);
 
-    const result = await window.electronAPI.login({ username, password });
+    const result = await window.electronAPI.login({ username: trimmedUser, password });
 
     setIsLoading(false);
 

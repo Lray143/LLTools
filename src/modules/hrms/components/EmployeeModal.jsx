@@ -6,6 +6,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "../../../components/ui/dialog"
 import { NotificationModal } from "../../../components/ui/NotificationModal"
+import { toTitleCase, digitsOnly, formatContact } from "../../../lib/validation"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "../../../components/ui/select"
@@ -83,9 +84,14 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
   }
 
   const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState("")
 
   async function handleSave() {
-    if (!form.name.trim()) return
+    if (!form.name.trim()) {
+      setError("Full Name is required.")
+      return
+    }
+    setError("")
     setIsSaving(true)
     try {
       await onSave({ ...form })
@@ -159,7 +165,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                 <Input
                   placeholder={isEdit ? "" : "Auto-generated"}
                   value={form.employee_no}
-                  onChange={e => setForm({ ...form, employee_no: e.target.value })}
+                  onChange={e => setForm({ ...form, employee_no: digitsOnly(e.target.value) })}
                   className="bg-white border-gray-200 text-sm h-9"
                 />
               </div>
@@ -171,6 +177,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                   placeholder="e.g. Juan dela Cruz"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
+                  onBlur={e => setForm(f => ({ ...f, name: toTitleCase(f.name) }))}
                   className="bg-white border-gray-200 text-sm h-9"
                 />
               </div>
@@ -182,6 +189,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                   placeholder="e.g. Sales Associate"
                   value={form.role}
                   onChange={e => setForm({ ...form, role: e.target.value })}
+                  onBlur={e => setForm(f => ({ ...f, role: toTitleCase(f.role) }))}
                   className="bg-white border-gray-200 text-sm h-9"
                 />
               </div>
@@ -193,6 +201,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                   placeholder="e.g. 0917-123-4567"
                   value={form.contact}
                   onChange={e => setForm({ ...form, contact: e.target.value })}
+                  onBlur={e => setForm(f => ({ ...f, contact: formatContact(f.contact) }))}
                   className="bg-white border-gray-200 text-sm h-9"
                 />
               </div>
@@ -283,22 +292,25 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
         </div>
 
-        <DialogFooter className="gap-2 pt-4 border-t border-gray-100 mt-2 sm:justify-between">
-          <div>
-            {isEdit && (
-              <Button type="button" variant="ghost" className="text-gray-500 hover:text-orange-600 hover:bg-orange-50 text-sm px-2 flex items-center gap-1.5" onClick={() => setResetOpen(true)}>
-                <RotateCcw className="w-4 h-4" />
-                Reset Credentials
+        <DialogFooter className="px-6 py-4 bg-gray-50/80 border-t border-gray-100/60 rounded-b-xl sm:rounded-b-2xl">
+          <div className="flex flex-col w-full">
+            {error && <div className="text-red-500 text-xs mb-3 font-medium text-right">{error}</div>}
+            <div className="flex justify-end gap-2 w-full">
+              {isEdit && (
+                <div className="flex-1 flex justify-start">
+                  <Button type="button" variant="ghost" className="text-gray-500 hover:text-orange-600 hover:bg-orange-50 text-sm px-2 flex items-center gap-1.5" onClick={() => setResetOpen(true)}>
+                    <RotateCcw className="w-4 h-4" />
+                    Reset Credentials
+                  </Button>
+                </div>
+              )}
+              <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose} disabled={isSaving}>
+                Cancel
               </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose} disabled={isSaving}>
-              Cancel
-            </Button>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Employee"}
-            </Button>
+              <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Employee"}
+              </Button>
+            </div>
           </div>
         </DialogFooter>
       </DialogContent>

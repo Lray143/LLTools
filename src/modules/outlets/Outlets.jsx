@@ -168,7 +168,7 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
             <Store size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.1 }}>Outlets</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>Outlets</h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Manage store locations &amp; clients</p>
           </div>
         </div>

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "../../../components/ui/select"
 import { COMPLAINT_GROUPS } from "./clinicConstants"
+import { toTitleCase, clampNumber, toSentenceCase, formatBP } from "../../../lib/validation"
 
 const DISPOSITIONS = ["Back to work", "Sent home", "Monitoring", "Referred"]
 const GENDERS      = ["male", "female"]
@@ -260,6 +261,8 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
     disposition: "Back to work",
     attachments: [],
   })
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     if (open && visit) {
@@ -279,14 +282,20 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
     }
   }, [open, visit])
 
-  function handleSave() {
-    if (!form.fullName.trim()) return
+  async function handleSave() {
+    if (!form.fullName.trim()) {
+      setError("Employee Name is required.")
+      return
+    }
+    setError("")
+    setIsSaving(true)
+
     const parts     = form.fullName.trim().split(" ")
     const sName     = parts.length > 1
       ? `${parts[0]} ${parts[parts.length - 1][0]}.`
       : form.fullName.trim()
 
-    onSave({
+    await onSave({
       ...visit,
       fullName:    form.fullName.trim(),
       employee:    sName,
@@ -301,6 +310,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
       disposition: form.disposition,
       attachments: form.attachments,
     })
+    setIsSaving(false)
   }
 
   const f = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
@@ -324,6 +334,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
               placeholder="Full name"
               value={form.fullName}
               onChange={e => f("fullName", e.target.value)}
+              onBlur={() => f("fullName", toTitleCase(form.fullName))}
               className="bg-white border-gray-200"
             />
           </div>
@@ -354,6 +365,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
                 placeholder="e.g. 35"
                 value={form.age}
                 onChange={e => f("age", e.target.value)}
+                onBlur={() => f("age", clampNumber(form.age, 1, 120))}
                 className="bg-white border-gray-200"
               />
             </div>
@@ -376,6 +388,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
                 placeholder="BP (e.g. 120/80)"
                 value={form.bp}
                 onChange={e => f("bp", e.target.value)}
+                onBlur={() => f("bp", formatBP(form.bp))}
                 className="bg-white border-gray-200"
               />
               <Input
@@ -384,6 +397,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
                 placeholder="Temp (°C)"
                 value={form.temp}
                 onChange={e => f("temp", e.target.value)}
+                onBlur={() => f("temp", clampNumber(form.temp, 30, 45))}
                 className="bg-white border-gray-200"
               />
               <Input
@@ -391,6 +405,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
                 placeholder="Pulse (bpm)"
                 value={form.pulse}
                 onChange={e => f("pulse", e.target.value)}
+                onBlur={() => f("pulse", clampNumber(form.pulse, 30, 250))}
                 className="bg-white border-gray-200"
               />
               <Input
@@ -398,6 +413,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
                 placeholder="SpO₂ (%)"
                 value={form.spo2}
                 onChange={e => f("spo2", e.target.value)}
+                onBlur={() => f("spo2", clampNumber(form.spo2, 50, 100))}
                 className="bg-white border-gray-200"
               />
             </div>
@@ -410,6 +426,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
               placeholder="Describe treatment or medication given…"
               value={form.treatment}
               onChange={e => f("treatment", e.target.value)}
+              onBlur={() => f("treatment", toSentenceCase(form.treatment))}
               className="w-full h-20 px-3 py-2 text-sm border border-gray-200 rounded-md bg-white resize-y outline-none focus:border-orange-400 transition-colors"
             />
           </div>
@@ -442,20 +459,25 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
 
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            className="border-gray-200 text-gray-600 hover:bg-white"
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="bg-orange-500 hover:bg-orange-600 text-white border-0"
-            onClick={handleSave}
-          >
-            Save Changes
-          </Button>
+        <DialogFooter className="flex flex-col w-full gap-3">
+          {error && <div className="text-red-500 text-xs font-medium text-right w-full">{error}</div>}
+          <div className="flex justify-end gap-2 w-full">
+            <Button
+              variant="outline"
+              className="border-gray-200 text-gray-600 hover:bg-white"
+              onClick={onClose}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-orange-500 hover:bg-orange-600 text-white border-0"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

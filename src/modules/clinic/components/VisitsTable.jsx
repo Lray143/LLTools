@@ -3,6 +3,7 @@ import { Calendar, Pencil, Trash2, Archive, ChevronLeft, ChevronRight, Maximize2
 import { Button } from "../../../components/ui/button"
 import { ALL_MONTHS, DISP_CLASS, COMPLAINT_GROUPS } from "./clinicConstants"
 import { exportClinicToXLSX } from "../exportClinicToXLSX"
+import FilePreviewModal, { resolveAttachment } from "./FilePreviewModal"
 
 const ITEMS_PER_PAGE = 12
 
@@ -38,6 +39,7 @@ export default function VisitsTable({
   const [currentYear,  setCurrentYear]  = useState(now.getFullYear())
   const [currentDate,  setCurrentDate]  = useState(todayISO)
   const [currentPage,  setCurrentPage]  = useState(1)
+  const [previewFile,  setPreviewFile]  = useState(null)
 
   // Complaint filter state
   const [complaintFilter,       setComplaintFilter]       = useState(null)
@@ -195,26 +197,13 @@ export default function VisitsTable({
     if (p >= 1 && p <= totalPages) setCurrentPage(p)
   }
 
-  function handlePreviewAttachment(attachments) {
+  async function handlePreviewAttachment(attachments) {
     if (!attachments || attachments.length === 0) return
     const att = attachments[0]
-    const w = window.open()
-    if (!w) return
-
-    const isImage = att.type?.startsWith("image/")
-    const embedHtml = isImage
-      ? `<img src="${att.dataUrl}" style="max-width:100%;max-height:100vh;object-fit:contain" />`
-      : `<iframe src="${att.dataUrl}" style="width:100%;height:100vh;border:none"></iframe>`
-
-    w.document.write(`
-      <html>
-        <head><title>${att.name}</title></head>
-        <body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh">
-          ${embedHtml}
-        </body>
-      </html>
-    `)
-    w.document.close()
+    const res = await resolveAttachment(att)
+    if (res.useModal) {
+      setPreviewFile(res.att)
+    }
   }
 
   function formatDayLabel(iso) {
@@ -690,7 +679,14 @@ export default function VisitsTable({
           </div>
         </div>
       )}
-
+      
+      {/* Attachment Preview Modal */}
+      {previewFile && (
+        <FilePreviewModal
+          att={previewFile}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
     </div>
   )
 }
