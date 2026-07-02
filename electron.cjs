@@ -333,8 +333,9 @@ ipcMain.handle('chat:sendPusherEvent', async (_, { channel, event, data }) => {
   }
 })
 
-ipcMain.handle('system:forceSync', () => {
-  if (syncWorkerRef) syncWorkerRef.postMessage('sync-now')
+ipcMain.handle('system:forceSync', async () => {
+  const db = await import('./db.cjs')
+  if (db.syncCloud) await db.syncCloud()
 })
 
 // ── Native OS notifications (Facebook-style popup, bottom-right on Windows) ──
@@ -619,26 +620,7 @@ app.whenReady().then(async () => {
     }
   })
 
-  // ── Background sync in a dedicated worker thread ──────────────
-  // Only notify the renderer when the database actually changed
-  // (data_version check avoids a re-render storm on every poll cycle).
-  const { Worker } = require('worker_threads')
-  const syncWorker = new Worker(path.join(__dirname, 'sync-worker.cjs'), {
-    workerData: { dbPath: path.join(app.getPath('userData'), 'lltools-turso.db') }
-  })
-  syncWorkerRef = syncWorker
-  global.syncWorkerRef = syncWorker
-
-  let lastKnownVersion = -1
-  syncWorker.on('message', async (msg) => {
-    if (msg !== 'synced' || !mainWindow || mainWindow.isDestroyed()) return
-    // Always notify frontend that a sync completed. 
-    // PRAGMA data_version is unreliable with libsql embedded replica syncs.
-    mainWindow.webContents.send('db:synced')
-  })
-
-  // Tell the worker it's safe to start syncing (initDb is done, schema is ready)
-  syncWorker.postMessage('start')
+  // ── Background sync is now handled directly by db.cjs in the main thread ──────────────
 })
 
 app.on('window-all-closed', () => {

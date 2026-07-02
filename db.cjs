@@ -142,12 +142,8 @@ const syncWithRetry = async (maxAttempts = 3) => {
 const syncCloud = async () => {
   if (isSyncing || isBulkOperating) return;
   
-  // Delegate all cloud syncing to the dedicated background worker thread
-  // to prevent freezing the main thread or causing WalConflicts.
-  if (global.syncWorkerRef) {
-    global.syncWorkerRef.postMessage('sync-now');
-    return;
-  }
+  // We no longer delegate to a background worker to avoid WalConflicts.
+  // The @libsql/client must be a singleton in the main thread.
 
   isSyncing = true;
   try {
@@ -172,8 +168,11 @@ const syncCloud = async () => {
   }
 }
 
-// Background sync interval is handled by sync-worker.cjs (separate thread).
-// The main thread no longer runs its own interval to avoid WAL contention.
+// Background sync interval on the main thread
+setInterval(() => {
+  syncCloud().catch(() => {})
+}, 60000)
+
 const SEED_PRODUCT_GROUPS = [
   {
     id: 'g-astringents', name: 'ASTRINGENTS', sortOrder: 0,
