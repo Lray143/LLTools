@@ -1,13 +1,13 @@
-// src/modules/calculations/components/CalculationsTable.jsx
+// src/modules/orders/components/OrdersTable.jsx
 import { useState, useMemo, useEffect, Fragment } from 'react'
 import { INITIAL_GROUPS } from '../../products/productData'
 
-import CalculationsToolbar      from './CalculationsToolbar'
-import CalculationsGroupHeader  from './CalculationsGroupHeader'
-import CalculationsRow          from './CalculationsRow'
-import CalculationsSummary      from './CalculationsSummary'
-import CalculationsReceiptModal from './CalculationsReceiptModal'
-import CalculationsMonthlySummary from './CalculationsMonthlySummary'
+import OrdersToolbar      from './OrdersToolbar'
+import OrdersGroupHeader  from './OrdersGroupHeader'
+import OrdersRow          from './OrdersRow'
+import OrdersSummary      from './OrdersSummary'
+import OrdersReceiptModal from './OrdersReceiptModal'
+import OrdersMonthlySummary from './OrdersMonthlySummary'
 import OutletModal from '../../outlets/components/OutletModal'
 import { logModuleActivity, buildActivityDetails, snapshotFromFields, OUTLET_LOG_FIELDS } from '../../../lib/activityLog'
 
@@ -32,7 +32,7 @@ const matchesSearch = (row, term) => {
   )
 }
 
-export default function CalculationsTable({ currentUser, refreshKey = 0, onNavigate }) {
+export default function OrdersTable({ currentUser, refreshKey = 0, onNavigate }) {
   // ── Product data ─────────────────────────────────────────────────
   const [groups,  setGroups]  = useState([])
   const [loading, setLoading] = useState(true)
@@ -92,7 +92,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
 
   const handleAddOutletSave = async (payload) => {
     await window.electronAPI.upsertOutlet(payload)
-    await logModuleActivity(currentUser, 'calculations', 'add', `Outlet: ${payload.name}`, payload.id, buildActivityDetails({
+    await logModuleActivity(currentUser, 'orders', 'add', `Outlet: ${payload.name}`, payload.id, buildActivityDetails({
       recordType: 'Outlet',
       recordId: payload.id,
       table: 'outlets',
@@ -103,7 +103,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
         status: payload.status,
         discounts: payload.discounts,
       }, OUTLET_LOG_FIELDS),
-      note: 'Added from Calculations page',
+      note: 'Added from Orders page',
     }))
     await loadOutlets()
     setSelectedOutletId(payload.id)
@@ -173,7 +173,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
     <>
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
-      <CalculationsToolbar
+      <OrdersToolbar
         mode={mode}
         onSetMode={setMode}
         search={search}
@@ -195,7 +195,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
       {(mode === 'vanselling' || mode === 'invoice') && (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-8 pb-8">
-            <CalculationsMonthlySummary 
+            <OrdersMonthlySummary 
               currentUser={currentUser} 
               refreshKey={refreshKey} 
               type={mode === 'vanselling' ? 'Vanselling' : 'Invoice'} 
@@ -250,7 +250,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
                       }
                       return (
                         <Fragment key={group.id}>
-                          <CalculationsGroupHeader
+                          <OrdersGroupHeader
                             group={groupWithTotal}
                             collapsed={!!collapsed[group.id]}
                             onToggleCollapse={handleToggleCollapse}
@@ -259,7 +259,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
                             group.rows.map((row, rowIndex) => {
                               const { price, isOutletPrice } = resolvePrice(row.id, row.price)
                               return (
-                                <CalculationsRow
+                                <OrdersRow
                                   key={row.id}
                                   row={row}
                                   rowIndex={rowIndex}
@@ -289,7 +289,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
           </div>
 
           {/* Summary bar */}
-          <CalculationsSummary
+          <OrdersSummary
             subtotal={subtotal}
             discounts={outletDiscounts}
             lineCount={lineCount}
@@ -298,7 +298,7 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
 
           {/* Receipt modal */}
           {showReceipt && (
-            <CalculationsReceiptModal
+            <OrdersReceiptModal
               outletId={selectedOutletId}
               outletName={outlets.find(o => o.id === selectedOutletId)?.name ?? null}
               groups={groups}

@@ -1,7 +1,7 @@
-// src/modules/calculations/components/CalculationsGroupHeader.jsx
+// src/modules/orders/components/OrdersGroupHeader.jsx
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
-export default function CalculationsGroupHeader({ group, collapsed, onToggleCollapse }) {
+export default function OrdersGroupHeader({ group, collapsed, onToggleCollapse }) {
   return (
     <tr className="border-y" style={{ backgroundColor: 'color-mix(in srgb, var(--accent-bg) 10%, var(--surface))', borderColor: 'color-mix(in srgb, var(--accent-bg) 20%, var(--border))' }}>
       <td colSpan={7} className="px-3 py-2.5">

@@ -1,4 +1,4 @@
-// src/modules/calculations/components/CalculationsReceiptModal.jsx
+// src/modules/orders/components/OrdersReceiptModal.jsx
 import { useState } from 'react'
 import { X, Printer, Store, Tag, Save, CheckCircle, AlertCircle } from 'lucide-react'
 import { logModuleActivity, buildActivityDetails } from '../../../lib/activityLog'
@@ -6,7 +6,7 @@ import { logModuleActivity, buildActivityDetails } from '../../../lib/activityLo
 const fmt = (n) =>
   n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export default function CalculationsReceiptModal({
+export default function OrdersReceiptModal({
   outletId,         // string | null
   outletName,
   groups,           // full group list with rows
@@ -83,7 +83,7 @@ export default function CalculationsReceiptModal({
       if (currentUser) {
         const label = `${orderType === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${series.trim()}`
         const lineSummary = lines.flatMap(g => g.items).map(i => `${i.description} ×${i.qty}`).join(', ')
-        await logModuleActivity(currentUser, 'calculations', 'add', label, null, buildActivityDetails({
+        await logModuleActivity(currentUser, 'orders', 'add', label, null, buildActivityDetails({
           recordType: orderType === 'Invoice' ? 'Invoice' : 'Saved order',
           table: 'saved_orders',
           snapshot: {

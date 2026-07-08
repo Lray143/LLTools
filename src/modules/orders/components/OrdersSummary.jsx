@@ -1,7 +1,7 @@
-// src/modules/calculations/components/CalculationsSummary.jsx
+// src/modules/orders/components/OrdersSummary.jsx
 import { ShoppingCart, Receipt } from 'lucide-react'
 
-export default function CalculationsSummary({
+export default function OrdersSummary({
   subtotal,
   discounts,        // array from the selected outlet: [{ id, name, value }]
   lineCount,        // how many rows have qty > 0

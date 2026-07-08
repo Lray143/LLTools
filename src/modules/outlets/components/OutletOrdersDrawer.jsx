@@ -202,7 +202,7 @@ export default function OutletOrdersDrawer({ outlet, onClose }) {
               <Receipt size={36} className="text-gray-200" />
               <p className="font-medium text-gray-500">No saved orders</p>
               <p className="text-sm">
-                Enter quantities in Calculations, open the receipt, and save it with a series number.
+                Enter quantities in Orders, open the receipt, and save it with a series number.
               </p>
             </div>
           ) : (

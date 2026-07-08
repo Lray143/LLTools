@@ -21,7 +21,7 @@ const ALL_NAV_ITEMS = [
   { id: 'clinic',       label: 'Clinic Log',      icon: ClipboardList        },
   { id: 'products',     label: 'Products',        icon: SoapDispenserDroplet },
   { id: 'outlets',      label: 'Outlets',         icon: Store                },
-  { id: 'calculations', label: 'Calculations',    icon: Calculator           },
+  { id: 'orders', label: 'Orders',    icon: Calculator           },
   { id: 'reports',      label: 'Reports',         icon: BarChart3            },
   { id: 'leaves',       label: 'Leave Requests',  icon: CalendarClock        },
 ]

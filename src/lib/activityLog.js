@@ -1,4 +1,4 @@
-/** @typedef {'employees'|'products'|'outlets'|'calculations'} ActivityModule */
+/** @typedef {'employees'|'products'|'outlets'|'orders'} ActivityModule */
 /** @typedef {'add'|'edit'|'archive'|'permanent_delete'} ActivityAction */
 
 const editDebouncers = new Map()
@@ -190,5 +190,5 @@ export const ACTIVITY_MODULE_LABELS = {
   employees:    'Employees',
   products:     'Products',
   outlets:      'Outlets',
-  calculations: 'Calculations',
+  orders: 'Orders',
 }

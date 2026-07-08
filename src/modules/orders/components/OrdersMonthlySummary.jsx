@@ -1,4 +1,4 @@
-// src/modules/calculations/components/CalculationsMonthlySummary.jsx
+// src/modules/orders/components/OrdersMonthlySummary.jsx
 import { logModuleActivity, buildActivityDetails } from '../../../lib/activityLog'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
@@ -127,7 +127,7 @@ function styleDataCell(cell, colNum, fillArgb) {
 
 async function exportMonthToXLSX(monthLabel, orders, outletMap = {}) {
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'LLTools Calculations'
+  wb.creator = 'LLTools Orders'
   wb.created = new Date()
 
   const ws = wb.addWorksheet(monthLabel)
@@ -672,7 +672,7 @@ function TrendBadge({ current, previous }) {
 }
 
 // ── Main component ────────────────────────────────────────────────
-export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0, type = 'Vanselling' }) {
+export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type = 'Vanselling' }) {
   const [orders,         setOrders]         = useState([])
   const [archivedOrders, setArchivedOrders] = useState([])
   const [loading,        setLoading]        = useState(true)
@@ -697,14 +697,18 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { loadData() }, [refreshKey])
+  useEffect(() => {
+    setOrders([])
+    setArchivedOrders([])
+    loadData()
+  }, [refreshKey, type])
 
   const handleArchive = async () => {
     if (!confirmArchive) return
     const id = confirmArchive.id
     try {
       await window.electronAPI.archiveOrder(id)
-      await logModuleActivity(currentUser, 'calculations', 'archive', `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${confirmArchive.seriesNumber}`, id, buildActivityDetails({
+      await logModuleActivity(currentUser, 'orders', 'archive', `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${confirmArchive.seriesNumber}`, id, buildActivityDetails({
         recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',
@@ -719,7 +723,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
     const order = archivedOrders.find(o => o.id === id)
     try {
       await window.electronAPI.unarchiveOrder(id)
-      await logModuleActivity(currentUser, 'calculations', 'restore', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
+      await logModuleActivity(currentUser, 'orders', 'restore', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
         recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',
@@ -733,7 +737,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
     const order = archivedOrders.find(o => o.id === id)
     try {
       await window.electronAPI.deleteOrder(id)
-      await logModuleActivity(currentUser, 'calculations', 'permanent_delete', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
+      await logModuleActivity(currentUser, 'orders', 'permanent_delete', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
         recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',
@@ -755,7 +759,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
       const isoDate = `${dateStr}T00:00:00`
       const oldDate = order?.orderDate ? order.orderDate.slice(0, 10) : '—'
       await window.electronAPI.updateOrderDate(id, isoDate)
-      await logModuleActivity(currentUser, 'calculations', 'edit', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
+      await logModuleActivity(currentUser, 'orders', 'edit', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
         recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',

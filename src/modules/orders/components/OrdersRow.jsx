@@ -1,4 +1,4 @@
-// src/modules/calculations/components/CalculationsRow.jsx
+// src/modules/orders/components/OrdersRow.jsx
 import { useRef } from 'react'
 
 const fmt = (n) =>
@@ -6,7 +6,7 @@ const fmt = (n) =>
     ? '—'
     : Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export default function CalculationsRow({
+export default function OrdersRow({
   row,
   rowIndex,
   qty,           // number | '' — controlled from parent

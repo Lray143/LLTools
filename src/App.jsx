@@ -15,7 +15,7 @@ import MyAttendance   from './modules/my-attendance/MyAttendance'
 import ClinicLog      from './modules/clinic/ClinicLog'
 import Products       from './modules/products/Products'
 import Outlets        from './modules/outlets/Outlets'
-import Calculations   from './modules/calculations/Calculations'
+import Orders   from './modules/orders/Orders'
 import Reports        from './modules/reports/Reports'
 import Settings       from './modules/settings/Settings'
 import LeaveRequests  from './modules/leaves/LeaveRequests'
@@ -378,7 +378,7 @@ function App() {
       clinic:       <ClinicLog   refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
       products:     <Products    refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
       outlets:      <Outlets     refreshKey={refreshKey} currentUser={currentUser} onNavigate={setActivePage} />,
-      calculations: <Calculations currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />,
+      orders: <Orders currentUser={currentUser} refreshKey={refreshKey} onNavigate={setActivePage} />,
     }
     return STATIC_PAGES[activePage] ?? null
   }

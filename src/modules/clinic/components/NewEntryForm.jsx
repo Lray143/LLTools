@@ -555,7 +555,8 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
         {error && <div className="text-red-500 text-xs font-medium text-center">{error}</div>}
         <Button
           onClick={handleSaveClick}
-          className={`w-full h-9 text-sm font-medium flex-shrink-0 ${saved ? "bg-green-600 hover:bg-green-700" : "bg-orange-500 hover:bg-orange-600"} text-white`}
+          className={`w-full h-9 text-sm font-medium flex-shrink-0 transition-opacity hover:opacity-90 ${saved ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
+          style={!saved ? { backgroundColor: 'var(--accent-bg)', color: 'var(--accent-text)' } : {}}
         >
           {saved ? "✓ Record Saved!" : "Save Clinic Record"}
         </Button>

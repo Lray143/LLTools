@@ -329,7 +329,7 @@ ipcMain.handle('activityLog:add',      (_, entry)            => addModuleActivit
 ipcMain.handle('activityLog:get',      (_, module, limit)    => getModuleActivityLogs(module, limit ?? 200))
 
 // ── SAVED ORDERS ──────────────────────────────────────────────────
-ipcMain.handle('orders:save',          (_, order)    => saveOrder(order))
+ipcMain.handle('orders:save',          async (_, order) => { await saveOrder(order); return { success: true } })
 ipcMain.handle('orders:getByOutlet',   (_, outletId) => getOrdersByOutlet(outletId))
 ipcMain.handle('orders:getByDefault',  ()            => getOrdersByDefault())
 ipcMain.handle('orders:getAll',        ()            => getAllOrders())

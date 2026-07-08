@@ -7,7 +7,7 @@
 //
 // Available modules:
 //   'announcements', 'employees', 'biometrics', 'clinic',
-//   'products', 'outlets', 'calculations', 'reports',
+//   'products', 'outlets', 'orders', 'reports',
 //   'leaves', 'settings'
 //
 // Note: 'announcements', 'reports', 'leaves', and 'settings' are
@@ -32,15 +32,15 @@ export const DEPT_MODULES = {
   ],
   'Admin': [
     'announcements', 'employees', 'biometrics', 'my-attendance', 'clinic',
-    'products', 'outlets', 'calculations',
+    'products', 'outlets', 'orders',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Accounting': [
-    'announcements', 'my-attendance', 'products', 'outlets', 'calculations',
+    'announcements', 'my-attendance', 'products', 'outlets', 'orders',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Finance': [
-    'announcements', 'my-attendance', 'calculations', 'products',
+    'announcements', 'my-attendance', 'orders', 'products',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Sales': [
@@ -56,7 +56,7 @@ export const DEPT_MODULES = {
     'reports', 'leaves', 'chat', 'settings',
   ],
   'Production': [
-    'announcements', 'my-attendance', 'products', 'calculations',
+    'announcements', 'my-attendance', 'products', 'orders',
     'reports', 'leaves', 'chat', 'settings',
   ],
   'IT': [
@@ -77,7 +77,7 @@ export const DEPT_MODULES = {
 const ROLE_MODULES = {
   admin: [
     'announcements', 'employees', 'biometrics', 'my-attendance', 'clinic',
-    'products', 'outlets', 'calculations',
+    'products', 'outlets', 'orders',
     'reports', 'leaves', 'chat', 'app-links', 'settings',
   ],
   hr: [
@@ -88,7 +88,7 @@ const ROLE_MODULES = {
     'announcements', 'my-attendance', 'clinic', 'reports', 'leaves', 'chat', 'settings',
   ],
   inventory: [
-    'announcements', 'my-attendance', 'products', 'calculations',
+    'announcements', 'my-attendance', 'products', 'orders',
     'reports', 'leaves', 'chat', 'settings',
   ],
   outlets: [
