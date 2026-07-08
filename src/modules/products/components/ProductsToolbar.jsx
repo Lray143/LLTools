@@ -157,7 +157,7 @@ export default function ProductsToolbar({
             onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
             {editMode ? <Unlock size={14} /> : <Lock size={14} />}
-            {editMode ? 'Editing' : 'Locked'}
+            {editMode ? 'Editing' : 'Edit'}
           </button>
 
           {/* Add Group — only edit + default mode */}

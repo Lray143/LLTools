@@ -498,7 +498,7 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
             ? 'Orange prices are outlet-specific overrides · enable Editing to change them'
             : editMode
             ? 'Click any cell to edit · Check rows to multi-select · Deleted rows go to Archive'
-            : 'Toggle "Locked" to enable editing'}
+            : 'Toggle "Edit" to enable editing'}
         </p>
       </div>
 
