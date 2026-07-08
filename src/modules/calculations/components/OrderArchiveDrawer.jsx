@@ -104,7 +104,7 @@ export default function OrderArchiveDrawer({ orders, onRestore, onPermDelete, on
                       key={opt.value}
                       onClick={() => { setSortBy(opt.value); setSortOpen(false) }}
                       className="block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
-                      style={{ color: sortBy === opt.value ? '#f97316' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
+                      style={{ color: sortBy === opt.value ? 'var(--theme-500)' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
                     >
                       {opt.label}
                     </button>
@@ -147,11 +147,11 @@ export default function OrderArchiveDrawer({ orders, onRestore, onPermDelete, on
                   return (
                     <div
                       key={o.id}
-                      className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
+                      className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-theme-50/50 border border-gray-100 hover:border-theme-100 rounded-lg transition-colors group"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
-                          <Receipt className="w-4 h-4 text-orange-500" />
+                        <div className="w-9 h-9 rounded-full bg-theme-50 flex items-center justify-center">
+                          <Receipt className="w-4 h-4 text-theme-500" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-800">

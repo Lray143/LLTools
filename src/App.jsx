@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import Pusher from 'pusher-js'
+import { getPusherChannel } from './lib/pusherSingleton'
 import { Sparkles, Star, Heart, Zap, Bug } from 'lucide-react'
 import './App.css'
 
@@ -186,30 +186,30 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!import.meta.env.VITE_PUSHER_KEY) return
-    const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
-      cluster: import.meta.env.VITE_PUSHER_CLUSTER
-    })
-    const channel = pusher.subscribe('lltools-updates')
-    
-    channel.bind('new-message', (data) => {
+    const channel = getPusherChannel()
+    if (!channel) return
+
+    const handleNewMessage = (data) => {
       const me = currentUserRef.current
       const myId = String(me?.employeeId || me?.id || '')
       // Don't force-sync for messages we sent ourselves (already in optimistic cache)
       if (data?.senderId && data.senderId === myId) return
       window.electronAPI?.forceSync?.()
-    })
+    }
+    channel.bind('new-message', handleNewMessage)
 
-    channel.bind('reaction-updated', () => {
+    const handleReactionUpdated = () => {
       // Keep local DB in sync; Chat applies the payload instantly via its own listener.
       window.electronAPI?.forceSync?.()
-    })
+    }
+    channel.bind('reaction-updated', handleReactionUpdated)
 
-    channel.bind('message-updated', () => {
+    const handleMessageUpdated = () => {
       window.electronAPI?.forceSync?.()
-    })
+    }
+    channel.bind('message-updated', handleMessageUpdated)
 
-    channel.bind('typing', (data) => {
+    const handleTyping = (data) => {
       const me = currentUserRef.current
       // Filter out own typing events — userId is employeeId || String(id)
       const myId = String(me?.employeeId || me?.id || '')
@@ -231,18 +231,37 @@ function App() {
           return { ...prev, [data.roomId]: Array.from(roomTyping) }
         })
       }, 4000)
-    })
+    }
+    channel.bind('typing', handleTyping)
 
-    channel.bind('employee-updated', (data) => {
+    const handleEmployeeUpdated = (data) => {
       const me = currentUserRef.current
       if (me && (me.employeeId === data.id || String(me.id) === String(data.id))) {
         window.electronAPI?.forceSync?.()
       }
-    })
+    }
+    channel.bind('employee-updated', handleEmployeeUpdated)
+
+    // Global triggers for reports and announcements to force DB sync on receivers
+    const forceDbSync = () => window.electronAPI?.forceSync?.()
+    
+    channel.bind('report-assigned', forceDbSync)
+    channel.bind('report-comment-added', forceDbSync)
+    channel.bind('new-announcement-comment', forceDbSync)
+    channel.bind('announcement-acknowledged', forceDbSync)
+    channel.bind('announcement-comment-reacted', forceDbSync)
 
     return () => {
-      pusher.unsubscribe('lltools-updates')
-      pusher.disconnect()
+      channel.unbind('new-message', handleNewMessage)
+      channel.unbind('reaction-updated', handleReactionUpdated)
+      channel.unbind('message-updated', handleMessageUpdated)
+      channel.unbind('typing', handleTyping)
+      channel.unbind('employee-updated', handleEmployeeUpdated)
+      channel.unbind('report-assigned', forceDbSync)
+      channel.unbind('report-comment-added', forceDbSync)
+      channel.unbind('new-announcement-comment', forceDbSync)
+      channel.unbind('announcement-acknowledged', forceDbSync)
+      channel.unbind('announcement-comment-reacted', forceDbSync)
     }
   }, [])
 

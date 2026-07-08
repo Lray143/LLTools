@@ -591,17 +591,17 @@ function MonthOrdersTable({ orders, onArchiveClick, onDateChange }) {
                       onChange={e => setDateVal(e.target.value)}
                       onBlur={() => commitEdit(order.id)}
                       onKeyDown={e => { if (e.key === 'Enter') commitEdit(order.id); if (e.key === 'Escape') setEditingId(null) }}
-                      className="border border-orange-300 rounded px-1.5 py-0.5 text-xs text-gray-700 outline-none focus:ring-1 focus:ring-orange-300"
+                      className="border border-theme-300 rounded px-1.5 py-0.5 text-xs text-gray-700 outline-none focus:ring-1 focus:ring-theme-300"
                     />
                   ) : (
                     <button
                       onClick={() => startEdit(order)}
                       title="Click to change date"
-                      className="flex items-center gap-1 hover:text-orange-500 transition-colors group/date"
+                      className="flex items-center gap-1 hover:text-theme-500 transition-colors group/date"
                     >
                       {formatDate(order.createdAt)}
                       <span className="opacity-0 group-hover/date:opacity-100 transition-opacity">
-                        <Calendar size={10} className="text-orange-400" />
+                        <Calendar size={10} className="text-theme-400" />
                       </span>
                     </button>
                   )}
@@ -614,7 +614,7 @@ function MonthOrdersTable({ orders, onArchiveClick, onDateChange }) {
                 <td className="py-2 text-right text-gray-500">₱{fmt(order.subtotal)}</td>
                 <td className="py-2 text-center">
                   {order.discounts.length > 0 ? (
-                    <span className="text-orange-600 font-medium">
+                    <span className="text-theme-600 font-medium">
                       {order.discounts.map((d) => `${d.value}%`).join(' + ')}
                     </span>
                   ) : (
@@ -625,7 +625,7 @@ function MonthOrdersTable({ orders, onArchiveClick, onDateChange }) {
                 <td className="py-2 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => onArchiveClick(order)}
-                    className="p-1 rounded hover:bg-orange-50 text-gray-300 hover:text-orange-500 transition-colors"
+                    className="p-1 rounded hover:bg-theme-50 text-gray-300 hover:text-theme-500 transition-colors"
                     title="Archive order"
                   >
                     <Archive size={12} />
@@ -856,8 +856,8 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
           <div className="grid grid-cols-3 gap-4">
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-            <Receipt size={18} className="text-orange-500" />
+          <div className="w-10 h-10 rounded-full bg-theme-100 flex items-center justify-center shrink-0">
+            <Receipt size={18} className="text-theme-500" />
           </div>
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Total Orders</p>
@@ -866,8 +866,8 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
         </div>
 
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-            <Calendar size={18} className="text-orange-500" />
+          <div className="w-10 h-10 rounded-full bg-theme-100 flex items-center justify-center shrink-0">
+            <Calendar size={18} className="text-theme-500" />
           </div>
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Monthly Periods</p>
@@ -876,14 +876,14 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
           </div>
         </div>
 
-        <div className="bg-orange-50 rounded-xl border border-orange-200 shadow-sm p-4 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-orange-200 flex items-center justify-center shrink-0">
-            <TrendingUp size={18} className="text-orange-600" />
+        <div className="bg-theme-50 rounded-xl border border-theme-200 shadow-sm p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-theme-200 flex items-center justify-center shrink-0">
+            <TrendingUp size={18} className="text-theme-600" />
           </div>
           <div>
-            <p className="text-xs text-orange-500 uppercase tracking-wide mb-0.5">All-Time Revenue</p>
-            <p className="text-2xl font-bold text-orange-700">₱{fmt(allTimeTotal)}</p>
-            <p className="text-xs text-orange-400">
+            <p className="text-xs text-theme-500 uppercase tracking-wide mb-0.5">All-Time Revenue</p>
+            <p className="text-2xl font-bold text-theme-700">₱{fmt(allTimeTotal)}</p>
+            <p className="text-xs text-theme-400">
               avg ₱{fmt(allTimeTotal / allTimeOrders)} / order
             </p>
           </div>
@@ -925,11 +925,11 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
               <div key={month.key}>
                 {/* Month row */}
                 <div
-                  className="flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-orange-50/40 transition-colors group"
+                  className="flex items-center gap-4 px-6 py-4 cursor-pointer hover:bg-theme-50/50 transition-colors group"
                   onClick={() => toggleMonth(month.key)}
                 >
                   {/* Expand toggle */}
-                  <button className="text-gray-400 group-hover:text-orange-500 transition-colors shrink-0">
+                  <button className="text-gray-400 group-hover:text-theme-500 transition-colors shrink-0">
                     {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </button>
 
@@ -948,7 +948,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
                   {/* Mini bar */}
                   <div className="flex-1 h-2 bg-gray-50 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-theme-400 to-theme-500 rounded-full transition-all duration-500"
                       style={{ width: `${widthPct}%` }}
                     />
                   </div>
@@ -969,8 +969,8 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
                     className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium
                                 transition-colors
                                 ${isExporting
-                                  ? 'border-orange-300 bg-orange-50 text-orange-500 cursor-wait'
-                                  : 'border-gray-200 text-gray-500 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600'
+                                  ? 'border-theme-300 bg-theme-50 text-theme-500 cursor-wait'
+                                  : 'border-gray-200 text-gray-500 hover:border-theme-300 hover:bg-theme-50 hover:text-theme-600'
                                 }
                                 disabled:opacity-50`}
                   >
@@ -1014,8 +1014,8 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
         <DialogContent className="sm:max-w-sm bg-white border-0 outline-none focus:outline-none ring-0 p-6 z-[60]">
           <DialogHeader>
             <div className="flex flex-col items-center gap-2 pt-2 text-center">
-              <div className="w-11 h-11 rounded-full bg-orange-50 flex items-center justify-center mb-1">
-                <Archive className="w-5 h-5 text-orange-500" />
+              <div className="w-11 h-11 rounded-full bg-theme-50 flex items-center justify-center mb-1">
+                <Archive className="w-5 h-5 text-theme-500" />
               </div>
               <DialogTitle className="text-gray-900 font-semibold text-base">Archive this order?</DialogTitle>
             </div>
@@ -1027,7 +1027,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
             <Button variant="outline" className="border-gray-200 text-gray-600" onClick={() => setConfirmArchive(null)}>
               Cancel
             </Button>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={handleArchive}>
+            <Button className="bg-theme-500 hover:bg-theme-600 text-white border-0" onClick={handleArchive}>
               Move to Archive
             </Button>
           </DialogFooter>

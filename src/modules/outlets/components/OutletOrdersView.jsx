@@ -283,7 +283,7 @@ export default function OutletOrdersView({ outlets }) {
 
   const handleDelete = async (id) => {
     try {
-      await window.electronAPI.deleteOrder(id)
+      await window.electronAPI.archiveOrder(id)
       setOrders((prev) => prev.filter((o) => o.id !== id))
     } catch (e) {
       console.error(e)

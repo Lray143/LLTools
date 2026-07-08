@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        orange: {
+        theme: {
           50: 'var(--theme-50)',
           100: 'var(--theme-100)',
           200: 'var(--theme-200)',

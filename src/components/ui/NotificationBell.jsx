@@ -7,6 +7,7 @@ import {
   myAnnouncementsKey,
 } from '../../lib/notifications'
 import { canManageReports } from '../../lib/permissions'
+import { getPusherChannel } from '../../lib/pusherSingleton'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -288,21 +289,16 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
   useEffect(() => {
     if (!currentUser || !import.meta.env.VITE_PUSHER_KEY) return
 
-    // Hoist pusher outside .then() so the useEffect cleanup can disconnect it.
-    // Previously the cleanup was returned from inside .then() which React never sees.
-    let pusher = null
+    const channel = getPusherChannel()
+    if (!channel) return
 
-    import('pusher-js').then(({ default: PusherLib }) => {
-      pusher = new PusherLib(import.meta.env.VITE_PUSHER_KEY, {
-        cluster: import.meta.env.VITE_PUSHER_CLUSTER,
-      })
-      const channel = pusher.subscribe('lltools-updates')
-      const myId    = String(currentUser.employeeId || currentUser.id || '')
+    const myId    = String(currentUser.employeeId || currentUser.id || '')
       const myName  = (currentUser.employeeName || currentUser.username || '').split(' ')[0].toLowerCase()
       const myNo    = currentUser.username || ''
 
       // ─ Report: new comment on a report I filed or previously commented on ─
-      channel.bind('report-comment-added', (data) => {
+      // ─ Report: new comment on a report I filed or previously commented on ─
+      const handleReportCommentAdded = (data) => {
         if (String(data.commenterName) === (currentUser.employeeName || currentUser.username)) return
         const iMineReport   = data.reportEmployeeNo === myNo
         const iPrevCommenter = (data.prevCommenterNames || []).includes(currentUser.employeeName || currentUser.username)
@@ -313,10 +309,11 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
             'reports'
           )
         }
-      })
+      }
+      channel.bind('report-comment-added', handleReportCommentAdded)
 
       // ─ Report: assigned to me ─
-      channel.bind('report-assigned', (data) => {
+      const handleReportAssigned = (data) => {
         const myFullName = currentUser.employeeName || currentUser.username || ''
         if (data.assignedTo === myFullName) {
           notifyEphemeral(
@@ -325,20 +322,22 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
             'reports'
           )
         }
-      })
+      }
+      channel.bind('report-assigned', handleReportAssigned)
 
       // ─ Announcement: someone acknowledged MY post ─
-      channel.bind('announcement-acknowledged', (data) => {
+      const handleAnnouncementAcknowledged = (data) => {
         if (String(data.authorId) !== myId) return
         notifyEphemeral(
           'Announcement Acknowledged',
           `${data.employeeName} acknowledged "${data.announcementSubject}"`,
           'announcements'
         )
-      })
+      }
+      channel.bind('announcement-acknowledged', handleAnnouncementAcknowledged)
 
       // ─ Announcement: new comment — notify author + previous commenters + parent author ─
-      channel.bind('new-announcement-comment', (data) => {
+      const handleNewAnnouncementComment = (data) => {
         if (!data.announcementId || String(data.employeeId) === myId) return
         const isAuthor       = String(data.authorId) === myId
         const isPrevCommenter = (data.prevCommenterIds || []).map(String).includes(myId)
@@ -351,20 +350,22 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
             'announcements'
           )
         }
-      })
+      }
+      channel.bind('new-announcement-comment', handleNewAnnouncementComment)
 
       // ─ Announcement comment: someone reacted to MY comment ─
-      channel.bind('announcement-comment-reacted', (data) => {
+      const handleAnnouncementCommentReacted = (data) => {
         if (String(data.commentAuthorId) !== myId) return
         notifyEphemeral(
           'Reaction on your comment',
           `${data.reactorName} reacted ${data.reaction} to your comment`,
           'announcements'
         )
-      })
+      }
+      channel.bind('announcement-comment-reacted', handleAnnouncementCommentReacted)
 
       // ─ Chat: @mention or @everyone or reply-to-me ─
-      channel.bind('new-message', (data) => {
+      const handleNewMessage = (data) => {
         if (!data || String(data.senderId) === myId) return
         const mentions        = (data.mentions || []).map(m => m.toLowerCase())
         const isMentioned     = mentions.includes(myName)
@@ -373,28 +374,36 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
         const senderFirst     = (data.senderName || 'Someone').split(' ')[0]
         const roomLabel       = data.message?.department ? `#${data.message.department}` : 'DM'
 
-        if (isMentioned || isEveryone) {
-          notifyEphemeral(
-            isEveryone ? `${senderFirst} mentioned @everyone in ${roomLabel}` : `${senderFirst} mentioned you in ${roomLabel}`,
-            (data.message?.message || 'Sent an attachment').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '').slice(0, 100),
-            'chat'
-          )
-        } else if (isReplyToMe) {
-          notifyEphemeral(
-            `${senderFirst} replied to your message`,
-            (data.message?.message || 'Sent an attachment').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '').slice(0, 100),
-            'chat'
-          )
-        }
-      })
-    }).catch(() => {})
+        const title = isEveryone ? `${senderFirst} mentioned @everyone in ${roomLabel}` 
+                    : isMentioned ? `${senderFirst} mentioned you in ${roomLabel}`
+                    : isReplyToMe ? `${senderFirst} replied to your message`
+                    : `${senderFirst} sent a message in ${roomLabel}`
+        const body = (data.message?.message || 'Sent an attachment').replace(/^\[reply\][\s\S]*?\[\/reply\]\n?/g, '').slice(0, 100)
 
-    // Cleanup: this is returned directly from useEffect so React will call it
-    return () => {
-      if (pusher) {
-        pusher.unsubscribe('lltools-updates')
-        pusher.disconnect()
+        // Always fire native OS notification (it only displays if the app is minimized)
+        fireNative(title, body)
+
+        // Only pop the red in-app toast for mentions or replies
+        if (isMentioned || isEveryone || isReplyToMe) {
+          setEphemeralNotifs(prev => {
+            const newNotif = {
+              id: `eph-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+              _stream: 'ephemeral', _unread: true, _sortTime: Date.now(),
+              title, body, route: 'chat'
+            }
+            return [newNotif, ...prev]
+          })
+        }
       }
+      channel.bind('new-message', handleNewMessage)
+
+    return () => {
+      channel.unbind('report-comment-added', handleReportCommentAdded)
+      channel.unbind('report-assigned', handleReportAssigned)
+      channel.unbind('announcement-acknowledged', handleAnnouncementAcknowledged)
+      channel.unbind('new-announcement-comment', handleNewAnnouncementComment)
+      channel.unbind('announcement-comment-reacted', handleAnnouncementCommentReacted)
+      channel.unbind('new-message', handleNewMessage)
     }
   }, [currentUser, isAdmin, empId, notifyEphemeral])
 

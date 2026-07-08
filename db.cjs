@@ -949,6 +949,7 @@ const upsertEmployee = async (emp) => {
       emp.day_schedule ?? null])
   await createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
   
+  try { await syncCloud() } catch (_) {}
   if (global.pusherTrigger) {
     global.pusherTrigger('lltools-updates', 'employee-updated', { id: emp.id })
   }
@@ -1429,6 +1430,7 @@ const updateReportStatus = async (id, status, changedBy) => {
 const assignReport = async (id, assignedTo) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
   await run(`UPDATE reports SET assigned_to=?, updated_at=? WHERE id=?`, [assignedTo, now, id])
+  try { await syncCloud() } catch (_) {}
   // Notify the assignee so they see it in their bell immediately
   if (global.pusherTrigger) {
     const report = await queryOne(`SELECT report_no, subject, employee_name FROM reports WHERE id = ?`, [id])
@@ -1445,6 +1447,7 @@ const addReportComment = async (comment) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
   await run(`INSERT INTO report_comments (id, report_id, user_id, username, comment, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
     [comment.id, comment.reportId, comment.userId ?? null, comment.username ?? '', comment.comment ?? '', now])
+  try { await syncCloud() } catch (_) {}
   // Notify: the employee who filed the report + all previous commenters (except the person just commenting)
   if (global.pusherTrigger) {
     const report = await queryOne(`SELECT report_no, subject, employee_no, employee_name FROM reports WHERE id = ?`, [comment.reportId])
@@ -1653,10 +1656,10 @@ const getChatSidebarData = async (userId) => {
       SELECT room_id, created_at as last_msg_at, sender_id as last_sender_id, sender_name as last_sender_name, message as last_message, file_url as last_file_url,
              ROW_NUMBER() OVER(PARTITION BY room_id ORDER BY created_at DESC) as rn
       FROM direct_messages
-      WHERE room_id LIKE ? OR room_id LIKE ?
+      WHERE room_id GLOB ? OR room_id GLOB ?
     )
     WHERE rn = 1
-  `, [`DM_${userId}_%`, `DM_%_${userId}`])
+  `, [`DM_${userId}_*`, `DM_*_${userId}`])
 
   // Find the actual users.id in case the passed userId is an employee_id
   const userRow = await queryOne(`SELECT id FROM users WHERE employee_id = ? OR id = ?`, [userId, userId])
@@ -1921,6 +1924,7 @@ const archiveAnnouncement = async (id) => {
 }
 
 const permanentDeleteAnnouncement = async (id) => {
+  await run(`DELETE FROM announcement_reads WHERE announcement_id = ?`, [id]);
   await run(`DELETE FROM announcement_acknowledgements WHERE announcement_id = ?`, [id]);
   await run(`DELETE FROM announcement_reactions WHERE comment_id IN (SELECT id FROM announcement_comments WHERE announcement_id = ?)`, [id]);
   await run(`DELETE FROM announcement_comments WHERE announcement_id = ?`, [id]);
@@ -2000,9 +2004,9 @@ const addAnnouncementComment = async (announcementId, employeeId, employeeName, 
   const id = require('crypto').randomUUID();
   await run(`
     INSERT INTO announcement_comments (id, announcement_id, employee_id, employee_name, content, parent_id)
-    VALUES (?, ?, ?, ?, ?, ?)
   `, [id, announcementId, employeeId, employeeName, content, parentId]);
   
+  try { await syncCloud() } catch (_) {}
   if (global.pusherTrigger) {
     // Fetch the announcement author and all previous commenters so the bell can target correctly
     const ann = await queryOne(`SELECT author_id, author_name, subject FROM announcements WHERE id = ?`, [announcementId]);
@@ -2039,6 +2043,8 @@ const reactToAnnouncementComment = async (commentId, employeeId, employeeName, r
     const id = require('crypto').randomUUID();
     await run(`INSERT INTO announcement_reactions (id, comment_id, employee_id, reaction) VALUES (?, ?, ?, ?)`, [id, commentId, employeeId, reaction]);
   }
+  
+  try { await syncCloud() } catch (_) {}
   if (global.pusherTrigger) {
     // Fire a specific event so the comment author can be notified (only when adding, not removing)
     const comment = await queryOne(`SELECT employee_id, employee_name, announcement_id FROM announcement_comments WHERE id = ?`, [commentId]);

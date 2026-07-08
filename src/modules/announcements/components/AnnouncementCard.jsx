@@ -211,6 +211,8 @@ export default function AnnouncementCard({
   onView,
   focused = false,
   isArchived = false,
+  autoConfirm = false,
+  onAutoConfirmDone,
 }) {
   const [showComments,  setShowComments] = useState(false)
   const [acks,          setAcks]         = useState([])
@@ -259,6 +261,13 @@ export default function AnnouncementCard({
       loadReads()
     }
   }, [focused, canPost])
+
+  useEffect(() => {
+    if (autoConfirm) {
+      setConfirmDelete(true)
+      onAutoConfirmDone?.()
+    }
+  }, [autoConfirm])
 
   const handleAcknowledge = async () => {
     if (hasAcknowledged || acknowledging) return
@@ -369,24 +378,17 @@ export default function AnnouncementCard({
                   <Users size={13} />
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); onArchive(); }}
+                  onClick={(e) => { e.stopPropagation(); focused ? setConfirmDelete(true) : onArchive?.(); }}
                   title="Archive"
                   style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                 >
                   <Archive size={13} />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
-                  title="Delete"
-                  style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#ef4444' }}
-                >
-                  <Trash2 size={13} />
-                </button>
               </div>
             )}
             {canPost && isArchived && (
               <button
-                onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
+                onClick={(e) => { e.stopPropagation(); focused ? setConfirmDelete(true) : onDelete?.(); }}
                 title="Permanently Delete"
                 style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: '#ef4444', fontSize: 12, fontWeight: 500 }}
               >
@@ -394,6 +396,35 @@ export default function AnnouncementCard({
               </button>
             )}
           </div>
+
+          {/* Sticky confirm banner — shown at the top of the focused card so user never has to scroll */}
+          {focused && confirmDelete && (
+            <div style={{
+              position: 'sticky', top: 0, zIndex: 20,
+              margin: '8px 0 4px', padding: '12px 16px', borderRadius: 10,
+              background: isArchived ? 'rgba(239,68,68,0.08)' : 'rgba(var(--theme-500-rgb,99,102,241),0.08)',
+              border: isArchived ? '1px solid rgba(239,68,68,0.25)' : '1px solid rgba(var(--theme-500-rgb,99,102,241),0.25)',
+              backdropFilter: 'blur(4px)',
+            }}>
+              <p style={{ margin: '0 0 10px', fontWeight: 500, fontSize: 14, color: isArchived ? '#ef4444' : 'var(--theme-500)' }}>
+                {isArchived ? 'Permanently delete this announcement?' : 'Archive this announcement?'}
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); isArchived ? onDelete?.() : onArchive?.(); }}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: isArchived ? '#ef4444' : 'var(--theme-500)', color: '#fff', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}
+                >
+                  Yes, {isArchived ? 'Delete' : 'Archive'}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-hover)', color: 'var(--text-secondary)', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Subject */}
           <h3 style={{
@@ -645,33 +676,10 @@ export default function AnnouncementCard({
             </div>
           )}
 
-              {/* Delete confirmation */}
-              {confirmDelete && (
-                <div style={{
-                  marginTop: 12, padding: '12px 16px', borderRadius: 10,
-                  background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)',
-                }}>
-                  <p style={{ margin: '0 0 10px', fontWeight: 500, fontSize: 14, color: '#ef4444' }}>
-                    {isArchived ? 'Permanently delete this announcement?' : 'Archive this announcement?'}
-                  </p>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); onDelete(); }}
-                      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#ef4444', color: '#fff', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}
-                    >
-                      Yes, {isArchived ? 'Delete' : 'Archive'}
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
-                      style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-hover)', color: 'var(--text-secondary)', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          </div>
+        )}
+
+
 
         </div>
       </div>

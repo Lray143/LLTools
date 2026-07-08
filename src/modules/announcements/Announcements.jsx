@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import Pusher from 'pusher-js'
+import { getPusherChannel } from '../../lib/pusherSingleton'
 import {
   Megaphone, Plus, X, Archive, ArchiveRestore, AlertTriangle,
   Users, MessageSquare, CheckCheck, Search, ChevronDown, Smile, Paperclip,
@@ -719,18 +719,15 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
 
   // ── Pusher ─────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!import.meta.env.VITE_PUSHER_KEY) return
-    const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
-      cluster: import.meta.env.VITE_PUSHER_CLUSTER,
-    })
-    const ch = pusher.subscribe('lltools-updates')
+    const ch = getPusherChannel()
+    if (!ch) return
     setPusherChannel(ch)
 
-    ch.bind('new-announcement', () => { window.electronAPI?.forceSync?.() })
+    const handleNewAnnouncement = () => { window.electronAPI?.forceSync?.() }
+    ch.bind('new-announcement', handleNewAnnouncement)
 
     return () => {
-      pusher.unsubscribe('lltools-updates')
-      pusher.disconnect()
+      ch.unbind('new-announcement', handleNewAnnouncement)
     }
   }, [load])
 

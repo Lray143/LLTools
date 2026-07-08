@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, startTransition } from 'react'
-import Pusher from 'pusher-js'
+import { getPusherChannel } from '../../lib/pusherSingleton'
 import { Hash, User, Users, MessageSquare, Wifi, Sidebar } from 'lucide-react'
 import ChatSidebar from './components/ChatSidebar'
 import ChatMessages from './components/ChatMessages'
@@ -103,20 +103,17 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
   useEffect(() => { loadSidebarDataRef.current = loadSidebarData }, [loadSidebarData])
 
   useEffect(() => {
-    if (!import.meta.env.VITE_PUSHER_KEY) return
+    const channel = getPusherChannel()
+    if (!channel) return
 
-    const pusher = new Pusher(import.meta.env.VITE_PUSHER_KEY, {
-      cluster: import.meta.env.VITE_PUSHER_CLUSTER,
-    })
-    const channel = pusher.subscribe('lltools-updates')
-
-    channel.bind('user-online', (data) => {
+    const handleUserOnline = (data) => {
       if (data?.userId) {
         setOnlineUsers(prev => new Set([...prev, String(data.userId)]))
       }
-    })
+    }
+    channel.bind('user-online', handleUserOnline)
 
-    channel.bind('user-offline', (data) => {
+    const handleUserOffline = (data) => {
       if (data?.userId) {
         setOnlineUsers(prev => {
           const next = new Set(prev)
@@ -124,18 +121,20 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           return next
         })
       }
-    })
+    }
+    channel.bind('user-offline', handleUserOffline)
 
-    channel.bind('request-status', () => {
+    const handleRequestStatus = () => {
       // Someone just logged in, tell them we are online
       window.electronAPI?.sendPusherEvent?.({
         channel: 'lltools-updates',
         event: 'user-online',
         data: { userId: myParticipantIdRef.current },
       }).catch(() => {})
-    })
+    }
+    channel.bind('request-status', handleRequestStatus)
 
-    channel.bind('reaction-updated', (data) => {
+    const handleReactionUpdated = (data) => {
       const myId = String(myParticipantIdRef.current)
       if (String(data?.actorId) === myId) return
       if (!data?.roomId || !data?.msgId) return
@@ -150,12 +149,19 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           ),
         }
       })
-    })
+    }
+    channel.bind('reaction-updated', handleReactionUpdated)
 
-    channel.bind('new-message', (data) => {
+    const handleNewMessage = (data) => {
       const myId = String(myParticipantIdRef.current)
       if (data?.senderId && String(data.senderId) === myId) return
       if (!data?.roomId || !data?.message?.id) return
+
+      const el = scrollContainerRef.current
+      const isNear = el ? el.scrollHeight - el.scrollTop - el.clientHeight < 150 : true
+      if (data.roomId === currentRoomIdRef.current && isNear) {
+        pendingScrollRef.current = 'smooth'
+      }
 
       setMessageCache(prev => {
         const existing = prev[data.roomId] || []
@@ -163,9 +169,10 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         return { ...prev, [data.roomId]: [...existing, data.message] }
       })
       loadSidebarDataRef.current()
-    })
+    }
+    channel.bind('new-message', handleNewMessage)
 
-    channel.bind('message-updated', (data) => {
+    const handleMessageUpdated = (data) => {
       const myId = String(myParticipantIdRef.current)
       if (String(data?.actorId) === myId) return
       if (!data?.roomId || !data?.msgId) return
@@ -184,15 +191,17 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         }
       })
       loadSidebarDataRef.current()
-    })
+    }
+    channel.bind('message-updated', handleMessageUpdated)
 
-    channel.bind('message-seen', (data) => {
+    const handleMessageSeen = (data) => {
       if (!data?.roomId || !data?.userId) return
       // Ignore our own read-receipt events (check both userId and employeeId)
       const myId = String(myParticipantIdRef.current)
       if (
         String(data.userId) === myId ||
-        String(data.employeeId) === myId
+        String(data.userId) === String(currentUser?.id) ||
+        String(data.userId) === String(currentUser?.employeeId)
       ) return
       // Only update receipts for the room we're currently viewing
       if (data.roomId !== currentRoomIdRef.current) return
@@ -211,18 +220,17 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         }
         return [...prev, newReceipt]
       })
-    })
+    }
+    channel.bind('message-seen', handleMessageSeen)
 
     return () => {
-      channel.unbind('user-online')
-      channel.unbind('user-offline')
-      channel.unbind('request-status')
-      channel.unbind('reaction-updated')
-      channel.unbind('new-message')
-      channel.unbind('message-updated')
-      channel.unbind('message-seen')
-      pusher.unsubscribe('lltools-updates')
-      pusher.disconnect()
+      channel.unbind('user-online', handleUserOnline)
+      channel.unbind('user-offline', handleUserOffline)
+      channel.unbind('request-status', handleRequestStatus)
+      channel.unbind('reaction-updated', handleReactionUpdated)
+      channel.unbind('new-message', handleNewMessage)
+      channel.unbind('message-updated', handleMessageUpdated)
+      channel.unbind('message-seen', handleMessageSeen)
     }
   }, [])
 
