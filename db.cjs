@@ -407,6 +407,7 @@ const initDb = async () => {
       status      TEXT DEFAULT 'Active',
       discounts   TEXT DEFAULT '[]',
       archived    INTEGER DEFAULT 0,
+      added_by    TEXT DEFAULT NULL,
       created_at  TEXT DEFAULT (datetime('now')),
       synced_at   TEXT DEFAULT NULL,
       sync_status TEXT DEFAULT 'pending'
@@ -640,6 +641,7 @@ const initDb = async () => {
   try { await run("ALTER TABLE employees ADD COLUMN shift_end TEXT DEFAULT '17:30'") } catch (_) {}
   try { await run("ALTER TABLE employees ADD COLUMN day_offs TEXT DEFAULT 'Saturday,Sunday'") } catch (_) {}
   try { await run("ALTER TABLE employees ADD COLUMN day_schedule TEXT DEFAULT NULL") } catch (_) {}
+  try { await run("ALTER TABLE outlets ADD COLUMN added_by TEXT DEFAULT NULL") } catch (_) {}
 
   // ── Seed admin user ────────────────────────────────────────────────────────
   const adminHash = bcrypt.hashSync('admin123', 10)
@@ -1211,18 +1213,19 @@ const mapOutlet = (o) => ({
   region:    o.region    ?? '',
   status:    o.status    ?? 'Active',
   discounts: (() => { try { return JSON.parse(o.discounts ?? '[]') } catch { return [] } })(),
+  added_by:  o.added_by  ?? null,
 })
 
 const getOutlets         = async () => (await queryAll(`SELECT * FROM outlets WHERE archived = 0 ORDER BY name`)).map(mapOutlet)
 const getArchivedOutlets = async () => (await queryAll(`SELECT * FROM outlets WHERE archived = 1 ORDER BY name`)).map(mapOutlet)
 
 const upsertOutlet = async (o) => run(`
-  INSERT INTO outlets (id, name, code, address, region, status, discounts, archived)
-  VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+  INSERT INTO outlets (id, name, code, address, region, status, discounts, archived, added_by)
+  VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
   ON CONFLICT(id) DO UPDATE SET
     name=excluded.name, code=excluded.code, address=excluded.address, region=excluded.region,
     status=excluded.status, discounts=excluded.discounts, sync_status='pending'
-`, [o.id, o.name, o.code ?? null, o.address ?? null, o.region ?? null, o.status ?? 'Active', JSON.stringify(o.discounts ?? [])])
+`, [o.id, o.name, o.code ?? null, o.address ?? null, o.region ?? null, o.status ?? 'Active', JSON.stringify(o.discounts ?? []), o.added_by ?? null])
 
 const archiveOutlet         = async (id) => run(`UPDATE outlets SET archived=1, sync_status='pending' WHERE id=?`, [id])
 const unarchiveOutlet       = async (id) => run(`UPDATE outlets SET archived=0, sync_status='pending' WHERE id=?`, [id])

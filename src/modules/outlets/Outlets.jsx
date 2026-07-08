@@ -25,6 +25,7 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
   const [search,       setSearch]       = useState('')
   const [statusFilter, setStatusFilter] = useState('All Statuses')
   const [regionFilter, setRegionFilter] = useState('All Regions')
+  const [ownershipFilter, setOwnershipFilter] = useState('My Outlets')
 
   // Modal state
   const [editTarget,   setEditTarget]   = useState(null)   // outlet obj | {} for new
@@ -59,7 +60,11 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
       status: payload.status,
       discounts: payload.discounts,
     }
-    await window.electronAPI.upsertOutlet(payload)
+    const payloadToSave = { ...payload }
+    if (isNew) {
+      payloadToSave.added_by = currentUser?.name || 'Unknown'
+    }
+    await window.electronAPI.upsertOutlet(payloadToSave)
     if (isNew) {
       await logModuleActivity(currentUser, 'outlets', 'add', payload.name, payload.id, buildActivityDetails({
         recordType: 'Outlet',
@@ -163,9 +168,11 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
         statusFilter === 'All Statuses' || o.status === statusFilter
       const matchRegion =
         regionFilter === 'All Regions' || o.region === regionFilter
-      return matchSearch && matchStatus && matchRegion
+      const matchOwnership = 
+        ownershipFilter === 'All Outlets' || o.added_by === currentUser?.name
+      return matchSearch && matchStatus && matchRegion && matchOwnership
     })
-  }, [outlets, search, statusFilter, regionFilter])
+  }, [outlets, search, statusFilter, regionFilter, ownershipFilter, currentUser])
 
   return (
     <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
@@ -204,6 +211,7 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
         search={search}          setSearch={setSearch}
         statusFilter={statusFilter} setStatusFilter={setStatusFilter}
         regionFilter={regionFilter} setRegionFilter={setRegionFilter}
+        ownershipFilter={ownershipFilter} setOwnershipFilter={setOwnershipFilter}
         regions={regions}
         total={filtered.length}
         onAdd={() => setEditTarget({})}
@@ -233,12 +241,6 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
               onDelete={(o) => setDeleteTarget(o)}
               onViewOrders={(o) => setOrdersTarget(o)}
             />
-          )}
-          {!loading && filtered.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-              <p className="text-lg font-medium">No outlets found</p>
-              <p className="text-sm">Try adjusting your search or filters</p>
-            </div>
           )}
         </div>
       </div>

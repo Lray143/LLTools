@@ -93,6 +93,7 @@ export default function OutletToolbar({
   search, setSearch,
   statusFilter, setStatusFilter,
   regionFilter, setRegionFilter,
+  ownershipFilter, setOwnershipFilter,
   regions,
   total,
   onAdd,
@@ -109,6 +110,11 @@ export default function OutletToolbar({
   const regionOptions = [
     { label: 'All Regions', value: 'All Regions' },
     ...regions.map(r => ({ label: r, value: r }))
+  ]
+
+  const ownershipOptions = [
+    { label: 'My Outlets', value: 'My Outlets' },
+    { label: 'All Outlets', value: 'All Outlets' },
   ]
 
   return (
@@ -164,6 +170,13 @@ export default function OutletToolbar({
               onChange={setRegionFilter}
               options={regionOptions}
               minWidth="152px"
+            />
+
+            <CustomSelect
+              value={ownershipFilter}
+              onChange={setOwnershipFilter}
+              options={ownershipOptions}
+              minWidth="136px"
             />
 
             <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 400, userSelect: 'none' }}>

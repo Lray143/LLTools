@@ -138,7 +138,7 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
                   return (
                     <div
                       key={o.id}
-                      className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
+                      className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-theme-50/50 border border-gray-100 hover:border-theme-100 rounded-lg transition-colors group"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold ${colorClass}`}>

@@ -78,7 +78,7 @@ function OrderRow({ order, onDelete }) {
           {/* Line items by group */}
           {order.groups.map((group) => (
             <div key={group.groupName}>
-              <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1.5">
+              <p className="text-xs font-bold text-theme-600 uppercase tracking-wider mb-1.5">
                 {group.groupName}
               </p>
               <div className="space-y-1">
@@ -92,7 +92,7 @@ function OrderRow({ order, onDelete }) {
                       <p className="text-xs text-gray-400">
                         {item.qty} × ₱{fmt(item.price)}
                         {item.isOutletPrice && (
-                          <span className="ml-1 text-orange-500">●</span>
+                          <span className="ml-1 text-theme-500">●</span>
                         )}
                       </p>
                     </div>
@@ -112,7 +112,7 @@ function OrderRow({ order, onDelete }) {
             {discountSteps.map((d) => (
               <div key={d.id} className="flex justify-between text-sm">
                 <span className="flex items-center gap-1 text-gray-400">
-                  <Tag size={10} className="text-orange-400" />
+                  <Tag size={10} className="text-theme-400" />
                   {d.name} ({d.value}% off)
                 </span>
                 <span className="text-red-500">−₱{fmt(d.deduction)}</span>

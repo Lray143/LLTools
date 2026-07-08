@@ -20,6 +20,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Discounts</th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Added By</th>
             <th className="px-4 py-3" />
           </tr>
         </thead>
@@ -50,7 +51,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
                       {discounts.map((d) => (
                         <span
                           key={d.id}
-                          className="inline-flex items-center gap-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full"
+                          className="inline-flex items-center gap-1 text-xs bg-theme-50 text-theme-700 border border-theme-200 px-2 py-0.5 rounded-full"
                         >
                           <Tag size={9} />
                           {d.name}: {d.value}%
@@ -70,12 +71,16 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
                   </span>
                 </td>
 
+                <td className="px-4 py-3 text-gray-500">
+                  {o.added_by || 'Unknown'}
+                </td>
+
                 <td className="px-4 py-3">
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                     <button
                       onClick={() => onViewOrders(o)}
                       title="View saved orders"
-                      className="p-1.5 rounded-lg hover:bg-orange-50 text-gray-400 hover:text-orange-500 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-theme-50 text-gray-400 hover:text-theme-500 transition-colors"
                     >
                       <ScrollText size={14} />
                     </button>

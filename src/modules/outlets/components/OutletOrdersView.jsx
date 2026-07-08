@@ -28,7 +28,7 @@ function CustomSelect({ value, onChange, options, icon }) {
           minWidth: '200px',
         }}
       >
-        <span className={hasSelection ? 'text-orange-500' : 'text-gray-400'}>
+        <span className={hasSelection ? 'text-theme-500' : 'text-gray-400'}>
           {icon}
         </span>
         <span
@@ -105,7 +105,7 @@ function OrderExpandedDetail({ order }) {
     <div className="space-y-3">
       {order.groups.map((group) => (
         <div key={group.groupName}>
-          <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1.5">
+          <p className="text-xs font-bold text-theme-600 uppercase tracking-wider mb-1.5">
             {group.groupName}
           </p>
           <div className="space-y-1">
@@ -119,7 +119,7 @@ function OrderExpandedDetail({ order }) {
                   <p className="text-xs text-gray-400">
                     {item.qty} × ₱{fmt(item.price)}
                     {item.isOutletPrice && (
-                      <span className="ml-1 text-orange-500" title="Outlet-specific price">●</span>
+                      <span className="ml-1 text-theme-500" title="Outlet-specific price">●</span>
                     )}
                   </p>
                 </div>
@@ -139,7 +139,7 @@ function OrderExpandedDetail({ order }) {
         {discountSteps.map((d) => (
           <div key={d.id} className="flex justify-between text-xs">
             <span className="flex items-center gap-1 text-gray-400">
-              <Tag size={9} className="text-orange-400" />
+              <Tag size={9} className="text-theme-400" />
               {d.name} ({d.value}%)
             </span>
             <span className="text-red-500">−₱{fmt(d.deduction)}</span>
@@ -163,7 +163,7 @@ function OrderRow({ order, onDelete, showOutletCol, colCount }) {
   return (
     <>
       <tr
-        className="border-b border-gray-50 hover:bg-orange-50/30 cursor-pointer transition-colors"
+        className="border-b border-gray-50 hover:bg-theme-50/30 cursor-pointer transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
         {/* Expand */}
@@ -212,7 +212,7 @@ function OrderRow({ order, onDelete, showOutletCol, colCount }) {
               {order.discounts.map((d) => (
                 <span
                   key={d.id}
-                  className="text-xs text-orange-600 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                  className="text-xs text-theme-600 bg-theme-50 border border-theme-200 px-1.5 py-0.5 rounded-full whitespace-nowrap"
                 >
                   {d.name} {d.value}%
                 </span>
@@ -248,7 +248,7 @@ function OrderRow({ order, onDelete, showOutletCol, colCount }) {
         <tr>
           <td
             colSpan={colCount}
-            className="px-8 py-4 bg-orange-50/20 border-b border-gray-100"
+            className="px-8 py-4 bg-theme-50/20 border-b border-gray-100"
           >
             <OrderExpandedDetail order={order} />
           </td>
@@ -325,16 +325,16 @@ export default function OutletOrdersView({ outlets }) {
         {/* Stats chips */}
         <div className="flex items-center gap-2 flex-wrap">
           <span className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-100 rounded-lg text-sm text-gray-600 shadow-sm">
-            <Receipt size={13} className="text-orange-400" />
+            <Receipt size={13} className="text-theme-400" />
             <strong className="text-gray-800">{stats.totalOrders}</strong>&nbsp;order{stats.totalOrders !== 1 ? 's' : ''}
           </span>
           <span className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-100 rounded-lg text-sm text-gray-600 shadow-sm">
-            <Package size={13} className="text-orange-400" />
+            <Package size={13} className="text-theme-400" />
             <strong className="text-gray-800">{stats.totalItems}</strong>&nbsp;line item{stats.totalItems !== 1 ? 's' : ''}
           </span>
-          <span className="flex items-center gap-1.5 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg text-sm shadow-sm">
-            <TrendingUp size={13} className="text-orange-500" />
-            <strong className="text-orange-700">₱{fmt(stats.totalRevenue)}</strong>
+          <span className="flex items-center gap-1.5 px-3 py-2 bg-theme-50 border border-theme-200 rounded-lg text-sm shadow-sm">
+            <TrendingUp size={13} className="text-theme-500" />
+            <strong className="text-theme-700">₱{fmt(stats.totalRevenue)}</strong>
           </span>
         </div>
       </div>

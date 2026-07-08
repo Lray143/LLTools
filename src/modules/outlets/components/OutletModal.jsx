@@ -166,8 +166,8 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
                             type="button"
                             onMouseDown={e => e.preventDefault()}
                             onClick={() => { setRegion(r); setRegionOpen(false) }}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-orange-50 hover:text-orange-700 ${
-                              region === r ? 'bg-orange-50 text-orange-700 font-medium' : 'text-gray-700'
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-theme-50 hover:text-theme-700 ${
+                              region === r ? 'bg-theme-50 text-theme-700 font-medium' : 'text-gray-700'
                             }`}
                           >
                             {r}
@@ -210,7 +210,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
                 type="button"
                 size="sm"
                 onClick={addDiscount}
-                className="h-7 text-xs px-3 bg-orange-500 hover:bg-orange-600 text-white border-0 gap-1"
+                className="h-7 text-xs px-3 bg-theme-500 hover:bg-theme-600 text-white border-0 gap-1"
               >
                 <Plus size={11} /> Add
               </Button>
@@ -270,7 +270,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
             Cancel
           </Button>
           <Button
-            className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm"
+            className="bg-theme-500 hover:bg-theme-600 text-white border-0 text-sm"
             onClick={handleSave}
             disabled={saving}
           >

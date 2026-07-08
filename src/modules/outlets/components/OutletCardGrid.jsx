@@ -11,14 +11,14 @@ function OutletCard({ outlet, onEdit, onDelete, onViewOrders }) {
       <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={() => onViewOrders(outlet)}
-          className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+          className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-theme-500 hover:bg-theme-50 transition-colors"
           title="View saved orders"
         >
           <ScrollText size={13.5} />
         </button>
         <button
           onClick={() => onEdit(outlet)}
-          className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+          className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-theme-500 hover:bg-theme-50 transition-colors"
         >
           <Pencil size={13.5} />
         </button>
@@ -66,7 +66,14 @@ function OutletCard({ outlet, onEdit, onDelete, onViewOrders }) {
 }
 
 export default function OutletCardGrid({ outlets, onEdit, onDelete, onViewOrders }) {
-  if (outlets.length === 0) return null
+  if (outlets.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+        <p className="text-lg font-medium">No outlets found</p>
+        <p className="text-sm">Try adjusting your search or filters</p>
+      </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-3 gap-4">
