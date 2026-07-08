@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getPusherChannel } from '../../../lib/pusherSingleton'
 import { v4 as uuidv4 } from 'uuid'
 import {
   X, ClipboardList, Paperclip, Send,
@@ -56,6 +57,36 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
 
   useEffect(() => { loadDetails() }, [loadDetails, refreshKey])
   useEffect(() => { setAssignTo(report?.assignedTo ?? '') }, [report?.assignedTo])
+
+  // ── Real-time Pusher: auto-refresh when someone else comments or status changes ──
+  useEffect(() => {
+    if (!report?.id) return
+    let mounted = true
+
+    const channel = getPusherChannel()
+    if (!channel) return
+
+    const handler = (data) => {
+      if (data?.reportId === report.id && mounted) {
+        loadDetails()
+      }
+    }
+    channel.bind('report-comment-added', handler)
+    channel.bind('report-assigned', handler)
+
+    return () => {
+      mounted = false
+      channel.unbind('report-comment-added', handler)
+      channel.unbind('report-assigned', handler)
+    }
+  }, [report?.id, loadDetails])
+
+  // Reload when the database finishes syncing (covers forceSync from other events)
+  useEffect(() => {
+    if (!window.electronAPI?.onDbSynced) return
+    const cleanup = window.electronAPI.onDbSynced(() => loadDetails())
+    return () => cleanup()
+  }, [loadDetails])
 
   if (!report) return null
 

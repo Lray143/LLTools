@@ -949,7 +949,7 @@ const upsertEmployee = async (emp) => {
       emp.day_schedule ?? null])
   await createEmployeeAccount(emp.id, emp.employee_no, emp.department ?? '')
   
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   if (global.pusherTrigger) {
     global.pusherTrigger('lltools-updates', 'employee-updated', { id: emp.id })
   }
@@ -1430,7 +1430,7 @@ const updateReportStatus = async (id, status, changedBy) => {
 const assignReport = async (id, assignedTo) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
   await run(`UPDATE reports SET assigned_to=?, updated_at=? WHERE id=?`, [assignedTo, now, id])
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   // Notify the assignee so they see it in their bell immediately
   if (global.pusherTrigger) {
     const report = await queryOne(`SELECT report_no, subject, employee_name FROM reports WHERE id = ?`, [id])
@@ -1447,7 +1447,7 @@ const addReportComment = async (comment) => {
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19)
   await run(`INSERT INTO report_comments (id, report_id, user_id, username, comment, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
     [comment.id, comment.reportId, comment.userId ?? null, comment.username ?? '', comment.comment ?? '', now])
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   // Notify: the employee who filed the report + all previous commenters (except the person just commenting)
   if (global.pusherTrigger) {
     const report = await queryOne(`SELECT report_no, subject, employee_no, employee_name FROM reports WHERE id = ?`, [comment.reportId])
@@ -1522,7 +1522,7 @@ const sendDepartmentChat = async ({ id, department, senderId, senderName, messag
     INSERT INTO department_chats (id, department, sender_id, sender_name, message, file_url)
     VALUES (?, ?, ?, ?, ?, ?)
   `, [id, department, senderId, senderName, message || null, fileUrl || null])
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
 }
 
 const getDirectMessages = async (roomId) => {
@@ -1552,7 +1552,7 @@ const sendDirectMessage = async ({ id, roomId, senderId, senderName, message, fi
     INSERT INTO direct_messages (id, room_id, sender_id, sender_name, message, file_url)
     VALUES (?, ?, ?, ?, ?, ?)
   `, [id, roomId, senderId, senderName, message || null, fileUrl || null])
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
 }
 
 // Patches the file_url after a background cloud upload completes
@@ -1566,7 +1566,7 @@ const editMessage = async (msgId, userId, newText, isDm = false) => {
   const diffMs = Date.now() - new Date(row.created_at.replace(' ', 'T') + 'Z').getTime()
   if (diffMs > 15 * 60 * 1000) return { success: false, error: 'Message is too old to edit' }
   await run(`UPDATE ${table} SET message = ?, is_edited = 1 WHERE id = ?`, [newText, msgId])
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   return { success: true }
 }
 
@@ -1583,7 +1583,7 @@ const unsendMessage = async (msgId, userId, isDm = false) => {
   }
 
   await run(`UPDATE ${table} SET message = NULL, is_unsent = 1, file_url = NULL WHERE id = ?`, [msgId])
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   return { success: true }
 }
 
@@ -1626,7 +1626,7 @@ const toggleReaction = async (msgId, userId, userName, emoji, isDm = false) => {
 
   await run(`UPDATE ${table} SET reactions = ? WHERE id = ?`, [JSON.stringify(reactions), msgId])
   // Push reaction change to Turso before other clients are notified via Pusher.
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   return reactions
 }
 
@@ -2006,7 +2006,7 @@ const addAnnouncementComment = async (announcementId, employeeId, employeeName, 
     INSERT INTO announcement_comments (id, announcement_id, employee_id, employee_name, content, parent_id)
   `, [id, announcementId, employeeId, employeeName, content, parentId]);
   
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   if (global.pusherTrigger) {
     // Fetch the announcement author and all previous commenters so the bell can target correctly
     const ann = await queryOne(`SELECT author_id, author_name, subject FROM announcements WHERE id = ?`, [announcementId]);
@@ -2044,7 +2044,7 @@ const reactToAnnouncementComment = async (commentId, employeeId, employeeName, r
     await run(`INSERT INTO announcement_reactions (id, comment_id, employee_id, reaction) VALUES (?, ?, ?, ?)`, [id, commentId, employeeId, reaction]);
   }
   
-  try { await syncCloud() } catch (_) {}
+  syncCloud().catch(() => {})
   if (global.pusherTrigger) {
     // Fire a specific event so the comment author can be notified (only when adding, not removing)
     const comment = await queryOne(`SELECT employee_id, employee_name, announcement_id FROM announcement_comments WHERE id = ?`, [commentId]);

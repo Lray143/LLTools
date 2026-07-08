@@ -217,17 +217,22 @@ export default function CommentSection({ announcementId, currentUser, pusherChan
 
   useEffect(() => { load() }, [load])
 
-  // Real-time: force a sync when Pusher fires
+  // Real-time: reload comments when Pusher fires for this announcement
   useEffect(() => {
     if (!pusherChannel) return
     const handler = (data) => {
       if (data?.announcementId === announcementId || data?.commentId) {
         window.electronAPI?.forceSync?.()
+        load()
       }
     }
     pusherChannel.bind('new-announcement-comment', handler)
-    return () => pusherChannel.unbind('new-announcement-comment', handler)
-  }, [pusherChannel, announcementId])
+    pusherChannel.bind('announcement-comment-reacted', handler)
+    return () => {
+      pusherChannel.unbind('new-announcement-comment', handler)
+      pusherChannel.unbind('announcement-comment-reacted', handler)
+    }
+  }, [pusherChannel, announcementId, load])
 
   // Reload when the database finishes syncing
   useEffect(() => {
