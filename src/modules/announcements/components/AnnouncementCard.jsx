@@ -378,7 +378,7 @@ export default function AnnouncementCard({
                   <Users size={13} />
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); focused ? setConfirmDelete(true) : onArchive?.(); }}
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
                   title="Archive"
                   style={{ background: 'var(--surface-hover)', border: '1px solid var(--border)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-secondary)' }}
                 >
@@ -388,7 +388,7 @@ export default function AnnouncementCard({
             )}
             {canPost && isArchived && (
               <button
-                onClick={(e) => { e.stopPropagation(); focused ? setConfirmDelete(true) : onDelete?.(); }}
+                onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
                 title="Permanently Delete"
                 style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', color: '#ef4444', fontSize: 12, fontWeight: 500 }}
               >
@@ -398,7 +398,7 @@ export default function AnnouncementCard({
           </div>
 
           {/* Sticky confirm banner — shown at the top of the focused card so user never has to scroll */}
-          {focused && confirmDelete && (
+          {confirmDelete && (
             <div style={{
               position: 'sticky', top: 0, zIndex: 20,
               margin: '8px 0 4px', padding: '12px 16px', borderRadius: 10,

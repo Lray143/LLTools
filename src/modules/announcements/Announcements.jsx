@@ -11,7 +11,7 @@ import AnnouncementCard from './components/AnnouncementCard'
 import SearchBar from '../../components/ui/SearchBar'
 import { canPostAnnouncements } from '../../lib/permissions'
 
-// ── Employee multi-select ─────────────────────────────────────────────────────
+// ── Employee & Department multi-select ────────────────────────────────────────
 function EmployeeSelect({ employees, selected, onChange }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -24,10 +24,37 @@ function EmployeeSelect({ employees, selected, onChange }) {
     return () => document.removeEventListener('mousedown', h)
   }, [open])
 
+  // Extract unique departments from employees
+  const departments = useMemo(() => {
+    const deptSet = new Set()
+    employees.forEach(e => { if (e.department) deptSet.add(e.department) })
+    return Array.from(deptSet).sort()
+  }, [employees])
+
   const filtered = employees.filter(e =>
     e.name.toLowerCase().includes(search.toLowerCase()) ||
     (e.department || '').toLowerCase().includes(search.toLowerCase())
   )
+
+  const filteredDepts = departments.filter(d =>
+    d.toLowerCase().includes(search.toLowerCase())
+  )
+
+  // Check if a department is "selected" (all its employees are selected)
+  const isDeptSelected = (dept) => {
+    const deptEmps = employees.filter(e => e.department === dept)
+    return deptEmps.length > 0 && deptEmps.every(e => selected.includes(e.id))
+  }
+
+  const toggleDept = (dept) => {
+    const deptEmpIds = employees.filter(e => e.department === dept).map(e => e.id)
+    if (isDeptSelected(dept)) {
+      onChange(selected.filter(id => !deptEmpIds.includes(id)))
+    } else {
+      const newSelected = new Set([...selected, ...deptEmpIds])
+      onChange(Array.from(newSelected))
+    }
+  }
 
   const toggle = (id) => {
     onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id])
@@ -35,7 +62,7 @@ function EmployeeSelect({ employees, selected, onChange }) {
 
   const label = selected.length === 0
     ? 'Everyone (all employees)'
-    : `${selected.length} employee${selected.length > 1 ? 's' : ''} selected`
+    : `${selected.length} recipient${selected.length > 1 ? 's' : ''} selected`
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -58,13 +85,13 @@ function EmployeeSelect({ employees, selected, onChange }) {
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-          maxHeight: 220, display: 'flex', flexDirection: 'column',
+          maxHeight: 300, display: 'flex', flexDirection: 'column',
         }}>
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)' }}>
             <SearchBar 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search employees…"
+              placeholder="Search employees or departments…"
               autoFocus
             />
           </div>
@@ -80,27 +107,64 @@ function EmployeeSelect({ employees, selected, onChange }) {
             >
               Everyone (all employees)
             </button>
-            {filtered.map(emp => (
-              <label key={emp.id} style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer',
-                background: selected.includes(emp.id) ? 'rgba(var(--theme-500-rgb,99,102,241),0.06)' : 'transparent',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={selected.includes(emp.id)}
-                  onChange={() => toggle(emp.id)}
-                  style={{ accentColor: 'var(--theme-500)', width: 14, height: 14 }}
-                />
-                <span style={{ flex: 1, fontSize: 13, color: 'var(--text-primary)', fontWeight: selected.includes(emp.id) ? 600 : 400 }}>{emp.name}</span>
-                {emp.department && <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{emp.department}</span>}
-              </label>
-            ))}
+
+            {/* Departments section */}
+            {filteredDepts.length > 0 && (
+              <>
+                <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 600, color: 'var(--theme-500)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  Departments
+                </div>
+                {filteredDepts.map(dept => (
+                  <label key={`dept-${dept}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer',
+                    background: isDeptSelected(dept) ? 'rgba(var(--theme-500-rgb,99,102,241),0.06)' : 'transparent',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={isDeptSelected(dept)}
+                      onChange={() => toggleDept(dept)}
+                      style={{ accentColor: 'var(--theme-500)', width: 14, height: 14 }}
+                    />
+                    <Users size={13} style={{ color: 'var(--theme-500)', flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 13, color: 'var(--text-primary)', fontWeight: isDeptSelected(dept) ? 600 : 400 }}>{dept}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                      {employees.filter(e => e.department === dept).length}
+                    </span>
+                  </label>
+                ))}
+              </>
+            )}
+
+            {/* Employees section */}
+            {filtered.length > 0 && (
+              <>
+                <div style={{ padding: '6px 12px 4px', fontSize: 10, fontWeight: 600, color: 'var(--theme-500)', textTransform: 'uppercase', letterSpacing: '0.08em', borderTop: filteredDepts.length > 0 ? '1px solid var(--border)' : 'none', marginTop: filteredDepts.length > 0 ? 4 : 0 }}>
+                  Employees
+                </div>
+                {filtered.map(emp => (
+                  <label key={emp.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer',
+                    background: selected.includes(emp.id) ? 'rgba(var(--theme-500-rgb,99,102,241),0.06)' : 'transparent',
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(emp.id)}
+                      onChange={() => toggle(emp.id)}
+                      style={{ accentColor: 'var(--theme-500)', width: 14, height: 14 }}
+                    />
+                    <span style={{ flex: 1, fontSize: 13, color: 'var(--text-primary)', fontWeight: selected.includes(emp.id) ? 600 : 400 }}>{emp.name}</span>
+                    {emp.department && <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{emp.department}</span>}
+                  </label>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}
     </div>
   )
 }
+
 
 // ── ComposeBox ────────────────────────────────────────────────────────────────
 function ComposeBox({ currentUser, employees, onPosted, focused = false, onCancel }) {
@@ -444,10 +508,10 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
         />
       </div>
 
-      {/* Receive */}
+      {/* Receiver */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Receive
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-600)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Receiver
         </label>
         <EmployeeSelect employees={employees} selected={targetIds} onChange={setTargetIds} />
       </div>
