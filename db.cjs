@@ -429,7 +429,8 @@ const initDb = async () => {
       discounts_json TEXT NOT NULL DEFAULT '[]',
       grand_total    REAL NOT NULL DEFAULT 0,
       is_archived    INTEGER DEFAULT 0,
-      created_at     TEXT DEFAULT (datetime('now'))
+      created_at     TEXT DEFAULT (datetime('now')),
+      order_type     TEXT DEFAULT 'Vanselling'
     );
     CREATE TABLE IF NOT EXISTS leave_requests (
       id            TEXT PRIMARY KEY,
@@ -627,8 +628,9 @@ const initDb = async () => {
   // Migration: add file_url to announcements
   try { await run("ALTER TABLE announcements ADD COLUMN file_url TEXT DEFAULT NULL") } catch (_) {}
 
-  // Migration: add is_archived to saved_orders
+  // Migration: add is_archived and order_type to saved_orders
   try { await run("ALTER TABLE saved_orders ADD COLUMN is_archived INTEGER DEFAULT 0") } catch (_) {}
+  try { await run("ALTER TABLE saved_orders ADD COLUMN order_type TEXT DEFAULT 'Vanselling'") } catch (_) {}
 
   // Migration: snapshot lunch hours onto attendance records for historical accuracy
   try { await run("ALTER TABLE attendance ADD COLUMN sched_lunch_start TEXT DEFAULT NULL") } catch (_) {}
@@ -1306,14 +1308,15 @@ const mapOrder = (r) => ({
   discounts:    (() => { try { return JSON.parse(r.discounts_json ?? '[]') } catch { return [] } })(),
   grandTotal:   r.grand_total  ?? 0,
   createdAt:    r.created_at   ?? '',
+  orderType:    r.order_type   ?? 'Vanselling',
 })
 
 const saveOrder = async (order) => run(`
-  INSERT INTO saved_orders (id, series_number, outlet_id, outlet_name, groups_json, subtotal, discounts_json, grand_total, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO saved_orders (id, series_number, outlet_id, outlet_name, groups_json, subtotal, discounts_json, grand_total, created_at, order_type)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `, [order.id, order.seriesNumber, order.outletId ?? null, order.outletName ?? null,
     JSON.stringify(order.groups ?? []), order.subtotal ?? 0, JSON.stringify(order.discounts ?? []), order.grandTotal ?? 0,
-    order.orderDate ?? null])
+    order.orderDate ?? null, order.orderType ?? 'Vanselling'])
 
 const getOrdersByOutlet  = async (outletId) => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id = ? AND is_archived = 0 ORDER BY created_at DESC`, [outletId])).map(mapOrder)
 const getOrdersByDefault = async ()          => (await queryAll(`SELECT * FROM saved_orders WHERE outlet_id IS NULL AND is_archived = 0 ORDER BY created_at DESC`)).map(mapOrder)

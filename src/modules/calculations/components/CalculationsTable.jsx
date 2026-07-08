@@ -191,11 +191,15 @@ export default function CalculationsTable({ currentUser, refreshKey = 0, onNavig
         onNavigate={onNavigate}
       />
 
-      {/* ── MONTHLY SUMMARY MODE ──────────────────────────────────── */}
-      {mode === 'summary' && (
+      {/* ── VANSELLING / INVOICE SUMMARY MODE ───────────────────────── */}
+      {(mode === 'vanselling' || mode === 'invoice') && (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-8 pb-8">
-            <CalculationsMonthlySummary currentUser={currentUser} refreshKey={refreshKey} />
+            <CalculationsMonthlySummary 
+              currentUser={currentUser} 
+              refreshKey={refreshKey} 
+              type={mode === 'vanselling' ? 'Vanselling' : 'Invoice'} 
+            />
           </div>
         </div>
       )}

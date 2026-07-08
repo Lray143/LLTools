@@ -672,7 +672,7 @@ function TrendBadge({ current, previous }) {
 }
 
 // ── Main component ────────────────────────────────────────────────
-export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0 }) {
+export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0, type = 'Vanselling' }) {
   const [orders,         setOrders]         = useState([])
   const [archivedOrders, setArchivedOrders] = useState([])
   const [loading,        setLoading]        = useState(true)
@@ -688,8 +688,10 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
       window.electronAPI.getArchivedOrders()
     ])
       .then(([active, arch]) => {
-        setOrders(active ?? [])
-        setArchivedOrders(arch ?? [])
+        const filteredActive = (active ?? []).filter(o => (o.orderType || 'Vanselling') === type)
+        const filteredArch = (arch ?? []).filter(o => (o.orderType || 'Vanselling') === type)
+        setOrders(filteredActive)
+        setArchivedOrders(filteredArch)
       })
       .catch(() => { setOrders([]); setArchivedOrders([]) })
       .finally(() => setLoading(false))
@@ -702,11 +704,11 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
     const id = confirmArchive.id
     try {
       await window.electronAPI.archiveOrder(id)
-      await logModuleActivity(currentUser, 'calculations', 'archive', `Order ${confirmArchive.seriesNumber}`, id, buildActivityDetails({
-        recordType: 'Saved order',
+      await logModuleActivity(currentUser, 'calculations', 'archive', `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${confirmArchive.seriesNumber}`, id, buildActivityDetails({
+        recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',
-        note: 'Archived saved order',
+        note: `Archived ${type === 'Invoice' ? 'invoice' : 'saved order'}`,
       }))
       setConfirmArchive(null)
       loadData()
@@ -717,11 +719,11 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
     const order = archivedOrders.find(o => o.id === id)
     try {
       await window.electronAPI.unarchiveOrder(id)
-      await logModuleActivity(currentUser, 'calculations', 'restore', order ? `Order ${order.seriesNumber}` : 'Saved order', id, buildActivityDetails({
-        recordType: 'Saved order',
+      await logModuleActivity(currentUser, 'calculations', 'restore', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
+        recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',
-        note: 'Restored saved order from archive',
+        note: `Restored ${type === 'Invoice' ? 'invoice' : 'saved order'} from archive`,
       }))
       loadData()
     } catch (e) { console.error(e) }
@@ -731,8 +733,8 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
     const order = archivedOrders.find(o => o.id === id)
     try {
       await window.electronAPI.deleteOrder(id)
-      await logModuleActivity(currentUser, 'calculations', 'permanent_delete', order ? `Order ${order.seriesNumber}` : 'Saved order', id, buildActivityDetails({
-        recordType: 'Saved order',
+      await logModuleActivity(currentUser, 'calculations', 'permanent_delete', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
+        recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',
         removedSnapshot: order ? {
@@ -741,7 +743,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
           Date: order.createdAt ? formatDate(order.createdAt) : '—',
           'Grand total': order.grandTotal != null ? `₱${fmt(order.grandTotal)}` : '—',
         } : { ID: id },
-        note: 'Permanently deleted saved order',
+        note: `Permanently deleted ${type === 'Invoice' ? 'invoice' : 'saved order'}`,
       }))
       loadData()
     } catch (e) { console.error(e) }
@@ -753,8 +755,8 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
       const isoDate = `${dateStr}T00:00:00`
       const oldDate = order?.orderDate ? order.orderDate.slice(0, 10) : '—'
       await window.electronAPI.updateOrderDate(id, isoDate)
-      await logModuleActivity(currentUser, 'calculations', 'edit', order ? `Order ${order.seriesNumber}` : 'Saved order', id, buildActivityDetails({
-        recordType: 'Saved order',
+      await logModuleActivity(currentUser, 'calculations', 'edit', order ? `${type === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${order.seriesNumber}` : (type === 'Invoice' ? 'Invoice' : 'Saved order'), id, buildActivityDetails({
+        recordType: type === 'Invoice' ? 'Invoice' : 'Saved order',
         recordId: id,
         table: 'saved_orders',
         changes: [{
@@ -766,7 +768,7 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
       }))
       // Re-fetch so the monthly grouping reflects the new date
       const data = await window.electronAPI.getAllOrders()
-      setOrders(data ?? [])
+      setOrders((data ?? []).filter(o => (o.orderType || 'Vanselling') === type))
     } catch (e) {
       console.error('Failed to update date:', e)
     }
@@ -778,6 +780,11 @@ export default function CalculationsMonthlySummary({ currentUser, refreshKey = 0
   const handleExport = async (e, month) => {
     e.stopPropagation() // don't toggle expand when clicking export
     if (exportingMonth) return
+    if (type === 'Invoice') {
+      // Stub: Do nothing for invoice for now
+      console.log('Invoice export not implemented yet')
+      return
+    }
     setExportingMonth(month.key)
     try {
       // Fetch all outlets so we can resolve outlet → region for each order

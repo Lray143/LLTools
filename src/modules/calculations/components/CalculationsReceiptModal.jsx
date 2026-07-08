@@ -58,13 +58,14 @@ export default function CalculationsReceiptModal({
   // ── Save state ────────────────────────────────────────────────
   const [series,     setSeries]     = useState('')
   const [orderDate,  setOrderDate]  = useState(() => new Date().toISOString().slice(0, 10)) // YYYY-MM-DD
-  const [saveStatus, setSaveStatus] = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
+  const [orderType,  setOrderType]  = useState('Vanselling')
+  const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | saved | error'
 
   const handleSave = async () => {
     if (!series.trim() || saveStatus === 'saving') return
     setSaveStatus('saving')
     try {
-      await window.electronAPI.saveOrder({
+      const res = await window.electronAPI.saveOrder({
         id:           crypto.randomUUID(),
         seriesNumber: series.trim(),
         outletId:     outletId    ?? null,
@@ -74,15 +75,19 @@ export default function CalculationsReceiptModal({
         discounts,
         grandTotal,
         // Convert local date string to ISO datetime (midnight local → stored as-is)
-        orderDate:    orderDate ? `${orderDate}T00:00:00` : null,
+        orderDate,
+        orderType,
       })
+      if (!res.success) throw new Error('Save failed')
+
       if (currentUser) {
-        const label = `Order ${series.trim()}`
+        const label = `${orderType === 'Invoice' ? 'Invoice' : 'Vanselling Order'} ${series.trim()}`
         const lineSummary = lines.flatMap(g => g.items).map(i => `${i.description} ×${i.qty}`).join(', ')
         await logModuleActivity(currentUser, 'calculations', 'add', label, null, buildActivityDetails({
-          recordType: 'Saved order',
+          recordType: orderType === 'Invoice' ? 'Invoice' : 'Saved order',
           table: 'saved_orders',
           snapshot: {
+            'Type': orderType,
             'Series #': series.trim(),
             'Order date': orderDate || '—',
             Outlet: outletName ?? 'Default prices',
@@ -135,7 +140,7 @@ export default function CalculationsReceiptModal({
           {/* Store info */}
           <div className="text-center space-y-1">
             <div className="flex items-center justify-center gap-1.5 text-gray-700">
-              <Store size={15} className="text-orange-500" />
+              <Store size={15} className="text-theme-500" />
               <span className="font-bold text-base">{outletName ?? 'Default Prices'}</span>
             </div>
             <p className="text-xs text-gray-400">{dateStr} · {timeStr}</p>
@@ -147,7 +152,7 @@ export default function CalculationsReceiptModal({
           <div className="space-y-4">
             {lines.map((group) => (
               <div key={group.groupName}>
-                <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1.5">
+                <p className="text-xs font-bold text-theme-600 uppercase tracking-wider mb-1.5">
                   {group.groupName}
                 </p>
                 <div className="space-y-1.5">
@@ -161,7 +166,7 @@ export default function CalculationsReceiptModal({
                         <p className="text-xs text-gray-400">
                           {item.qty} × ₱{fmt(item.price)}
                           {item.isOutletPrice && (
-                            <span className="ml-1 text-orange-500">●</span>
+                            <span className="ml-1 text-theme-500">●</span>
                           )}
                         </p>
                       </div>
@@ -185,7 +190,7 @@ export default function CalculationsReceiptModal({
             {discountSteps.map((step) => (
               <div key={step.id} className="flex justify-between text-sm">
                 <span className="flex items-center gap-1 text-gray-500">
-                  <Tag size={11} className="text-orange-400" />
+                  <Tag size={11} className="text-theme-400" />
                   {step.name} ({step.value}% off)
                 </span>
                 <span className="text-red-500 font-medium">−₱{fmt(step.deduction)}</span>
@@ -201,7 +206,7 @@ export default function CalculationsReceiptModal({
           {/* Outlet price legend */}
           {Object.keys(outletPrices).length > 0 && (
             <p className="text-xs text-gray-400 text-center">
-              <span className="text-orange-500">●</span> Outlet-specific price
+              <span className="text-theme-500">●</span> Outlet-specific price
             </p>
           )}
 
@@ -226,6 +231,31 @@ export default function CalculationsReceiptModal({
               </div>
             ) : (
               <>
+                <div className="flex items-center bg-gray-100 p-1 rounded-lg self-start">
+                  <button
+                    type="button"
+                    onClick={() => setOrderType('Vanselling')}
+                    className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                      orderType === 'Vanselling' 
+                        ? 'bg-white text-theme-600 shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Vanselling
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOrderType('Invoice')}
+                    className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                      orderType === 'Invoice' 
+                        ? 'bg-white text-theme-600 shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Invoice
+                  </button>
+                </div>
+
                 {/* Date picker */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400">Order Date</label>
@@ -234,7 +264,7 @@ export default function CalculationsReceiptModal({
                     value={orderDate}
                     onChange={(e) => setOrderDate(e.target.value)}
                     className="border border-gray-200 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent
+                               focus:outline-none focus:ring-2 focus:ring-theme-300 focus:border-transparent
                                text-gray-700 w-full"
                   />
                 </div>
@@ -247,14 +277,14 @@ export default function CalculationsReceiptModal({
                     onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                     placeholder="Series / reference no. (e.g. DR-001)"
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-transparent
+                               focus:outline-none focus:ring-2 focus:ring-theme-300 focus:border-transparent
                                placeholder:text-gray-300"
                   />
                   <button
                     onClick={handleSave}
                     disabled={!series.trim() || saveStatus === 'saving'}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-orange-500 text-white
-                               text-sm font-medium hover:bg-orange-600 transition-colors
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-theme-500 text-white
+                               text-sm font-medium hover:bg-theme-600 transition-colors
                                disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     <Save size={13} />

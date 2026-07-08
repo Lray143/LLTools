@@ -139,7 +139,7 @@ export default function CalculationsToolbar({
   refreshKey,
   onNavigate,
 }) {
-  const isSummary = mode === 'summary'
+  const isSummary = mode === 'vanselling' || mode === 'invoice'
 
   // Build outlet options for the CustomSelect
   const outletOptions = [
@@ -197,8 +197,9 @@ export default function CalculationsToolbar({
             borderRadius: '10px', padding: '3px', gap: '2px',
           }}>
             {[
-              { id: 'table',   label: 'Table',           icon: <Table2 size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
-              { id: 'summary', label: 'Monthly Summary', icon: <BarChart2 size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
+              { id: 'table',      label: 'Table',      icon: <Table2 size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
+              { id: 'vanselling', label: 'Vanselling', icon: <BarChart2 size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
+              { id: 'invoice',    label: 'Invoice',    icon: <BarChart2 size={13} style={{ marginRight: '4px', display: 'inline-block', verticalAlign: 'middle' }} /> },
             ].map(({ id, label, icon }) => (
               <button
                 key={id}
