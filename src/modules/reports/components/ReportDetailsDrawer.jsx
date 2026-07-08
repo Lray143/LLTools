@@ -8,6 +8,8 @@ import {
   Archive, RotateCcw, Trash2, Edit, ChevronDown, Smile
 } from 'lucide-react'
 import EmojiPicker from 'emoji-picker-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../../components/ui/dialog'
+import { Button } from '../../../components/ui/button'
 import { ReportStatusBadge, PriorityBadge } from './ReportStatusBadge'
 import { formatDateTime, relativeTime, REPORT_STATUSES } from './reportConstants'
 import { canManageReports } from '../../../lib/permissions'
@@ -40,6 +42,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [assignTo,   setAssignTo]   = useState(report?.assignedTo ?? '')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const isAdmin   = canManageReports(currentUser)
   const isAuthor  = currentUser?.username === report?.employeeNo || currentUser?.employeeId === report?.employeeId
@@ -130,8 +133,12 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
     setSubmitting(true)
     try { await window.electronAPI.unarchiveReport(report.id); onRefresh(); onClose() } finally { setSubmitting(false) }
   }
-  async function handleDelete() {
-    if (!confirm('Permanently delete this report? This cannot be undone.')) return
+  function handleDelete() {
+    setShowDeleteConfirm(true)
+  }
+
+  async function confirmDelete() {
+    setShowDeleteConfirm(false)
     setSubmitting(true)
     try { await window.electronAPI.permanentDeleteReport(report.id); onRefresh(); onClose() } finally { setSubmitting(false) }
   }
@@ -595,6 +602,21 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
         </div>
 
       </div>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent showCloseButton={false} className="max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Permanently Delete Report</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 text-sm text-gray-500 dark:text-gray-400">
+            Are you sure you want to permanently delete this report? This action cannot be undone.
+          </div>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
