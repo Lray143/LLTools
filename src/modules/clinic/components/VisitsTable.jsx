@@ -560,7 +560,7 @@ export default function VisitsTable({
                     <td className="py-3.5 pr-4 pl-6 text-sm text-gray-500 whitespace-nowrap">{v.date}</td>
                     <td className="py-3.5 pr-4 text-sm text-gray-400 whitespace-nowrap">{v.time}</td>
                     <td 
-                      className="py-3.5 pr-4 text-sm font-semibold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-orange-500 hover:underline decoration-dashed transition-colors"
+                      className="py-3.5 pr-4 text-sm font-semibold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis cursor-pointer hover:text-theme-500 hover:underline decoration-dashed transition-colors"
                       title="Click to view full entry details"
                       onClick={() => onRowClick?.(v)}
                     >
@@ -583,7 +583,7 @@ export default function VisitsTable({
                         title="Click to view full entry details"
                         onClick={() => onRowClick?.(v)}
                       >
-                        <span className="line-clamp-2 group-hover/treatment:text-orange-500 group-hover/treatment:underline decoration-dashed transition-colors leading-relaxed">
+                        <span className="line-clamp-2 group-hover/treatment:text-theme-500 group-hover/treatment:underline decoration-dashed transition-colors leading-relaxed">
                           {v.treatment || <span className="text-gray-300">—</span>}
                         </span>
                       </td>
@@ -597,7 +597,7 @@ export default function VisitsTable({
                       <td className="py-3.5 pr-4">
                         {attachments.length > 0 ? (
                           <button
-                            className="flex items-center gap-1.5 text-xs text-orange-400 hover:text-orange-600 transition-colors font-medium"
+                            className="flex items-center gap-1.5 text-xs text-theme-400 hover:text-theme-600 transition-colors font-medium"
                             title={attachments.map(a => a.name).join(", ")}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -616,7 +616,7 @@ export default function VisitsTable({
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => { e.stopPropagation(); onEditVisit(v); }}
-                          className="p-1.5 text-gray-300 hover:text-orange-400 hover:bg-orange-50 rounded-md transition-colors"
+                          className="p-1.5 text-gray-300 hover:text-theme-400 hover:bg-theme-50 rounded-md transition-colors"
                           title="Edit record"
                         >
                           <Pencil className="w-3 h-3" />
@@ -661,7 +661,7 @@ export default function VisitsTable({
                   onClick={() => goToPage(p)}
                   className={`w-7 h-7 flex items-center justify-center rounded text-xs font-medium transition-colors ${
                     p === safePage
-                      ? "bg-orange-500 text-white border border-orange-500"
+                      ? "bg-theme-500 text-white border border-theme-500"
                       : "border border-gray-200 text-gray-600 hover:bg-white"
                   }`}
                 >

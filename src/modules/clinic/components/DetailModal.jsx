@@ -136,7 +136,7 @@ export default function DetailModal({ visit, onClose }) {
           <DialogFooter>
             <Button
               onClick={onClose}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm"
+              className="w-full bg-theme-500 hover:bg-theme-600 text-white text-sm"
             >
               Close
             </Button>

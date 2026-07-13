@@ -360,9 +360,9 @@ function ComplaintAutocomplete({ value, onChange }) {
                         key={opt}
                         type="button"
                         onClick={() => select(opt)}
-                        className={`w-full flex items-center justify-between px-3 py-1.5 text-sm text-left transition-colors hover:bg-white ${isActive ? "bg-orange-50" : ""}`}
+                        className={`w-full flex items-center justify-between px-3 py-1.5 text-sm text-left transition-colors hover:bg-white ${isActive ? "bg-theme-50" : ""}`}
                       >
-                        <span className={isActive ? "text-orange-500 font-medium" : "text-gray-800"}>{opt}</span>
+                        <span className={isActive ? "text-theme-500 font-medium" : "text-gray-800"}>{opt}</span>
                         {isActive && <Check size={13} color="var(--theme-500)" strokeWidth={2.5} className="flex-shrink-0" />}
                       </button>
                     )

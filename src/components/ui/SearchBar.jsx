@@ -26,7 +26,7 @@ export default function SearchBar({
     >
       <Search 
         size={14} 
-        className={`absolute left-3 pointer-events-none transition-colors duration-200 ${isFocused ? 'text-orange-500' : 'text-gray-400'}`} 
+        className={`absolute left-3 pointer-events-none transition-colors duration-200 ${isFocused ? 'text-theme-500' : 'text-gray-400'}`} 
       />
       <input
         ref={inputRef}
@@ -43,7 +43,7 @@ export default function SearchBar({
           rounded-lg outline-none transition-all duration-200
           text-gray-800 placeholder:text-gray-400
           ${isFocused 
-            ? 'border-orange-500 ring-2 ring-orange-500/20 shadow-sm' 
+            ? 'border-theme-500 ring-2 ring-theme-500/20 shadow-sm' 
             : 'border-gray-200 hover:border-gray-300 shadow-sm'}
         `}
       />

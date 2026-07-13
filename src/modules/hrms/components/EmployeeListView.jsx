@@ -66,7 +66,7 @@ export function EmployeeListView({ employees, onEdit, onDelete }) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-gray-400 hover:text-orange-500 hover:bg-orange-50"
+                className="h-7 w-7 text-gray-400 hover:text-theme-500 hover:bg-theme-50"
                 onClick={() => onEdit(emp)}
               >
                 <Pencil className="w-3.5 h-3.5" />

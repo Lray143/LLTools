@@ -25,7 +25,7 @@ export function NotificationModal({ open, title, message, type = "info", onClose
         </p>
 
         <DialogFooter className="flex justify-center sm:justify-center mt-2">
-          <Button className="w-32 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={onClose}>
+          <Button className="w-32 bg-theme-500 hover:bg-theme-600 text-white border-0" onClick={onClose}>
             OK
           </Button>
         </DialogFooter>

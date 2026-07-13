@@ -172,7 +172,7 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
                 <div key={groupName} className="mb-6">
                   {/* Group label */}
                   <div className="flex items-center gap-2 pb-2 mb-2 border-b border-orange-200">
-                    <span className="text-xs font-bold text-orange-500 uppercase tracking-wider">
+                    <span className="text-xs font-bold text-theme-500 uppercase tracking-wider">
                       {groupName}
                     </span>
                     <span className="text-xs text-orange-400">

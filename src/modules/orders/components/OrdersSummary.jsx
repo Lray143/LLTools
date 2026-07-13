@@ -28,7 +28,7 @@ export default function OrdersSummary({
         {/* Left: line count + discount info */}
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            <ShoppingCart size={14} className="text-orange-400" />
+            <ShoppingCart size={14} className="text-theme-400" />
             <span>{lineCount} item{lineCount !== 1 ? 's' : ''} in order</span>
           </div>
 
@@ -37,7 +37,7 @@ export default function OrdersSummary({
               <span className="font-medium">
                 {discounts.length} discount{discounts.length !== 1 ? 's' : ''} applied
               </span>
-              <span className="text-orange-400">·</span>
+              <span className="text-theme-400">·</span>
               <span>{discounts.map(d => `${d.name} (${d.value}%)`).join(' → ')}</span>
             </div>
           )}

@@ -471,7 +471,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
               Cancel
             </Button>
             <Button
-              className="bg-orange-500 hover:bg-orange-600 text-white border-0"
+              className="bg-theme-500 hover:bg-theme-600 text-white border-0"
               onClick={handleSave}
               disabled={isSaving}
             >

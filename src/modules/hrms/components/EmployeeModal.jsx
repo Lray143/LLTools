@@ -264,7 +264,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                       <button
                         type="button"
                         onClick={() => toggleDayOff(day)}
-                        className={`relative h-[20px] w-[36px] rounded-full transition-colors focus:outline-none ${isWork ? 'bg-orange-500' : 'bg-gray-100 dark:bg-gray-100'}`}
+                        className={`relative h-[20px] w-[36px] rounded-full transition-colors focus:outline-none ${isWork ? 'bg-theme-500' : 'bg-gray-100 dark:bg-gray-100'}`}
                       >
                         <div className={`absolute top-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isWork ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
                       </button>
@@ -307,7 +307,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button className="bg-orange-500 hover:bg-orange-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
+              <Button className="bg-theme-500 hover:bg-theme-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Employee"}
               </Button>
             </div>
@@ -321,7 +321,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
         <DialogHeader>
           <div className="flex flex-col items-center gap-3 pt-2 pb-1">
             <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
-              <RotateCcw className="w-5 h-5 text-orange-500" />
+              <RotateCcw className="w-5 h-5 text-theme-500" />
             </div>
             <DialogTitle className="text-center text-gray-900">Reset Credentials</DialogTitle>
           </div>
@@ -336,7 +336,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
         <DialogFooter className="flex gap-2 sm:gap-2">
           <Button variant="outline" className="flex-1" onClick={() => setResetOpen(false)} disabled={isResetting}>Cancel</Button>
-          <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0" onClick={handleResetCredentials} disabled={isResetting}>
+          <Button className="flex-1 bg-theme-500 hover:bg-theme-600 text-white border-0" onClick={handleResetCredentials} disabled={isResetting}>
             {isResetting ? "Resetting..." : "Confirm Reset"}
           </Button>
         </DialogFooter>
