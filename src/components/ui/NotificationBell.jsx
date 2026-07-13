@@ -546,7 +546,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-flex' }}>
+    <div ref={wrapperRef} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
 
       {/* Bell button */}
       <button

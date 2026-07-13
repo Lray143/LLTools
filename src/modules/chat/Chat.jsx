@@ -1,6 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, startTransition } from 'react'
 import { getPusherChannel } from '../../lib/pusherSingleton'
-import { Hash, User, Users, MessageSquare, Wifi, Sidebar } from 'lucide-react'
+import { Hash, User, Users, MessageSquare, Wifi, Sidebar, HelpCircle } from 'lucide-react'
 import ChatSidebar from './components/ChatSidebar'
 import ChatMessages from './components/ChatMessages'
 import ChatInput from './components/ChatInput'
@@ -725,7 +725,27 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
             <MessageSquare size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>Chats</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Chats
+              <button
+                id="page-tour-help-btn"
+                onClick={() => window.dispatchEvent(new CustomEvent('start-page-tour'))}
+                title="Page Guide"
+                className="flex items-center justify-center rounded-lg transition-colors"
+                style={{
+                  width: '24px', height: '24px', position: 'relative',
+                  border: 'none', background: 'transparent',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+              >
+                <HelpCircle size={14} />
+              </button>
+            </h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
               Real-time messaging &amp; team communication
             </p>

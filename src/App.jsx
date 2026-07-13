@@ -7,6 +7,7 @@ import LoginPage   from './components/ui/LoginPage'
 import UpdaterSplash from './components/ui/UpdaterSplash'
 import Sidebar     from './components/ui/Sidebar'
 import NotificationBell from './components/ui/NotificationBell'
+import AppGuide from './components/ui/AppGuide'
 
 import Announcements  from './modules/announcements/Announcements'
 import Employees      from './modules/hrms/Employees'
@@ -386,6 +387,9 @@ function App() {
   return (
     <div className="flex h-screen relative" style={{ background: 'var(--page-bg)' }}>
       <ThemeDecorations />
+      {currentUser && allowedModules.length > 0 && (
+        <AppGuide currentUser={currentUser} />
+      )}
       {/* Hidden badge-counter bell — stays mounted across all pages so Sidebar always has fresh counts */}
       <div style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
         <NotificationBell
@@ -406,7 +410,7 @@ function App() {
         moduleBadges={moduleBadges}
         onBadgesChange={handleBadgesChange}
       />
-      <main className="flex-1 overflow-auto relative z-10">
+      <main id="tour-main-content" className="flex-1 overflow-auto relative z-10">
         {renderPage()}
       </main>
     </div>

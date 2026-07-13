@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Megaphone, Users, ClipboardList, Calculator,
   BarChart3, Settings, Store, Fingerprint, LogOut,
-  SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck, MessageSquare, Link2
+  SoapDispenserDroplet, Pin, PinOff, CalendarClock, CalendarCheck, MessageSquare, Link2, HelpCircle
 } from 'lucide-react'
 
 const ROLE_LABELS = {
@@ -188,6 +188,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
       onMouseLeave={() => !isPinned && setIsHovered(false)}
     >
       <aside
+        id="tour-sidebar"
         className={`
           flex flex-col py-6 h-full relative
           text-white
@@ -225,6 +226,18 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
             `}
           />
           <button
+            id="tour-help-btn"
+            onClick={() => window.dispatchEvent(new CustomEvent('start-tour'))}
+            title="General App Guide"
+            className={`
+              absolute left-1 top-1/2 -translate-y-1/2
+              p-1 rounded transition-all duration-200 text-gray-500 hover:text-white
+              ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+            `}
+          >
+            <HelpCircle size={14} />
+          </button>
+          <button
             onClick={handlePinToggle}
             title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}
             className={`
@@ -239,7 +252,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         </div>
 
         {/* ── OVERVIEW NAV (scrollable, grows to fill space) ── */}
-        <div className="flex-1 min-h-0 overflow-y-auto relative" style={{ zIndex: 1 }}>
+        <div id="tour-nav-items" className="flex-1 min-h-0 overflow-y-auto relative" style={{ zIndex: 1 }}>
           <p className={`
             text-xs text-gray-500 uppercase px-2 mb-2
             transition-all duration-200 whitespace-nowrap overflow-hidden

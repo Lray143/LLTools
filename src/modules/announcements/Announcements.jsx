@@ -3,10 +3,11 @@ import { getPusherChannel } from '../../lib/pusherSingleton'
 import {
   Megaphone, Plus, X, Archive, ArchiveRestore, AlertTriangle,
   Users, MessageSquare, CheckCheck, Search, ChevronDown, Smile, Paperclip,
-  CheckSquare, MessageCircle, History
+  CheckSquare, MessageCircle, History, HelpCircle
 } from 'lucide-react'
 import EmojiPicker from 'emoji-picker-react'
 import NotificationBell from '../../components/ui/NotificationBell'
+import PageGuide from '../../components/ui/PageGuide'
 import AnnouncementCard from './components/AnnouncementCard'
 import SearchBar from '../../components/ui/SearchBar'
 import { canPostAnnouncements } from '../../lib/permissions'
@@ -161,6 +162,9 @@ function EmployeeSelect({ employees, selected, onChange }) {
           </div>
         </div>
       )}
+
+      {/* ── Page Guide ── */}
+      <PageGuide steps={guideSteps} storageKey="seen_announcements_tour" />
     </div>
   )
 }
@@ -377,7 +381,31 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
     // Non-image paste (plain text): let the browser handle it normally
   }
 
-  // ── Post ───────────────────────────────────────────────────────────────────
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  
+  const guideSteps = [
+    {
+      target: 'body',
+      content: 'Welcome to the Announcements page! This is where you can view all company-wide posts.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-announcements-search',
+      content: 'Use this search bar to quickly find announcements by their subject.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-announcements-tabs',
+      content: 'Switch between the active feed and older archived/seen posts using these tabs.',
+      placement: 'bottom-end'
+    },
+    ...(canPost ? [{
+      target: '#tour-announcements-compose',
+      content: 'If you have permission, click here to draft and publish a new announcement to the team.',
+      placement: 'bottom'
+    }] : [])
+  ]
+
   const handlePost = async () => {
     const contentStr = serializeContent()
     if (!subject.trim() || !contentStr || submitting || isUploading) return
@@ -885,8 +913,26 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
             <Megaphone size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: '8px' }}>
               Announcements
+              <button
+                id="page-tour-help-btn"
+                onClick={() => window.dispatchEvent(new CustomEvent('start-page-tour'))}
+                title="Page Guide"
+                className="flex items-center justify-center rounded-lg transition-colors"
+                style={{
+                  width: '24px', height: '24px', position: 'relative',
+                  border: 'none', background: 'transparent',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+              >
+                <HelpCircle size={14} />
+              </button>
             </h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
               Company-wide posts and updates
@@ -896,7 +942,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Search bar */}
-          <div style={{ width: 180 }}>
+          <div id="tour-announcements-search" style={{ width: 180 }}>
             <SearchBar
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
@@ -905,7 +951,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
           </div>
 
           {/* View toggle */}
-          <div style={{ display: 'flex', background: 'var(--surface-hover)', borderRadius: 10, padding: 3, gap: 2 }}>
+          <div id="tour-announcements-tabs" style={{ display: 'flex', background: 'var(--surface-hover)', borderRadius: 10, padding: 3, gap: 2 }}>
             {[
               { id: 'feed', label: 'Feed' },
               { id: 'archived', label: canPost ? 'Archive' : 'Seen' },
@@ -1013,6 +1059,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
           {/* Compose box — only show the collapsed trigger button when NOT composing */}
           {canPost && view === 'feed' && (
             <button
+              id="tour-announcements-compose"
               onClick={() => setComposing(true)}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 12,

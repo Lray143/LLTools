@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from "react"
-import { User, Stethoscope } from "lucide-react"
+import { User, Stethoscope, HelpCircle } from 'lucide-react'
 import NotificationBell from '../../components/ui/NotificationBell'
 import SearchBar from '../../components/ui/SearchBar'
 import NewEntryForm from "./components/NewEntryForm"
@@ -366,7 +366,27 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
             <Stethoscope size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>Clinic Log</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Clinic Log
+              <button
+                id="page-tour-help-btn"
+                onClick={() => window.dispatchEvent(new CustomEvent('start-page-tour'))}
+                title="Page Guide"
+                className="flex items-center justify-center rounded-lg transition-colors"
+                style={{
+                  width: '24px', height: '24px', position: 'relative',
+                  border: 'none', background: 'transparent',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+              >
+                <HelpCircle size={14} />
+              </button>
+            </h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>Employee health &amp; visit records</p>
           </div>
         </div>

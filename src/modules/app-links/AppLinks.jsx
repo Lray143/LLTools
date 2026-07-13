@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link2, Save, ExternalLink, CheckCircle } from 'lucide-react'
+import { Link2, Save, ExternalLink, CheckCircle, HelpCircle } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { ensureProtocol, isValidUrl, toTitleCase } from '../../lib/validation'
 
@@ -182,7 +182,27 @@ export default function AppLinks({ currentUser, refreshKey = 0 }) {
             <Link2 size={18} style={{ color: 'var(--theme-500)' }} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1 }}>App Links</h1>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              App Links
+              <button
+                id="page-tour-help-btn"
+                onClick={() => window.dispatchEvent(new CustomEvent('start-page-tour'))}
+                title="Page Guide"
+                className="flex items-center justify-center rounded-lg transition-colors"
+                style={{
+                  width: '24px', height: '24px', position: 'relative',
+                  border: 'none', background: 'transparent',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }}
+              >
+                <HelpCircle size={14} />
+              </button>
+            </h1>
             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)' }}>
               Manage URLs used across the app. Changes sync to all users automatically.
             </p>
