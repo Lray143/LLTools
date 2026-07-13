@@ -48,7 +48,7 @@ const STATUS_ICON = {
   'Pending':      Clock,
 }
 
-export default function NotificationBell({ currentUser, refreshKey, onNavigate, onBadgesChange, suppressNative = true }) {
+export default function NotificationBell({ currentUser, refreshKey, onNavigate, onBadgesChange, suppressNative = true, hideTourId = false }) {
   // Admin/HR incoming streams
   const [incomingReports,    setIncomingReports]    = useState([])
   const [incomingLeaves,     setIncomingLeaves]     = useState([])
@@ -550,6 +550,7 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
 
       {/* Bell button */}
       <button
+        id={hideTourId ? undefined : "tour-notification-bell"}
         onClick={() => setOpen(o => !o)}
         title="Notifications"
         className="flex items-center justify-center rounded-lg transition-colors"

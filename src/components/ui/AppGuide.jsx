@@ -32,6 +32,10 @@ function CustomTooltip({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button
           {...skipProps}
+          onClick={(e) => {
+            if (skipProps.onClick) skipProps.onClick(e)
+            window.dispatchEvent(new CustomEvent('force-close-tour'))
+          }}
           style={{
             background: 'transparent',
             border: 'none',
@@ -67,6 +71,12 @@ function CustomTooltip({
           )}
           <button
             {...primaryProps}
+            onClick={(e) => {
+              if (primaryProps.onClick) primaryProps.onClick(e)
+              if (isLastStep) {
+                window.dispatchEvent(new CustomEvent('force-close-tour'))
+              }
+            }}
             style={{
               background: 'var(--theme-500)',
               border: 'none',
@@ -109,9 +119,20 @@ export default function AppGuide({ currentUser }) {
       setTourKey(k => k + 1)
       setRun(true)
     }
+
+    // Force close listener perfectly tied to our CustomTooltip buttons
+    const forceClose = () => {
+      setRun(false)
+      localStorage.setItem(localStorageKey, 'true')
+      window.dispatchEvent(new CustomEvent('start-page-tour'))
+    }
     
     window.addEventListener('start-tour', startTour)
-    return () => window.removeEventListener('start-tour', startTour)
+    window.addEventListener('force-close-tour', forceClose)
+    return () => {
+      window.removeEventListener('start-tour', startTour)
+      window.removeEventListener('force-close-tour', forceClose)
+    }
   }, [])
 
   // Nuke all outside clicks during the tour
@@ -153,7 +174,14 @@ export default function AppGuide({ currentUser }) {
       disableOverlayClose: true,
     },
     {
-      target: '#tour-main-content',
+      target: '#tour-notification-bell',
+      content: 'This is the notification bell. You will receive real-time updates here for new chat messages, announcements, reports, and leaves.',
+      placement: 'bottom-end',
+      disableBeacon: true,
+      disableOverlayClose: true,
+    },
+    {
+      target: 'main',
       content: 'This is the main content area where you will interact with the selected module.',
       placement: 'center',
       disableBeacon: true,
@@ -169,10 +197,14 @@ export default function AppGuide({ currentUser }) {
   ]
 
   const handleJoyrideCallback = (data) => {
-    const { status, action } = data
+    const { status, type, action } = data
     
-    // Save state on FINISHED, SKIPPED, or any form of 'close' action
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status) || action === 'close') {
+    // Save state on FINISHED, SKIPPED, TOUR_END, or any form of 'close' action
+    if (
+      [STATUS.FINISHED, STATUS.SKIPPED].includes(status) || 
+      type === EVENTS.TOUR_END || 
+      action === 'close'
+    ) {
       setRun(false)
       localStorage.setItem(localStorageKey, 'true')
       window.dispatchEvent(new CustomEvent('start-page-tour'))
@@ -181,6 +213,7 @@ export default function AppGuide({ currentUser }) {
 
   return (
     <Joyride
+      key={tourKey}
       callback={handleJoyrideCallback}
       continuous
       disableScrolling={true}
@@ -189,7 +222,6 @@ export default function AppGuide({ currentUser }) {
       spotlightClicks={true}
       hideCloseButton
       run={run}
-      stepIndex={stepIndex}
       showProgress={false}
       showSkipButton
       steps={steps}

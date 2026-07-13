@@ -32,6 +32,10 @@ function CustomTooltip({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button
           {...skipProps}
+          onClick={(e) => {
+            if (skipProps.onClick) skipProps.onClick(e)
+            window.dispatchEvent(new CustomEvent('force-close-tour'))
+          }}
           style={{
             background: 'transparent',
             border: 'none',
@@ -50,6 +54,10 @@ function CustomTooltip({
           {index > 0 && (
             <button
               {...backProps}
+              onClick={(e) => {
+                if (backProps.onClick) backProps.onClick(e)
+                window.dispatchEvent(new CustomEvent('tour-prev-step', { detail: { index } }))
+              }}
               style={{
                 background: 'var(--surface-hover)',
                 border: '1px solid var(--border)',
@@ -67,6 +75,13 @@ function CustomTooltip({
           )}
           <button
             {...primaryProps}
+            onClick={(e) => {
+              if (primaryProps.onClick) primaryProps.onClick(e)
+              window.dispatchEvent(new CustomEvent('tour-next-step', { detail: { index } }))
+              if (isLastStep) {
+                window.dispatchEvent(new CustomEvent('force-close-tour'))
+              }
+            }}
             style={{
               background: 'var(--theme-500)',
               border: 'none',
@@ -87,7 +102,7 @@ function CustomTooltip({
   )
 }
 
-export default function PageGuide({ steps, storageKey, eventName = 'start-page-tour' }) {
+export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', eventName = 'start-page-tour', onCallback }) {
   const [run, setRun] = useState(false)
   const [tourKey, setTourKey] = useState(0)
 
@@ -110,9 +125,19 @@ export default function PageGuide({ steps, storageKey, eventName = 'start-page-t
       setTourKey(k => k + 1)
       setRun(true)
     }
+
+    // Force close listener perfectly tied to our CustomTooltip buttons
+    const forceClose = () => {
+      setRun(false)
+      localStorage.setItem(storageKey, 'true')
+    }
     
     window.addEventListener(eventName, startTour)
-    return () => window.removeEventListener(eventName, startTour)
+    window.addEventListener('force-close-tour', forceClose)
+    return () => {
+      window.removeEventListener(eventName, startTour)
+      window.removeEventListener('force-close-tour', forceClose)
+    }
   }, [storageKey, eventName])
 
   // Nuke all outside clicks during the tour
@@ -132,12 +157,20 @@ export default function PageGuide({ steps, storageKey, eventName = 'start-page-t
   }, [run])
 
   const handleJoyrideCallback = (data) => {
-    const { status, action } = data
+    const { status, type, action } = data
     
-    // Save state on FINISHED, SKIPPED, or any form of 'close' action
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status) || action === 'close') {
+    // Save state on FINISHED, SKIPPED, TOUR_END, or any form of 'close' action
+    if (
+      [STATUS.FINISHED, STATUS.SKIPPED].includes(status) || 
+      type === EVENTS.TOUR_END || 
+      action === 'close'
+    ) {
       setRun(false)
       localStorage.setItem(storageKey, 'true')
+    }
+
+    if (onCallback) {
+      onCallback(data)
     }
   }
 
@@ -150,6 +183,7 @@ export default function PageGuide({ steps, storageKey, eventName = 'start-page-t
 
   return (
     <Joyride
+      key={tourKey}
       callback={handleJoyrideCallback}
       continuous
       disableScrolling={true}
@@ -158,7 +192,6 @@ export default function PageGuide({ steps, storageKey, eventName = 'start-page-t
       spotlightClicks={true}
       hideCloseButton
       run={run}
-      stepIndex={stepIndex}
       showProgress={false}
       showSkipButton
       steps={formattedSteps}

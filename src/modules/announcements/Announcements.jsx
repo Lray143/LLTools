@@ -162,9 +162,6 @@ function EmployeeSelect({ employees, selected, onChange }) {
           </div>
         </div>
       )}
-
-      {/* ── Page Guide ── */}
-      <PageGuide steps={guideSteps} storageKey="seen_announcements_tour" />
     </div>
   )
 }
@@ -383,29 +380,6 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   
-  const guideSteps = [
-    {
-      target: 'body',
-      content: 'Welcome to the Announcements page! This is where you can view all company-wide posts.',
-      placement: 'center'
-    },
-    {
-      target: '#tour-announcements-search',
-      content: 'Use this search bar to quickly find announcements by their subject.',
-      placement: 'bottom'
-    },
-    {
-      target: '#tour-announcements-tabs',
-      content: 'Switch between the active feed and older archived/seen posts using these tabs.',
-      placement: 'bottom-end'
-    },
-    ...(canPost ? [{
-      target: '#tour-announcements-compose',
-      content: 'If you have permission, click here to draft and publish a new announcement to the team.',
-      placement: 'bottom'
-    }] : [])
-  ]
-
   const handlePost = async () => {
     const contentStr = serializeContent()
     if (!subject.trim() || !contentStr || submitting || isUploading) return
@@ -525,6 +499,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
           </div>
         </div>
         <input
+          id="tour-announcements-subject"
           value={subject}
           onChange={e => setSubject(e.target.value)}
           placeholder="e.g. Holiday Schedule Update"
@@ -537,7 +512,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
       </div>
 
       {/* Receiver */}
-      <div style={{ marginBottom: 12 }}>
+      <div id="tour-announcements-receiver" style={{ marginBottom: 12 }}>
         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-600)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Receiver
         </label>
@@ -647,6 +622,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
 
         {/* contentEditable rich editor */}
         <div
+          id="tour-announcements-content"
           ref={editorRef}
           contentEditable
           suppressContentEditableWarning
@@ -705,7 +681,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
 
       <div style={{ flexShrink: 0, marginTop: 'auto' }}>
       {/* Options row */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+      <div id="tour-announcements-toggles" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
         {[
           { key: 'urgent',   label: <><AlertTriangle size={14} style={{ marginRight: 6 }} /> Urgent</>,             val: isUrgent,      set: setIsUrgent },
           { key: 'ack',      label: <><CheckSquare size={14} style={{ marginRight: 6 }} /> Require Acknowledge</>, val: requireAck,    set: setRequireAck },
@@ -738,6 +714,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8 }}>
         <button
+          id="tour-announcements-post"
           onClick={handlePost}
           disabled={!subject.trim() || !hasContent || submitting || isUploading}
           style={{
@@ -782,6 +759,75 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
   const [searchQuery,    setSearchQuery]    = useState('')
 
   const canPost = canPostAnnouncements(currentUser)
+
+  const guideSteps = [
+    {
+      target: 'body',
+      content: 'Welcome to the Announcements page! This is where you can view all company-wide posts.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-announcements-search',
+      content: 'Use this search bar to quickly find announcements by their subject.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-announcements-tabs',
+      content: 'Switch between the active feed and older archived/seen posts using these tabs.',
+      placement: 'bottom-end'
+    },
+    ...(canPost ? [
+      {
+        target: '#tour-announcements-subject',
+        content: 'Give your announcement a clear and concise subject.',
+        placement: 'bottom'
+      },
+      {
+        target: '#tour-announcements-receiver',
+        content: 'Select which departments or specific employees should receive this announcement. You can select multiple!',
+        placement: 'bottom'
+      },
+      {
+        target: '#tour-announcements-content',
+        content: 'Write the main body of your post here. You can paste images, format text, and add emojis!',
+        placement: 'top'
+      },
+      {
+        target: '#tour-announcements-toggles',
+        content: 'Mark as Urgent to send immediate alerts, Require Acknowledge to track who read it, or Allow Comments for discussion.',
+        placement: 'top'
+      },
+      {
+        target: '#tour-announcements-post',
+        content: 'When you are ready, click here to publish! (Don\'t worry, you don\'t have to post anything right now).',
+        placement: 'top'
+      },
+      {
+        target: '#page-tour-help-btn',
+        content: 'You can always click this help button to restart this tour anytime!',
+        placement: 'bottom-end'
+      }
+    ] : [])
+  ]
+
+  useEffect(() => {
+    if (!canPost) return
+    const handleNext = (e) => {
+      // If clicking Next on index 2 (Tabs), open Compose Box
+      if (e.detail.index === 2) setComposing(true)
+    }
+    const handlePrev = (e) => {
+      // If clicking Back on index 3 (Subject), close Compose Box
+      if (e.detail.index === 3) setComposing(false)
+    }
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    return () => {
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+    }
+  }, [canPost])
+
   const empId   = String(currentUser.employeeId || currentUser.id)
 
   // ── Data fetching ──────────────────────────────────────────────────────────
@@ -1207,6 +1253,8 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
 
       {/* Spin animation */}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
+      <PageGuide steps={guideSteps} storageKey="seen_announcements_tour" />
     </div>
   )
 }

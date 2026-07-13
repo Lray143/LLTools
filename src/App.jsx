@@ -398,6 +398,7 @@ function App() {
           onNavigate={setActivePage}
           onBadgesChange={handleBadgesChange}
           suppressNative={false}
+          hideTourId={true}
         />
       </div>
       <Sidebar
