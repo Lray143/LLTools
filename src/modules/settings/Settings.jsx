@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Settings as SettingsIcon } from 'lucide-react'
 import { SettingsNav }        from './components/SettingsNav'
 import { AppearanceSection }  from './components/AppearanceSection'
@@ -7,6 +7,14 @@ import { AboutSection }       from './components/AboutSection'
 
 function Settings({ currentUser }) {
   const [activeSection, setActiveSection] = useState('appearance')
+
+  useEffect(() => {
+    const handleNavigation = (e) => {
+      if (e.detail) setActiveSection(e.detail)
+    }
+    window.addEventListener('navigate-settings', handleNavigation)
+    return () => window.removeEventListener('navigate-settings', handleNavigation)
+  }, [])
 
   function renderSection() {
     if (activeSection === 'appearance') return <AppearanceSection currentUser={currentUser} />

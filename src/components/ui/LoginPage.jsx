@@ -9,6 +9,34 @@ function LoginPage({ onLogin }) {
   const [isLoading,    setIsLoading]    = useState(false);
   const [keepLogged,   setKeepLogged]   = useState(false);
   const [appVersion,   setAppVersion]   = useState("1.0.0");
+  const [carouselImages, setCarouselImages] = useState([]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [carouselStarted, setCarouselStarted] = useState(false);
+
+  useEffect(() => {
+    const images = [
+      "photo1.jpg", "photo 2.jpg", "photo 3.jpg", "photo 4.jpg", "photo 5.jpg",
+      "photo 6.jpg", "photo 7.jpg", "photo 8.jpg", "photo 9.jpg",
+      "photo 10.jpg", "photo 11.jpg", "photo 12.jpg", "photo 13.jpg"
+    ];
+    // Shuffle images randomly
+    const shuffled = [...images].sort(() => Math.random() - 0.5);
+    setCarouselImages(shuffled);
+
+    // Wait 5 seconds before starting the carousel to show the old UI first
+    const startTimer = setTimeout(() => {
+      setCarouselStarted(true);
+    }, 5000);
+    return () => clearTimeout(startTimer);
+  }, []);
+
+  useEffect(() => {
+    if (carouselImages.length === 0 || !carouselStarted) return;
+    const interval = setInterval(() => {
+      setActiveImageIndex(prev => (prev + 1) % carouselImages.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [carouselImages, carouselStarted]);
 
   useEffect(() => {
     if (window.electronAPI?.getVersion) {
@@ -64,15 +92,63 @@ function LoginPage({ onLogin }) {
     >
       {/* ── LEFT PANEL — brand strip ─────────────────────────────── */}
       <div
-        className="hidden md:flex flex-col items-center justify-center"
+        className="hidden md:flex flex-col items-center justify-center relative"
         style={{
-          width: "42%",
+          width: "60%",
           background: "linear-gradient(160deg, #242426 0%, #1c1c1e 60%, #141416 100%)",
           borderRight: "1px solid rgba(249,115,22,0.12)",
-          position: "relative",
           overflow: "hidden",
         }}
       >
+        {/* Carousel Backgrounds */}
+        {carouselImages.map((img, idx) => (
+          <div
+            key={img}
+            style={{
+              position: "absolute",
+              inset: 0,
+              opacity: carouselStarted && idx === activeImageIndex ? 1 : 0,
+              transition: "opacity 1.5s ease-in-out",
+              zIndex: 0,
+              overflow: "hidden"
+            }}
+          >
+            {/* Blurred Background Layer (fills the space) */}
+            <div
+              style={{
+                position: "absolute",
+                inset: -20, // Negative inset to prevent blurry edges from showing
+                backgroundImage: `url('./carousel/${encodeURIComponent(img)}')`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                filter: "blur(15px)",
+                opacity: 0.6,
+              }}
+            />
+            
+            {/* Crisp Foreground Layer (shows full image) */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundImage: `url('./carousel/${encodeURIComponent(img)}')`,
+                backgroundSize: "contain",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }}
+            />
+          </div>
+        ))}
+
+        {/* Dark Overlay */}
+        <div style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.6)",
+          opacity: carouselStarted ? 1 : 0,
+          transition: "opacity 1.5s ease-in-out",
+          zIndex: 1,
+        }} />
         {/* Subtle glow orb */}
         <div style={{
           position: "absolute",
@@ -97,63 +173,54 @@ function LoginPage({ onLogin }) {
           pointerEvents: "none",
         }} />
 
-        {/* Logo */}
-        <img
-          src="./Logo.png"
-          alt="Double L Beauty Products"
-          style={{
-            width: "160px",
-            height: "auto",
-            objectFit: "contain",
-            filter: "drop-shadow(0 4px 24px rgba(249,115,22,0.28)) brightness(1.05)",
-            marginBottom: "32px",
-            position: "relative",
-            zIndex: 1,
-          }}
-        />
-
-        {/* Brand text */}
-        <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-          <p style={{
-            fontSize: "11px",
-            letterSpacing: "3px",
-            textTransform: "uppercase",
-            color: "rgba(249,115,22,0.6)",
-            fontWeight: 600,
-            marginBottom: "10px",
-          }}>
-            Internal Portal
-          </p>
-          <p style={{
-            fontSize: "20px",
-            fontWeight: 700,
-            color: "#f0f0f0",
-            lineHeight: 1.3,
-            maxWidth: "220px",
-            margin: "0 auto",
-          }}>
-            Double L Beauty Products
-          </p>
-        </div>
-
-        {/* Decorative rule */}
+        {/* Brand Container */}
         <div style={{
-          width: "40px",
-          height: "2px",
-          background: "linear-gradient(90deg, transparent, #f97316, transparent)",
-          borderRadius: "2px",
-          margin: "24px auto 0",
-          position: "relative",
-          zIndex: 1,
-        }} />
+          position: "absolute",
+          left: "50%",
+          top: carouselStarted ? "calc(100% - 20px)" : "50%",
+          transform: carouselStarted ? "translate(-50%, -100%) scale(0.65)" : "translate(-50%, -50%) scale(1)",
+          transition: "all 1.5s cubic-bezier(0.4, 0, 0.2, 1)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          zIndex: 2,
+        }}>
+          {/* Logo */}
+          <a
+            href="https://www.facebook.com/DoubleLBeauty"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Visit our Facebook Page"
+            style={{ 
+              display: "inline-block", 
+              cursor: "pointer", 
+              outline: "none", 
+              transition: "transform 0.2s ease",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+            onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+          >
+            <img
+              src="./Logo.png"
+              alt="Double L Beauty Products"
+              style={{
+                width: "160px",
+                height: "auto",
+                objectFit: "contain",
+                filter: "drop-shadow(0 4px 24px rgba(249,115,22,0.28)) brightness(1.05)",
+              }}
+            />
+          </a>
+        </div>
 
         {/* Footer */}
         <p style={{
           position: "absolute",
           bottom: "24px",
           fontSize: "10px",
-          color: "rgba(255,255,255,0.2)",
+          color: "rgba(255,255,255,0.4)",
           letterSpacing: "0.5px",
+          zIndex: 2,
         }}>
           LLTools v{appVersion} · © {new Date().getFullYear()}
         </p>
@@ -180,12 +247,22 @@ function LoginPage({ onLogin }) {
         }} />
 
         {/* Mobile-only logo */}
-        <img
-          src="./Logo.png"
-          alt="Double L Beauty Products"
-          className="md:hidden mb-8"
-          style={{ width: "120px", objectFit: "contain" }}
-        />
+        <a
+          href="https://www.facebook.com/DoubleLBeauty"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Visit our Facebook Page"
+          className="md:hidden mb-8 inline-block"
+          style={{ cursor: "pointer", outline: "none", transition: "transform 0.2s ease" }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+        >
+          <img
+            src="./Logo.png"
+            alt="Double L Beauty Products"
+            style={{ width: "120px", objectFit: "contain" }}
+          />
+        </a>
 
         {/* Card */}
         <div

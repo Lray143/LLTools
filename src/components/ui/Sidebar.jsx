@@ -303,7 +303,14 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
         `} style={{ zIndex: 1 }}>
 
           {/* Avatar with online/offline dot */}
-          <div className="relative shrink-0">
+          <button 
+            className="relative shrink-0 cursor-pointer transition-transform hover:scale-105 active:scale-95 border-0 bg-transparent p-0"
+            onClick={() => {
+              setActivePage('settings')
+              setTimeout(() => window.dispatchEvent(new CustomEvent('navigate-settings', { detail: 'account' })), 10)
+            }}
+            title="Go to Account Settings"
+          >
             <div
               className="text-white font-bold w-8 h-8 rounded-full flex items-center justify-center text-xs"
               style={{ background: 'var(--sidebar-active)' }}
@@ -322,7 +329,7 @@ function Sidebar({ activePage, setActivePage, onLogout, allowedModules, currentU
               `}
               style={{ borderWidth: '2px', borderStyle: 'solid', borderColor: 'var(--sidebar-bg)' }}
             />
-          </div>
+          </button>
 
           {/* Name + role */}
           <div className={`

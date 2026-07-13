@@ -146,7 +146,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
           <DialogTitle className="text-gray-900 text-base font-semibold">
             {isEdit ? "Edit Employee" : "Add Employee"}
           </DialogTitle>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-gray-500 mt-0.5">
             {isEdit ? "Update the employee's information below." : "Fill in the details to add a new employee."}
           </p>
         </DialogHeader>
@@ -215,7 +215,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                   </SelectTrigger>
                   <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
                     {DEPTS.map(d => (
-                      <SelectItem key={d} value={d} className="focus:bg-white focus:text-gray-900 cursor-pointer text-sm">{d}</SelectItem>
+                      <SelectItem key={d} value={d} className="cursor-pointer text-sm">{d}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -275,14 +275,14 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                       value={isWork ? (entry?.start ?? '07:00') : ''}
                       disabled={!isWork}
                       onChange={e => setDayEntry(day, { ...entry, start: e.target.value })}
-                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none bg-white' : ''}`}
+                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none' : ''}`}
                     />
                     <Input
                       type="time"
                       value={isWork ? (entry?.end ?? '17:30') : ''}
                       disabled={!isWork}
                       onChange={e => setDayEntry(day, { ...entry, end: e.target.value })}
-                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none bg-white' : ''}`}
+                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none' : ''}`}
                     />
                   </div>
                 )
@@ -292,19 +292,19 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
         </div>
 
-        <DialogFooter className="px-6 py-4 bg-gray-50/80 border-t border-gray-100/60 rounded-b-xl sm:rounded-b-2xl">
+        <DialogFooter>
           <div className="flex flex-col w-full">
             {error && <div className="text-red-500 text-xs mb-3 font-medium text-right">{error}</div>}
             <div className="flex justify-end gap-2 w-full">
               {isEdit && (
                 <div className="flex-1 flex justify-start">
-                  <Button type="button" variant="ghost" className="text-gray-500 hover:text-orange-600 hover:bg-orange-50 text-sm px-2 flex items-center gap-1.5" onClick={() => setResetOpen(true)}>
+                  <Button type="button" variant="ghost" className="text-muted-foreground hover:text-theme-600 hover:bg-theme-50 text-sm px-2 flex items-center gap-1.5" onClick={() => setResetOpen(true)}>
                     <RotateCcw className="w-4 h-4" />
                     Reset Credentials
                   </Button>
                 </div>
               )}
-              <Button variant="outline" className="border-gray-200 text-gray-600 hover:bg-white text-sm" onClick={onClose} disabled={isSaving}>
+              <Button variant="outline" className="text-sm" onClick={onClose} disabled={isSaving}>
                 Cancel
               </Button>
               <Button className="bg-theme-500 hover:bg-theme-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
@@ -320,7 +320,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
       <DialogContent className="sm:max-w-sm bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 z-[200]">
         <DialogHeader>
           <div className="flex flex-col items-center gap-3 pt-2 pb-1">
-            <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-theme-50 flex items-center justify-center">
               <RotateCcw className="w-5 h-5 text-theme-500" />
             </div>
             <DialogTitle className="text-center text-gray-900">Reset Credentials</DialogTitle>
