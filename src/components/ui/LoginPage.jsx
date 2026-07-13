@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LogIn, Eye, EyeOff } from "lucide-react";
+import { LogIn, Eye, EyeOff, KeyRound } from "lucide-react";
 
 function LoginPage({ onLogin }) {
   const [username,     setUsername]     = useState("");
@@ -9,6 +9,7 @@ function LoginPage({ onLogin }) {
   const [isLoading,    setIsLoading]    = useState(false);
   const [keepLogged,   setKeepLogged]   = useState(false);
   const [appVersion,   setAppVersion]   = useState("1.0.0");
+  const [forgotOpen,   setForgotOpen]   = useState(false);
   const [carouselImages, setCarouselImages] = useState([]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [carouselStarted, setCarouselStarted] = useState(false);
@@ -66,6 +67,7 @@ function LoginPage({ onLogin }) {
   };
 
   return (
+    <>
     <div
       className="login-wrapper flex h-screen"
       style={{
@@ -506,9 +508,34 @@ function LoginPage({ onLogin }) {
             {isLoading ? "Signing in…" : "Sign In"}
           </button>
 
+          {/* Forgot password link */}
+          <p style={{ marginTop: "14px", textAlign: "center" }}>
+            <button
+              type="button"
+              onClick={() => setForgotOpen(true)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontSize: "12px",
+                color: "#f97316",
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: "3px",
+                fontFamily: "inherit",
+                opacity: 0.85,
+                transition: "opacity 150ms",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = "0.85"}
+            >
+              Forgot password?
+            </button>
+          </p>
+
           {/* Footer note */}
           <p style={{
-            marginTop: "20px",
+            marginTop: "16px",
             textAlign: "center",
             fontSize: "11px",
             color: "#d1d5db",
@@ -519,6 +546,84 @@ function LoginPage({ onLogin }) {
         </div>
       </div>
     </div>
+
+    {/* Forgot Password Modal */}
+    {forgotOpen && (
+      <div
+        onClick={() => setForgotOpen(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.45)",
+          zIndex: 9999,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            background: "#ffffff",
+            borderRadius: "18px",
+            padding: "36px 32px",
+            maxWidth: "380px",
+            width: "90%",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.18)",
+            textAlign: "center",
+            position: "relative",
+          }}
+        >
+          {/* Icon */}
+          <div style={{
+            width: "52px",
+            height: "52px",
+            borderRadius: "50%",
+            background: "rgba(249,115,22,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 18px",
+          }}>
+            <KeyRound size={22} color="#f97316" strokeWidth={2} />
+          </div>
+
+          <h2 style={{ fontSize: "17px", fontWeight: 700, color: "#1a1a1a", margin: "0 0 8px" }}>
+            Forgot your password?
+          </h2>
+          <p style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.6, margin: "0 0 8px" }}>
+            Password resets are handled by your <strong style={{ color: "#1a1a1a" }}>HR department</strong>.
+          </p>
+          <p style={{ fontSize: "13px", color: "#6b7280", lineHeight: 1.6, margin: "0 0 24px" }}>
+            Please approach your HR administrator and request a credential reset. Your username and password will be restored to your <strong style={{ color: "#f97316" }}>Employee ID</strong>.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setForgotOpen(false)}
+            style={{
+              width: "100%",
+              padding: "10px 0",
+              borderRadius: "10px",
+              border: "none",
+              background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+              color: "#fff",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              boxShadow: "0 2px 10px rgba(249,115,22,0.3)",
+              transition: "opacity 150ms",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = "0.9"}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
