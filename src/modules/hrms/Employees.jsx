@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react"
+import { getPusherChannel } from '../../lib/pusherSingleton'
 import { Plus, User, Archive, ChevronDown, Check } from "lucide-react"
 import { v4 as uuidv4 } from 'uuid'
 import NotificationBell from '../../components/ui/NotificationBell'
@@ -35,7 +36,9 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  const activeLabel = options.find(o => (o.value ?? o) === value)?.label ?? value
+  const activeOpt   = options.find(o => (o.value ?? o) === value)
+  const activeLabel = activeOpt?.label ?? value
+  const activeDot   = activeOpt?.dot
 
   return (
     <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
@@ -52,7 +55,14 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
           transition: 'border-color 150ms, color 150ms',
         }}
       >
-        <span style={{ flex: 1, textAlign: 'left', fontWeight: open ? 600 : 500 }}>
+        <span style={{ flex: 1, textAlign: 'left', fontWeight: open ? 600 : 500, display: 'flex', alignItems: 'center', gap: '7px' }}>
+          {activeDot && (
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+              background: activeDot,
+              boxShadow: activeDot === '#22c55e' ? '0 0 0 2px rgba(34,197,94,0.2)' : undefined,
+            }} />
+          )}
           {activeLabel}
         </span>
         <ChevronDown
@@ -73,7 +83,8 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
           {options.map(opt => {
             const isActive = opt.value === value || opt === value
             const label = opt.label ?? opt
-            const val = opt.value ?? opt
+            const val   = opt.value ?? opt
+            const dot   = opt.dot
             return (
               <button
                 key={val}
@@ -89,7 +100,16 @@ function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
               >
-                {label}
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {dot && (
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                      background: dot,
+                      boxShadow: dot === '#22c55e' ? '0 0 0 2px rgba(34,197,94,0.2)' : undefined,
+                    }} />
+                  )}
+                  {label}
+                </span>
                 {isActive && <Check size={14} color="var(--theme-500)" strokeWidth={2.5} />}
               </button>
             )
@@ -164,6 +184,8 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [dept, setDept] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [onlineFilter, setOnlineFilter] = useState("all")
+  const [onlineUsers, setOnlineUsers] = useState(new Set())
   const [modal, setModal] = useState(null)
 
   useEffect(() => {
@@ -187,6 +209,54 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   }, [])
 
   useEffect(() => { loadEmployees() }, [loadEmployees, refreshKey])
+
+  // ── Pusher: track online/offline status (same as Chat module) ───────────────
+  useEffect(() => {
+    const channel = getPusherChannel()
+    if (!channel) return
+
+    const handleUserOnline = (data) => {
+      if (data?.userId) {
+        setOnlineUsers(prev => new Set([...prev, String(data.userId)]))
+      }
+    }
+    const handleUserOffline = (data) => {
+      if (data?.userId) {
+        setOnlineUsers(prev => {
+          const next = new Set(prev)
+          next.delete(String(data.userId))
+          return next
+        })
+      }
+    }
+    const handleRequestStatus = () => {
+      // Reply to any status request so others know we are here
+      if (currentUser?.id) {
+        window.electronAPI?.sendPusherEvent?.({
+          channel: 'lltools-updates',
+          event: 'user-online',
+          data: { userId: String(currentUser.employeeId || currentUser.id) },
+        }).catch(() => {})
+      }
+    }
+
+    channel.bind('user-online', handleUserOnline)
+    channel.bind('user-offline', handleUserOffline)
+    channel.bind('request-status', handleRequestStatus)
+
+    // Ask everyone to announce their current status
+    window.electronAPI?.sendPusherEvent?.({
+      channel: 'lltools-updates',
+      event: 'request-status',
+      data: {},
+    }).catch(() => {})
+
+    return () => {
+      channel.unbind('user-online', handleUserOnline)
+      channel.unbind('user-offline', handleUserOffline)
+      channel.unbind('request-status', handleRequestStatus)
+    }
+  }, [currentUser?.id, currentUser?.employeeId])
 
   function nextEmployeeNo() {
     const all = [...employees, ...archived]
@@ -304,7 +374,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   }
 
   const filtered = employees
-    .map(e => ({ ...e, liveStatus: getLiveStatus(e) }))
+    .map(e => ({ ...e, liveStatus: getLiveStatus(e), isOnline: onlineUsers.has(String(e.id)) }))
     .filter(e => {
       const matchSearch = e.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
                           (e.employee_no && e.employee_no.toLowerCase().includes(debouncedSearch.toLowerCase()))
@@ -312,7 +382,10 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
       const matchStatus = statusFilter === "all" ||
         e.liveStatus === statusFilter ||
         (statusFilter === "On Leave" && e.liveStatus !== "Active")
-      return matchSearch && matchDept && matchStatus
+      const matchOnline = onlineFilter === "all" ||
+        (onlineFilter === "online" && e.isOnline) ||
+        (onlineFilter === "offline" && !e.isOnline)
+      return matchSearch && matchDept && matchStatus && matchOnline
     })
 
   // Options for dropdowns
@@ -323,6 +396,11 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   const statusOptions = [
     { label: 'All Statuses', value: 'all' },
     ...STATUSES.map(s => ({ label: s, value: s })),
+  ]
+  const onlineOptions = [
+    { label: 'All Presence', value: 'all' },
+    { label: 'Online',       value: 'online',  dot: '#22c55e' },
+    { label: 'Offline',      value: 'offline', dot: 'var(--text-secondary)' },
   ]
 
   return (
@@ -406,6 +484,14 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
             minWidth="136px"
           />
 
+          {/* Online/Offline filter */}
+          <CustomSelect
+            value={onlineFilter}
+            onChange={setOnlineFilter}
+            options={onlineOptions}
+            minWidth="128px"
+          />
+
           {/* Count */}
           <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 400, userSelect: 'none' }}>
             {filtered.length} {filtered.length === 1 ? 'employee' : 'employees'}
@@ -451,12 +537,14 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
           ) : view === "cards" ? (
             <EmployeeCardGrid
               employees={filtered}
+              onlineUsers={onlineUsers}
               onEdit={e => setModal({ mode: "edit", employee: e })}
               onDelete={e => setModal({ mode: "delete", employee: e })}
             />
           ) : (
             <EmployeeListView
               employees={filtered}
+              onlineUsers={onlineUsers}
               onEdit={e => setModal({ mode: "edit", employee: e })}
               onDelete={e => setModal({ mode: "delete", employee: e })}
             />
