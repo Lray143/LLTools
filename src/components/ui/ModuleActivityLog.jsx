@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { History, X, Plus, Pencil, Archive, Trash2, Clock, User, Hash, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
 import { ACTIVITY_ACTION_META, ACTIVITY_MODULE_LABELS, parseActivityDetails } from '../../lib/activityLog'
 
@@ -263,6 +263,7 @@ function ActivityLogDrawer({ module, refreshKey, onClose }) {
         onClick={onClose}
       />
       <div
+        id="tour-activity-log-panel"
         className="fixed top-0 right-0 bottom-0 z-50 flex flex-col shadow-2xl"
         style={{
           width: 'min(480px, 100vw)',
@@ -302,7 +303,7 @@ function ActivityLogDrawer({ module, refreshKey, onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto chat-scroll p-4">
+        <div id="tour-activity-log-entries" className="flex-1 overflow-y-auto chat-scroll p-4">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-sm" style={{ color: 'var(--text-secondary)' }}>
               Loading history…
@@ -362,8 +363,26 @@ function ActivityLogDrawer({ module, refreshKey, onClose }) {
   )
 }
 
-export default function ModuleActivityLog({ module, refreshKey = 0 }) {
+export default function ModuleActivityLog({ module, refreshKey = 0, forceOpen, onForceClose }) {
   const [open, setOpen] = useState(false)
+  const openedByTour = useRef(false)
+
+  // Sync open/close with the tour controller
+  useEffect(() => {
+    if (forceOpen === true) {
+      openedByTour.current = true
+      setOpen(true)
+    } else if (forceOpen === false && openedByTour.current) {
+      openedByTour.current = false
+      setOpen(false)
+    }
+  }, [forceOpen])
+
+  const handleClose = () => {
+    openedByTour.current = false
+    setOpen(false)
+    if (onForceClose) onForceClose()
+  }
 
   return (
     <>
@@ -387,7 +406,7 @@ export default function ModuleActivityLog({ module, refreshKey = 0 }) {
         <ActivityLogDrawer
           module={module}
           refreshKey={refreshKey}
-          onClose={() => setOpen(false)}
+          onClose={handleClose}
         />
       )}
     </>

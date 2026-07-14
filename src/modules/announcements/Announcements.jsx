@@ -776,7 +776,22 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
       content: 'Switch between the active feed and older archived/seen posts using these tabs.',
       placement: 'bottom-end'
     },
+    {
+      target: '#tour-announcements-archive-tab',
+      content: 'When you click this tab, it will switch you to the Archive view. Let\'s click Next to automatically open it and see what it looks like!',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-announcements-archive-view',
+      content: 'Here is your collection of older announcements! You can review and filter them here. Clicking Next will take us back to the feed.',
+      placement: 'bottom'
+    },
     ...(canPost ? [
+      {
+        target: '#tour-announcements-compose',
+        content: 'Since you have permission, you can click this button to draft and publish new announcements. Let\'s click Next to forcefully open the editor!',
+        placement: 'bottom-start'
+      },
       {
         target: '#tour-announcements-subject',
         content: 'Give your announcement a clear and concise subject.',
@@ -801,32 +816,78 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
         target: '#tour-announcements-post',
         content: 'When you are ready, click here to publish! (Don\'t worry, you don\'t have to post anything right now).',
         placement: 'top'
-      },
-      {
-        target: '#page-tour-help-btn',
-        content: 'You can always click this help button to restart this tour anytime!',
-        placement: 'bottom-end'
       }
-    ] : [])
+    ] : []),
+    {
+      target: '#page-tour-help-btn',
+      content: 'You can always click this help button to restart this tour anytime!',
+      placement: 'bottom-end'
+    }
   ]
 
   useEffect(() => {
-    if (!canPost) return
     const handleNext = (e) => {
-      // If clicking Next on index 2 (Tabs), open Compose Box
-      if (e.detail.index === 2) setComposing(true)
+      e.preventDefault()
+      const { index } = e.detail
+
+      const transitionPanel = (stateFn, advanceFn) => {
+        document.body.classList.add('hide-joyride')
+        stateFn()
+        setTimeout(() => {
+          advanceFn?.()
+          document.body.classList.remove('hide-joyride')
+        }, 500)
+      }
+
+      if (index === 3) {
+        transitionPanel(() => setView('archived'), window.advanceJoyride)
+      } else if (index === 4) {
+        transitionPanel(() => setView('feed'), window.advanceJoyride)
+      } else if (canPost && index === 5) {
+        transitionPanel(() => setComposing(true), window.advanceJoyride)
+      } else {
+        window.advanceJoyride?.()
+      }
     }
     const handlePrev = (e) => {
-      // If clicking Back on index 3 (Subject), close Compose Box
-      if (e.detail.index === 3) setComposing(false)
+      e.preventDefault()
+      const { index } = e.detail
+
+      const transitionPanel = (stateFn, retreatFn) => {
+        document.body.classList.add('hide-joyride')
+        stateFn()
+        setTimeout(() => {
+          retreatFn?.()
+          document.body.classList.remove('hide-joyride')
+        }, 500)
+      }
+
+      if (index === 4) {
+        transitionPanel(() => setView('feed'), window.retreatJoyride)
+      } else if (index === 5) {
+        transitionPanel(() => setView('archived'), window.retreatJoyride)
+      } else if (canPost && index === 6) {
+        transitionPanel(() => setComposing(false), window.retreatJoyride)
+      } else {
+        window.retreatJoyride?.()
+      }
     }
+    
+    // Safety check if they cancel the tour midway
+    const handleForceClose = () => {
+      if (composing) setComposing(false)
+      if (view === 'archived') setView('feed')
+    }
+
     window.addEventListener('tour-next-step', handleNext)
     window.addEventListener('tour-prev-step', handlePrev)
+    window.addEventListener('force-close-tour', handleForceClose)
     return () => {
       window.removeEventListener('tour-next-step', handleNext)
       window.removeEventListener('tour-prev-step', handlePrev)
+      window.removeEventListener('force-close-tour', handleForceClose)
     }
-  }, [canPost])
+  }, [canPost, composing, view])
 
   const empId   = String(currentUser.employeeId || currentUser.id)
 
@@ -1004,6 +1065,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
             ].map(tab => (
               <button
                 key={tab.id}
+                id={tab.id === 'archived' ? 'tour-announcements-archive-tab' : undefined}
                 onClick={() => setView(tab.id)}
                 style={{
                   padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500,
@@ -1139,7 +1201,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
 
           {/* Archive view header */}
           {view === 'archived' && canPost && (
-            <div style={{
+            <div id="tour-announcements-archive-view" style={{
               display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
               borderRadius: 10, background: 'rgba(var(--theme-500-rgb,99,102,241),0.06)',
               border: '1px solid rgba(var(--theme-500-rgb,99,102,241),0.15)',
@@ -1151,7 +1213,7 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
             </div>
           )}
           {view === 'archived' && !canPost && (
-            <div style={{
+            <div id="tour-announcements-archive-view" style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px',
               borderRadius: 10, background: 'rgba(var(--theme-500-rgb,99,102,241),0.06)',
               border: '1px solid rgba(var(--theme-500-rgb,99,102,241),0.15)',

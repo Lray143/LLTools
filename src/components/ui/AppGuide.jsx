@@ -135,7 +135,7 @@ export default function AppGuide({ currentUser }) {
     }
   }, [])
 
-  // Nuke all outside clicks during the tour
+  // Nuke all outside clicks and Escape key during the tour
   useEffect(() => {
     if (!run) return
     const blockClicks = (e) => {
@@ -143,11 +143,19 @@ export default function AppGuide({ currentUser }) {
       e.stopPropagation()
       e.preventDefault()
     }
+    const blockKeys = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
     document.addEventListener('click', blockClicks, true)
     document.addEventListener('mousedown', blockClicks, true)
+    document.addEventListener('keydown', blockKeys, true)
     return () => {
       document.removeEventListener('click', blockClicks, true)
       document.removeEventListener('mousedown', blockClicks, true)
+      document.removeEventListener('keydown', blockKeys, true)
     }
   }, [run])
 

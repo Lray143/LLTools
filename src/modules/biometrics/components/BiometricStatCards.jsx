@@ -11,7 +11,7 @@ export function BiometricStatCards({ stats, isLoading }) {
   ]
 
   return (
-    <div className="grid grid-cols-4 gap-3 lg:grid-cols-8">
+    <div id="tour-bio-stat-cards" className="grid grid-cols-4 gap-3 lg:grid-cols-8">
       <style>{`
         @keyframes statSkeletonPulse {
           0%, 100% { opacity: 1; }

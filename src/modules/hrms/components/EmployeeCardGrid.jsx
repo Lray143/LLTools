@@ -6,11 +6,12 @@ import { getColor, getInitials, formatShiftTime } from "../employeeConstants"
 export function EmployeeCardGrid({ employees, onlineUsers = new Set(), onEdit, onDelete }) {
   return (
     <div className="grid grid-cols-3 gap-4">
-      {employees.map(emp => {
+      {employees.map((emp, index) => {
         const isOnline = emp.isOnline ?? onlineUsers.has(String(emp.id))
         return (
           <div
             key={emp.id}
+            id={index === 0 ? "tour-employee-card" : undefined}
             className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center gap-2 hover:shadow-md transition-shadow relative group"
           >
             <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

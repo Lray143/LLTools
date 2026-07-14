@@ -9,7 +9,7 @@ export function MyAttendanceStatCards({ stats }) {
   ]
 
   return (
-    <div className="grid grid-cols-6 gap-3">
+    <div id="tour-my-att-stat-cards" className="grid grid-cols-6 gap-3">
       {cards.map((card) => (
         <div
           key={card.label}

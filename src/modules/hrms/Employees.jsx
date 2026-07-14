@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid'
 import NotificationBell from '../../components/ui/NotificationBell'
 import ModuleActivityLog from '../../components/ui/ModuleActivityLog'
 import SearchBar from '../../components/ui/SearchBar'
+import PageGuide from '../../components/ui/PageGuide'
 import { logModuleActivity, buildActivityDetails, diffFields, snapshotFromFields, EMPLOYEE_LOG_FIELDS } from '../../lib/activityLog'
 
 import { DEPTS, STATUSES, getLiveStatus, DEFAULT_SHIFT_START, DEFAULT_SHIFT_END, DEFAULT_DAY_OFFS, DEFAULT_DAY_SCHEDULE, DAYS_OF_WEEK } from "./employeeConstants"
@@ -187,6 +188,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   const [onlineFilter, setOnlineFilter] = useState("all")
   const [onlineUsers, setOnlineUsers] = useState(new Set())
   const [modal, setModal] = useState(null)
+  const [activityLogOpen, setActivityLogOpen] = useState(false)
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300)
@@ -209,6 +211,105 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   }, [])
 
   useEffect(() => { loadEmployees() }, [loadEmployees, refreshKey])
+
+  // ── Tour Guide: orchestrate all panels in sync with the guide ────────────
+  // Step map:
+  //  0  Welcome
+  //  1  Search
+  //  2  View Toggle
+  //  3  Dept Filter
+  //  4  Status Filter
+  //  5  Presence Filter
+  //  6  Employee Card
+  //  7  Activity Log btn  → "Click Next to open it"
+  //  8  Activity Log panel (tour-activity-log-panel)
+  //  9  Activity Log entries → "Click Next to close & continue"
+  // 10  Archive btn        → "Click Next to open it"
+  // 11  Archive panel (tour-archive-panel)
+  // 12  Archive search/sort (tour-archive-search-sort)
+  // 13  Archive list → "Click Next to close & continue"
+  // 14  Add Employee btn   → "Click Next to open the form"
+  // 15  Modal: Basic Info
+  // 16  Modal: Schedule
+  // 17  Modal: Save
+  // 18  Help button
+  useEffect(() => {
+    const handleNext = (e) => {
+      e.preventDefault() // Take control of timing from PageGuide
+      const { index } = e.detail
+      
+      const transitionPanel = (stateFn, advanceFn) => {
+        document.body.classList.add('hide-joyride')
+        stateFn() // Open/close the panel
+        setTimeout(() => {
+          advanceFn?.() // Move Joyride only after DOM is stable
+          document.body.classList.remove('hide-joyride')
+        }, 500)
+      }
+
+      if (index === 7) {
+        transitionPanel(() => setActivityLogOpen(true), window.advanceJoyride)
+      } else if (index === 9) {
+        transitionPanel(() => setActivityLogOpen(false), window.advanceJoyride)
+      } else if (index === 10) {
+        transitionPanel(() => setModal({ mode: 'archive' }), window.advanceJoyride)
+      } else if (index === 13) {
+        transitionPanel(() => setModal(null), window.advanceJoyride)
+      } else if (index === 14) {
+        transitionPanel(() => setModal({ mode: 'add' }), window.advanceJoyride)
+      } else if (index === 17) {
+        transitionPanel(() => setModal(null), window.advanceJoyride)
+      } else {
+        window.advanceJoyride?.()
+      }
+    }
+    const handlePrev = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      
+      const transitionPanel = (stateFn, retreatFn) => {
+        document.body.classList.add('hide-joyride')
+        stateFn() // Open/close the panel
+        setTimeout(() => {
+          retreatFn?.() // Move Joyride only after DOM is stable
+          document.body.classList.remove('hide-joyride')
+        }, 500)
+      }
+
+      if (index === 8) {
+        transitionPanel(() => setActivityLogOpen(false), window.retreatJoyride)
+      } else if (index === 9) {
+        transitionPanel(() => setActivityLogOpen(true), window.retreatJoyride)
+      } else if (index === 11) {
+        transitionPanel(() => setModal(null), window.retreatJoyride)
+      } else if (index === 12) {
+        transitionPanel(() => setModal({ mode: 'archive' }), window.retreatJoyride)
+      } else if (index === 13) {
+        transitionPanel(() => setModal({ mode: 'archive' }), window.retreatJoyride)
+      } else if (index === 15) {
+        transitionPanel(() => setModal(null), window.retreatJoyride)
+      } else if (index === 16) {
+        transitionPanel(() => setModal({ mode: 'add' }), window.retreatJoyride)
+      } else if (index === 17) {
+        transitionPanel(() => setModal({ mode: 'add' }), window.retreatJoyride)
+      } else {
+        window.retreatJoyride?.()
+      }
+    }
+    const handleForceClose = () => {
+      setActivityLogOpen(false)
+      setModal(null)
+    }
+
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    window.addEventListener('force-close-tour', handleForceClose)
+    return () => {
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+      window.removeEventListener('force-close-tour', handleForceClose)
+    }
+  }, [])
 
   // ── Pusher: track online/offline status (same as Chat module) ───────────────
   useEffect(() => {
@@ -443,14 +544,21 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div style={{ width: '14rem' }}>
+          <div id="tour-employees-search" style={{ width: '14rem' }}>
             <SearchBar
               placeholder="Search employees..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          <ModuleActivityLog module="employees" refreshKey={refreshKey} />
+          <div id="tour-employees-activity" style={{ display: 'inline-flex' }}>
+            <ModuleActivityLog
+              module="employees"
+              refreshKey={refreshKey}
+              forceOpen={activityLogOpen}
+              onForceClose={() => setActivityLogOpen(false)}
+            />
+          </div>
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
       </div>
@@ -461,7 +569,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
           {/* Cards / List segmented toggle */}
-          <div style={{
+          <div id="tour-employees-view-toggle" style={{
             display: 'flex', alignItems: 'center',
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '3px', gap: '2px',
@@ -489,28 +597,34 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
           <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
 
           {/* Department filter */}
+          <div id="tour-employees-dept-filter">
           <CustomSelect
             value={dept}
             onChange={setDept}
             options={deptOptions}
             minWidth="152px"
           />
+          </div>
 
           {/* Status filter */}
+          <div id="tour-employees-status-filter">
           <CustomSelect
             value={statusFilter}
             onChange={setStatusFilter}
             options={statusOptions}
             minWidth="136px"
           />
+          </div>
 
           {/* Online/Offline filter */}
+          <div id="tour-employees-presence-filter">
           <CustomSelect
             value={onlineFilter}
             onChange={setOnlineFilter}
             options={onlineOptions}
             minWidth="128px"
           />
+          </div>
 
           {/* Count */}
           <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 400, userSelect: 'none' }}>
@@ -521,6 +635,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
         {/* RIGHT: action buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
+            id="tour-employees-archive-btn"
             onClick={() => setModal({ mode: "archive" })}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -533,6 +648,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
             Archive
           </button>
           <button
+            id="tour-employees-add-btn"
             onClick={() => setModal({ mode: "add" })}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -598,6 +714,110 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
         onUnarchive={handleUnarchive}
         onPermanentDelete={handlePermanentDelete}
         onClose={() => setModal(null)}
+      />
+
+      {/* ── TOUR GUIDE ── */}
+      <PageGuide
+        storageKey="seen_employees_tour"
+        steps={[
+          {
+            target: 'body',
+            content: 'Welcome to the Employees page! This is where HR manages all employee records across the company.',
+            placement: 'center',
+          },
+          {
+            target: '#tour-employees-search',
+            content: 'Use this search bar to quickly find any employee by name or employee number.',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-employees-view-toggle',
+            content: 'Switch between Card view (a visual grid) and List view (a compact table) depending on your preference.',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-employees-dept-filter',
+            content: 'Filter employees by their Department, such as Sales, HR, or Operations.',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-employees-status-filter',
+            content: 'Filter by Status — Active means working normally, while On Leave means they have an approved leave today.',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-employees-presence-filter',
+            content: 'Filter by online presence. Online means the employee is currently logged into the system in real-time.',
+            placement: 'bottom',
+          },
+          {
+            target: filtered.length > 0 ? '#tour-employee-card' : 'body',
+            content: filtered.length > 0 
+              ? 'This is an employee card. Hover over it to reveal the Edit and Delete actions in the top right corner. The Edit button opens the same form as Add Employee, but pre-filled with their details.'
+              : 'Normally, employee cards appear here in the center of the screen. You can hover over them to quickly Edit or Delete their records.',
+            placement: filtered.length > 0 ? 'right' : 'center',
+          },
+          {
+            target: '#tour-employees-activity',
+            content: 'This is the Activity History Log button. It shows a full audit trail of every add, edit, archive, and restore action. Click Next to open it!',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-activity-log-panel',
+            content: 'This is the Activity Log panel. It slides in from the right and shows everything that has happened in this module.',
+            placement: 'left',
+          },
+          {
+            target: '#tour-activity-log-entries',
+            content: 'Each entry shows who made the change, what was changed, and a before/after comparison. Click Next to close the log and continue.',
+            placement: 'left',
+          },
+          {
+            target: '#tour-employees-archive-btn',
+            content: 'The Archive button opens a side panel with all inactive employees. Click Next to open it and see what it looks like!',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-archive-panel',
+            content: 'This is the Archive panel. It lists all employees who have been removed from the active roster.',
+            placement: 'left',
+          },
+          {
+            target: '#tour-archive-search-sort',
+            content: 'You can search archived employees by name, department, or ID, and sort the list however you like.',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-archive-list',
+            content: 'Hover over any employee to reveal the Restore and Delete buttons. Restore brings them back to active, while Delete removes them permanently. Click Next to close and continue.',
+            placement: 'left',
+          },
+          {
+            target: '#tour-employees-add-btn',
+            content: 'Click this to add a brand new employee. Click Next to open the form and walk through each field!',
+            placement: 'bottom',
+          },
+          {
+            target: '#tour-emp-modal-basic',
+            content: 'Fill in the employee\'s basic info here — Employee No. (auto-generated if left blank), Full Name, Position, Contact Info, and Department.',
+            placement: 'right',
+          },
+          {
+            target: '#tour-emp-modal-schedule',
+            content: 'Set the employee\'s work schedule here. Toggle each day on or off for rest days, and set shift start/end times per day.',
+            placement: 'left',
+          },
+          {
+            target: '#tour-emp-modal-save',
+            content: 'Once everything is filled in, click here to save the employee to the system. Click Next to close the form.',
+            placement: 'top',
+          },
+          {
+            target: '#page-tour-help-btn',
+            content: 'You can always click this ? button to restart this tour anytime!',
+            placement: 'bottom-end',
+          },
+        ]}
       />
     </div>
   )

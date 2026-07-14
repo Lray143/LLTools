@@ -159,7 +159,7 @@ export function MyAttendanceFilterBar({
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
         {/* Segmented mode toggle */}
-        <div style={{
+        <div id="tour-my-att-modes" style={{
           display: 'flex', alignItems: 'center',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '10px', padding: '3px', gap: '2px',
@@ -188,7 +188,7 @@ export function MyAttendanceFilterBar({
 
         {/* DAILY */}
         {viewMode === 'Daily' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div id="tour-my-att-date-nav" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button style={navBtn} onClick={() => stepDay(-1)}>
               <ChevronLeft size={14} strokeWidth={2.5} />
             </button>
@@ -249,6 +249,7 @@ export function MyAttendanceFilterBar({
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
 
         <button
+          id="tour-my-att-export"
           onClick={onExport}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',

@@ -24,6 +24,7 @@ function CustomTooltip({
         boxShadow: '0 12px 28px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08)',
         color: 'var(--text-primary)',
         fontFamily: 'inherit',
+        pointerEvents: 'auto',
       }}
     >
       <div style={{ marginBottom: '16px', fontSize: '14px', lineHeight: '1.5', fontWeight: 500 }}>
@@ -55,8 +56,16 @@ function CustomTooltip({
             <button
               {...backProps}
               onClick={(e) => {
-                if (backProps.onClick) backProps.onClick(e)
-                window.dispatchEvent(new CustomEvent('tour-prev-step', { detail: { index } }))
+                // Give the page complete control over when Joyride actually moves
+                window.retreatJoyride = () => {
+                  if (backProps.onClick) backProps.onClick(e)
+                }
+                const event = new CustomEvent('tour-prev-step', { detail: { index }, cancelable: true })
+                window.dispatchEvent(event)
+                if (!event.defaultPrevented) {
+                  // Wait 150ms to allow React state updates to fully paint the DOM before Joyride scans
+                  setTimeout(() => window.retreatJoyride(), 150)
+                }
               }}
               style={{
                 background: 'var(--surface-hover)',
@@ -76,8 +85,18 @@ function CustomTooltip({
           <button
             {...primaryProps}
             onClick={(e) => {
-              if (primaryProps.onClick) primaryProps.onClick(e)
-              window.dispatchEvent(new CustomEvent('tour-next-step', { detail: { index } }))
+              // Give the page complete control over when Joyride actually moves
+              window.advanceJoyride = () => {
+                if (primaryProps.onClick) primaryProps.onClick(e)
+              }
+              const event = new CustomEvent('tour-next-step', { detail: { index }, cancelable: true })
+              window.dispatchEvent(event)
+              
+              if (!event.defaultPrevented) {
+                // Wait 150ms to allow React state updates to fully paint the DOM before Joyride scans
+                setTimeout(() => window.advanceJoyride(), 150)
+              }
+              
               if (isLastStep) {
                 window.dispatchEvent(new CustomEvent('force-close-tour'))
               }
@@ -140,7 +159,7 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
     }
   }, [storageKey, eventName])
 
-  // Nuke all outside clicks during the tour
+  // Nuke all outside clicks and Escape key during the tour
   useEffect(() => {
     if (!run) return
     const blockClicks = (e) => {
@@ -148,11 +167,19 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
       e.stopPropagation()
       e.preventDefault()
     }
+    const blockKeys = (e) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation()
+        e.preventDefault()
+      }
+    }
     document.addEventListener('click', blockClicks, true)
     document.addEventListener('mousedown', blockClicks, true)
+    document.addEventListener('keydown', blockKeys, true)
     return () => {
       document.removeEventListener('click', blockClicks, true)
       document.removeEventListener('mousedown', blockClicks, true)
+      document.removeEventListener('keydown', blockKeys, true)
     }
   }, [run])
 
@@ -182,6 +209,12 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
   }))
 
   return (
+    <>
+    <style>{`
+      body.hide-joyride .react-joyride__overlay { opacity: 0 !important; pointer-events: none !important; transition: none !important; }
+      body.hide-joyride .react-joyride__spotlight { opacity: 0 !important; pointer-events: none !important; transition: none !important; }
+      body.hide-joyride #tour-tooltip-container { opacity: 0 !important; pointer-events: none !important; transition: none !important; }
+    `}</style>
     <Joyride
       key={tourKey}
       callback={handleJoyrideCallback}
@@ -203,5 +236,6 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
         }
       }}
     />
+    </>
   )
 }

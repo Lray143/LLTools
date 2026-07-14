@@ -1,14 +1,6 @@
 import { useState } from "react"
-import { Archive, RotateCcw, Trash2, X, ChevronDown } from "lucide-react"
-import { Button } from "../../../components/ui/button"
+import { Archive, RotateCcw, Trash2, X, ChevronDown, Search } from "lucide-react"
 import SearchBar from "../../../components/ui/SearchBar"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../../../components/ui/dialog"
 import { getColor, getInitials } from "../employeeConstants"
 
 const SORT_OPTIONS = [
@@ -19,9 +11,9 @@ const SORT_OPTIONS = [
 ]
 
 export function EmployeeArchiveModal({ open, archived, onUnarchive, onPermanentDelete, onClose }) {
-  const [search, setSearch] = useState("")
-  const [sortBy,   setSortBy]   = useState('az')
-  const [sortOpen, setSortOpen] = useState(false)
+  const [search, setSearch]               = useState("")
+  const [sortBy, setSortBy]               = useState('az')
+  const [sortOpen, setSortOpen]           = useState(false)
   const [confirmDeleteEmp, setConfirmDeleteEmp] = useState(null)
 
   const filtered = [...archived]
@@ -51,55 +43,104 @@ export function EmployeeArchiveModal({ open, archived, onUnarchive, onPermanentD
     <>
       {/* ── SIDE PANEL OVERLAY ── */}
       <div
-        className="fixed inset-0 z-50 flex justify-end bg-black/40"
+        className="fixed inset-0 z-50 flex justify-end"
+        style={{ background: 'rgba(0,0,0,0.45)' }}
         onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
-        <div className="w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
-
+        <div
+          id="tour-archive-panel"
+          className="w-full max-w-lg h-full flex flex-col shadow-2xl"
+          style={{ background: 'var(--surface)', borderLeft: '1px solid var(--border)' }}
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Archived Employees</h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {archived.length} archived employee{archived.length !== 1 ? 's' : ''} · Restore or permanently delete
-              </p>
+          <div
+            className="flex items-center justify-between px-6 py-4"
+            style={{ borderBottom: '1px solid var(--border)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: 'color-mix(in srgb, var(--theme-500) 12%, var(--surface))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Archive size={17} style={{ color: 'var(--theme-500)' }} />
+              </div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+                  Archived Employees
+                </h2>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  {archived.length} archived employee{archived.length !== 1 ? 's' : ''} · Restore or permanently delete
+                </p>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-gray-400 hover:text-gray-600 hover:bg-gray-50 w-8 h-8"
+            <button
               onClick={onClose}
+              style={{
+                width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: 'transparent', color: 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
             >
-              <X className="w-4 h-4" />
-            </Button>
+              <X size={16} />
+            </button>
           </div>
 
-          {/* Search + Sort — always visible */}
-          <div className="px-6 py-3 border-b border-gray-200 flex gap-2">
-            <div className="flex-1">
+          {/* Search + Sort */}
+          <div
+            id="tour-archive-search-sort"
+            className="flex gap-2 px-6 py-3"
+            style={{ borderBottom: '1px solid var(--border)' }}
+          >
+            <div style={{ flex: 1 }}>
               <SearchBar
                 placeholder="Search by name, department, or ID..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
+
             {/* Sort dropdown */}
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setSortOpen(o => !o)}
-                className="h-9 flex items-center gap-1.5 px-3 rounded-md border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition-colors whitespace-nowrap"
+                style={{
+                  height: 36, display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '0 12px', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
+                  border: sortOpen ? '1px solid var(--theme-500)' : '1px solid var(--border)',
+                  background: 'var(--surface)', color: sortOpen ? 'var(--theme-500)' : 'var(--text-secondary)',
+                  fontSize: 12, fontWeight: 500, transition: 'all 150ms',
+                }}
               >
                 {SORT_OPTIONS.find(o => o.value === sortBy)?.label}
-                <ChevronDown size={12} style={{ transform: sortOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }} />
+                <ChevronDown
+                  size={12}
+                  style={{ transform: sortOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}
+                />
               </button>
               {sortOpen && (
-                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 min-w-[140px]">
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 6px)',
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  zIndex: 60, padding: '4px 0', minWidth: 150,
+                }}>
                   {SORT_OPTIONS.map(opt => (
                     <button
                       key={opt.value}
                       onClick={() => { setSortBy(opt.value); setSortOpen(false) }}
-                      className="block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
-                      style={{ color: sortBy === opt.value ? '#f97316' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        padding: '7px 14px', fontSize: 13, border: 'none', cursor: 'pointer',
+                        background: 'transparent',
+                        color: sortBy === opt.value ? 'var(--theme-500)' : 'var(--text-primary)',
+                        fontWeight: sortBy === opt.value ? 600 : 400,
+                        transition: 'background 100ms',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       {opt.label}
                     </button>
@@ -110,71 +151,107 @@ export function EmployeeArchiveModal({ open, archived, onUnarchive, onPermanentD
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div id="tour-archive-list" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
 
-            {/* Empty state — no archived employees at all */}
+            {/* Empty state */}
             {archived.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
-                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
-                  <Archive className="w-7 h-7 text-gray-300 stroke-[1.5]" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  background: 'var(--surface-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Archive size={28} style={{ color: 'var(--text-secondary)', opacity: 0.4 }} />
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-gray-500">Archive is empty</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Removed employees will appear here</p>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>Archive is empty</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>Removed employees will appear here</p>
                 </div>
               </div>
             )}
 
             {/* No search results */}
             {archived.length > 0 && filtered.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
-                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
-                  <Search className="w-7 h-7 text-gray-300 stroke-[1.5]" />
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  background: 'var(--surface-hover)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Search size={28} style={{ color: 'var(--text-secondary)', opacity: 0.4 }} />
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-gray-500">No results for "{search}"</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Try a different name, department, or ID</p>
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>No results for "{search}"</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>Try a different name, department, or ID</p>
                 </div>
               </div>
             )}
 
             {/* Employee list */}
             {filtered.length > 0 && (
-              <div className="flex flex-col gap-1.5">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {filtered.map(emp => (
                   <div
                     key={emp.id}
-                    className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
+                    className="group"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 12px', borderRadius: 10,
+                      border: '1px solid var(--border)', background: 'var(--page-bg)',
+                      transition: 'border-color 150ms, background 150ms',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'var(--theme-500)'
+                      e.currentTarget.style.background = 'color-mix(in srgb, var(--theme-500) 5%, var(--surface))'
+                      e.currentTarget.querySelector('.emp-actions').style.opacity = '1'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'var(--border)'
+                      e.currentTarget.style.background = 'var(--page-bg)'
+                      e.currentTarget.querySelector('.emp-actions').style.opacity = '0'
+                    }}
                   >
-                    <div className="flex items-center gap-3">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold ${getColor(emp.name)}`}>
                         {getInitials(emp.name)}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-800">{emp.name}</p>
-                        <p className="text-xs text-gray-400">{emp.dept} · {emp.employee_no}</p>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{emp.name}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)' }}>{emp.dept} · {emp.employee_no}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 gap-1 px-2.5"
+                    <div className="emp-actions" style={{ display: 'flex', alignItems: 'center', gap: 4, opacity: 0, transition: 'opacity 150ms' }}>
+                      <button
                         onClick={() => onUnarchive(emp)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '5px 10px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+                          border: '1px solid transparent', cursor: 'pointer',
+                          background: 'transparent', color: '#16a34a',
+                          transition: 'background 150ms, border-color 150ms',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(22,163,74,0.08)'; e.currentTarget.style.borderColor = 'rgba(22,163,74,0.25)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
                       >
-                        <RotateCcw className="w-3.5 h-3.5" />
+                        <RotateCcw size={13} />
                         Restore
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 gap-1 px-2.5"
+                      </button>
+                      <button
                         onClick={() => setConfirmDeleteEmp(emp)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '5px 10px', borderRadius: 7, fontSize: 12, fontWeight: 500,
+                          border: '1px solid transparent', cursor: 'pointer',
+                          background: 'transparent', color: '#ef4444',
+                          transition: 'background 150ms, border-color 150ms',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.25)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 size={13} />
                         Delete
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -183,40 +260,79 @@ export function EmployeeArchiveModal({ open, archived, onUnarchive, onPermanentD
           </div>
 
           {/* Footer */}
-          <div className="px-6 py-3 border-t border-gray-100 bg-white">
-            <p className="text-xs text-gray-400 text-center">
+          <div style={{
+            padding: '10px 24px',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
+          }}>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center' }}>
               Restore brings an employee back to active · Permanent delete cannot be undone
             </p>
           </div>
-
         </div>
       </div>
 
       {/* ── CONFIRM PERMANENT DELETE DIALOG ── */}
-      <Dialog open={confirmDeleteEmp !== null} onOpenChange={val => { if (!val) setConfirmDeleteEmp(null) }}>
-        <DialogContent className="sm:max-w-sm bg-white border-0 outline-none focus:outline-none ring-0 p-6 z-[60]">
-          <DialogHeader>
-            <div className="flex flex-col items-center gap-2 pt-2 text-center">
-              <div className="w-11 h-11 rounded-full bg-red-50 flex items-center justify-center mb-1">
-                <Trash2 className="w-5 h-5 text-red-500" />
+      {confirmDeleteEmp && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 70,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.55)',
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setConfirmDeleteEmp(null) }}
+        >
+          <div style={{
+            background: 'var(--surface)', borderRadius: 16, padding: '28px 28px 24px',
+            width: '100%', maxWidth: 360, boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+            border: '1px solid var(--border)',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: '50%',
+                background: 'rgba(239,68,68,0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Trash2 size={20} style={{ color: '#ef4444' }} />
               </div>
-              <DialogTitle className="text-gray-900 font-semibold text-base">Permanently Delete?</DialogTitle>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'center' }}>
+                Permanently Delete?
+              </h3>
             </div>
-          </DialogHeader>
-          <p className="text-sm text-gray-500 text-center px-1">
-            This action cannot be undone.{" "}
-            <span className="font-semibold text-gray-800">{confirmDeleteEmp?.name}</span> will be completely removed from the database records.
-          </p>
-          <DialogFooter className="gap-2 sm:justify-center mt-3">
-            <Button variant="outline" className="border-gray-200 text-gray-600" onClick={() => setConfirmDeleteEmp(null)}>
-              Cancel
-            </Button>
-            <Button className="bg-red-500 hover:bg-red-600 text-white border-0" onClick={handleConfirmPermanent}>
-              Confirm Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6 }}>
+              This action cannot be undone.{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>{confirmDeleteEmp?.name}</strong>
+              {' '}will be completely removed from the system.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setConfirmDeleteEmp(null)}
+                style={{
+                  flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontWeight: 500,
+                  border: '1px solid var(--border)', background: 'var(--surface)',
+                  color: 'var(--text-primary)', cursor: 'pointer', transition: 'background 150ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--surface)'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmPermanent}
+                style={{
+                  flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  border: 'none', background: '#ef4444',
+                  color: '#fff', cursor: 'pointer', transition: 'background 150ms',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#dc2626'}
+                onMouseLeave={e => e.currentTarget.style.background = '#ef4444'}
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

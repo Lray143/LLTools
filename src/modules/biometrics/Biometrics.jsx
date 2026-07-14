@@ -6,6 +6,7 @@ import { BiometricStatCards }             from './components/BiometricStatCards'
 import { BiometricFilterBar }             from './components/BiometricFilterBar'
 import { BiometricTable }                 from './components/BiometricTable'
 import BiometricManhoursSummary           from './components/BiometricManhoursSummary'
+import PageGuide                          from '../../components/ui/PageGuide'
 
 // ── Global Import State ─────────────────────────────────────────
 // Persists the "Importing..." state even if the user clicks away to another module and returns.
@@ -371,6 +372,105 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     await exportToXLSX(filteredRecords, filename, label)
   }
 
+  const guideSteps = [
+    {
+      target: 'body',
+      content: 'Welcome to the Biometrics page! Here you can view, import, and analyze all employee attendance records.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-bio-stat-cards',
+      content: 'These summary cards give you an instant snapshot of your attendance data for the current filter. Each card counts employees by their attendance status: Full Time, Late, Undertime, Late & Undertime, Incomplete, One Tap, Worked Rest Day, and On Leave.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-bio-modes', // Visible in Attendance
+      content: 'Use these to switch between Daily, Monthly, and Yearly attendance logs.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-bio-date-nav', // Visible in Attendance
+      content: 'Quickly navigate through time using these arrows, or click the date itself to open a calendar picker.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-bio-table-header', // Visible in Attendance
+      content: 'Click on any column header to sort the attendance log. You can also click the "SCHED/ACTUAL" button to instantly toggle between calculated shift hours and raw punching times!',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-bio-import', // Visible in Attendance
+      content: 'Clicking here opens a file browser to upload raw biometric .dat or .txt files straight from your fingerprint scanner.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-bio-export', // Visible in Attendance
+      content: 'Export whichever view you are currently looking at into a neatly formatted Excel spreadsheet.',
+      placement: 'bottom-end'
+    },
+    {
+      target: '#tour-bio-tabs',
+      content: 'Toggle between the detailed Attendance Log and the overarching Manhours Summary. Let\'s click Next to switch to the Summary view!',
+      placement: 'bottom-start'
+    },
+    {
+      target: '#tour-bio-dept', // In summary view, this is visible
+      content: records.length > 0 
+        ? 'Here in the Summary view, you can see total hours aggregated. Use this dropdown to filter by specific departments.'
+        : 'Normally, you would see total manhours aggregated here. Since you have no records yet, use this dropdown to filter once you import some data.',
+      placement: 'bottom'
+    },
+    {
+      target: '#page-tour-help-btn',
+      content: 'You can restart this guide anytime by clicking here.',
+      placement: 'bottom-end'
+    }
+  ]
+
+  useEffect(() => {
+    const transitionPanel = (stateFn, advanceFn) => {
+      document.body.classList.add('hide-joyride')
+      stateFn()
+      setTimeout(() => {
+        advanceFn?.()
+        document.body.classList.remove('hide-joyride')
+      }, 500)
+    }
+
+    const handleNext = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 7) { // Moving from step 7 (Tabs) to step 8 (Summary Dept)
+        transitionPanel(() => setPageMode('summary'), window.advanceJoyride)
+      } else {
+        window.advanceJoyride?.()
+      }
+    }
+
+    const handlePrev = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 8) { // Moving backward from step 8 (Summary Dept) to step 7 (Tabs)
+        transitionPanel(() => setPageMode('attendance'), window.retreatJoyride)
+      } else {
+        window.retreatJoyride?.()
+      }
+    }
+    
+    const handleForceClose = () => {
+      if (pageMode === 'summary') setPageMode('attendance')
+    }
+
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    window.addEventListener('force-close-tour', handleForceClose)
+    return () => {
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+      window.removeEventListener('force-close-tour', handleForceClose)
+    }
+  }, [pageMode])
+
   return (
     <div className="flex flex-col w-full h-full" style={{ background: 'var(--page-bg)' }}>
       <style>{`
@@ -440,6 +540,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
         )}
 
       </div>
+      <PageGuide steps={guideSteps} storageKey="seen_biometrics_tour" />
     </div>
   )
 }

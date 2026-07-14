@@ -139,14 +139,17 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
   return (
     <>
-    <Dialog open={open} onOpenChange={val => { if (!val) onClose() }}>
-      <DialogContent className="bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[90vh] overflow-y-auto w-auto"
-        style={{ maxWidth: '95vw' }}>
+    <Dialog open={open} onOpenChange={val => { if (!val) onClose() }} modal={false}>
+      <DialogContent 
+        className="outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[90vh] overflow-y-auto w-auto"
+        style={{ maxWidth: '95vw', background: 'var(--surface)' }}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="pb-2">
-          <DialogTitle className="text-gray-900 text-base font-semibold">
+          <DialogTitle style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 600 }}>
             {isEdit ? "Edit Employee" : "Add Employee"}
           </DialogTitle>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
             {isEdit ? "Update the employee's information below." : "Fill in the details to add a new employee."}
           </p>
         </DialogHeader>
@@ -155,65 +158,65 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
         <div className="flex flex-col md:flex-row py-2">
 
           {/* ── LEFT: Basic Info ── */}
-          <div className="flex flex-col gap-5 w-full md:w-[320px]">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Basic Info</p>
+          <div id="tour-emp-modal-basic" className="flex flex-col gap-5 w-full md:w-[320px]">
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Basic Info</p>
 
             <div className="grid grid-cols-2 gap-4">
               {/* EMPLOYEE NO */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Employee No.</label>
+                <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>Employee No.</label>
                 <Input
                   placeholder={isEdit ? "" : "Auto-generated"}
                   value={form.employee_no}
                   onChange={e => setForm({ ...form, employee_no: digitsOnly(e.target.value) })}
-                  className="bg-white border-gray-200 text-sm h-9"
+                  style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36 }}
                 />
               </div>
 
               {/* FULL NAME */}
               <div className="col-span-2 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Full Name <span className="text-red-400">*</span></label>
+                <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>Full Name <span style={{ color: '#ef4444' }}>*</span></label>
                 <Input
                   placeholder="e.g. Juan dela Cruz"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
                   onBlur={e => setForm(f => ({ ...f, name: toTitleCase(f.name) }))}
-                  className="bg-white border-gray-200 text-sm h-9"
+                  style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36 }}
                 />
               </div>
 
               {/* POSITION */}
               <div className="col-span-2 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Position</label>
+                <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>Position</label>
                 <Input
                   placeholder="e.g. Sales Associate"
                   value={form.role}
                   onChange={e => setForm({ ...form, role: e.target.value })}
                   onBlur={e => setForm(f => ({ ...f, role: toTitleCase(f.role) }))}
-                  className="bg-white border-gray-200 text-sm h-9"
+                  style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36 }}
                 />
               </div>
 
               {/* CONTACT */}
               <div className="col-span-2 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Contact Info</label>
+                <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>Contact Info</label>
                 <Input
                   placeholder="e.g. 0917-123-4567"
                   value={form.contact}
                   onChange={e => setForm({ ...form, contact: e.target.value })}
                   onBlur={e => setForm(f => ({ ...f, contact: formatContact(f.contact) }))}
-                  className="bg-white border-gray-200 text-sm h-9"
+                  style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36 }}
                 />
               </div>
 
               {/* DEPARTMENT */}
               <div className="col-span-2 flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-gray-600">Department</label>
+                <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>Department</label>
                 <Select value={form.dept} onValueChange={val => setForm({ ...form, dept: val })}>
-                  <SelectTrigger className="w-full bg-white border-gray-200 h-9 text-sm">
+                  <SelectTrigger style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', height: 36, fontSize: 13 }}>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent align="start" className="z-[200] bg-white border border-gray-200" style={{ minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
+                  <SelectContent align="start" style={{ zIndex: 200, background: 'var(--surface)', border: '1px solid var(--border)', minWidth: 0, width: "var(--radix-select-trigger-width)" }}>
                     {DEPTS.map(d => (
                       <SelectItem key={d} value={d} className="cursor-pointer text-sm">{d}</SelectItem>
                     ))}
@@ -224,29 +227,29 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
           </div>
 
           {/* ── RIGHT: Shift Schedule ── */}
-          <div className="flex flex-col gap-4 w-full md:w-[380px] md:border-l md:border-gray-100 md:ml-8 md:pl-8 mt-8 md:mt-0">
+          <div id="tour-emp-modal-schedule" className="flex flex-col gap-4 w-full md:w-[380px] md:border-l md:ml-8 md:pl-8 mt-8 md:mt-0" style={{ borderColor: 'var(--border)' }}>
             <div>
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Shift Schedule</p>
-              <p className="text-[11px] text-gray-400 mb-3">Toggle to mark a day as rest day.</p>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 2px' }}>Shift Schedule</p>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 12px' }}>Toggle to mark a day as rest day.</p>
             </div>
 
             <div className="flex gap-4 mb-2 px-1">
               <div className="flex flex-col gap-1.5 flex-1">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Lunch Start</label>
-                <Input type="time" value={form.lunch_start} onChange={e => setForm({ ...form, lunch_start: e.target.value })} className="bg-white border-gray-200 text-sm h-9 px-2" />
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Lunch Start</label>
+                <Input type="time" value={form.lunch_start} onChange={e => setForm({ ...form, lunch_start: e.target.value })} style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36, padding: '0 8px' }} />
               </div>
               <div className="flex flex-col gap-1.5 flex-1">
-                <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Lunch End</label>
-                <Input type="time" value={form.lunch_end} onChange={e => setForm({ ...form, lunch_end: e.target.value })} className="bg-white border-gray-200 text-sm h-9 px-2" />
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Lunch End</label>
+                <Input type="time" value={form.lunch_end} onChange={e => setForm({ ...form, lunch_end: e.target.value })} style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36, padding: '0 8px' }} />
               </div>
             </div>
 
             {/* Column headers */}
             <div className="grid items-center gap-2.5 px-1" style={{ gridTemplateColumns: '36px 44px 1fr 1fr' }}>
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Day</span>
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest text-center">Work</span>
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Start</span>
-              <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">End</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Day</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'center' }}>Work</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Start</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>End</span>
             </div>
 
             {/* Per-day rows */}
@@ -256,7 +259,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                 const isWork = entry !== null
                 return (
                   <div key={day} className="grid items-center gap-2.5" style={{ gridTemplateColumns: '36px 44px 1fr 1fr' }}>
-                    <span className={`text-xs font-semibold ${isWork ? 'text-gray-700' : 'text-gray-300'}`}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: isWork ? 'var(--text-primary)' : 'var(--text-secondary)', opacity: isWork ? 1 : 0.4 }}>
                       {day.slice(0, 3)}
                     </span>
 
@@ -264,9 +267,20 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                       <button
                         type="button"
                         onClick={() => toggleDayOff(day)}
-                        className={`relative h-[20px] w-[36px] rounded-full transition-colors focus:outline-none ${isWork ? 'bg-theme-500' : 'bg-gray-100 dark:bg-gray-100'}`}
+                        style={{
+                          position: 'relative', height: 20, width: 36, borderRadius: 10,
+                          border: 'none', cursor: 'pointer', flexShrink: 0,
+                          background: isWork ? 'var(--theme-500)' : 'var(--surface-hover)',
+                          transition: 'background 200ms',
+                        }}
                       >
-                        <div className={`absolute top-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isWork ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
+                        <div style={{
+                          position: 'absolute', top: 2, width: 16, height: 16,
+                          borderRadius: '50%', background: '#fff',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                          transition: 'transform 200ms',
+                          transform: isWork ? 'translateX(18px)' : 'translateX(2px)',
+                        }} />
                       </button>
                     </div>
 
@@ -275,14 +289,14 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
                       value={isWork ? (entry?.start ?? '07:00') : ''}
                       disabled={!isWork}
                       onChange={e => setDayEntry(day, { ...entry, start: e.target.value })}
-                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none' : ''}`}
+                      style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 12, height: 36, padding: '0 8px', opacity: isWork ? 1 : 0.35 }}
                     />
                     <Input
                       type="time"
                       value={isWork ? (entry?.end ?? '17:30') : ''}
                       disabled={!isWork}
                       onChange={e => setDayEntry(day, { ...entry, end: e.target.value })}
-                      className={`bg-white border-gray-200 text-sm h-9 px-2 transition-opacity ${!isWork ? 'opacity-40 pointer-events-none' : ''}`}
+                      style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 12, height: 36, padding: '0 8px', opacity: isWork ? 1 : 0.35 }}
                     />
                   </div>
                 )
@@ -307,7 +321,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
               <Button variant="outline" className="text-sm" onClick={onClose} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button className="bg-theme-500 hover:bg-theme-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
+              <Button id="tour-emp-modal-save" className="bg-theme-500 hover:bg-theme-600 text-white border-0 text-sm" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? "Saving..." : isEdit ? "Save Changes" : "Add Employee"}
               </Button>
             </div>

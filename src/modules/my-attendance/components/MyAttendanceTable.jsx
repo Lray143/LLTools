@@ -284,7 +284,7 @@ export function MyAttendanceTable({ records, total, viewMode }) {
       {/* Scrollable table */}
       <div className="overflow-x-auto flex-shrink-0">
         <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: '1080px' }}>
-          <thead>
+          <thead id="tour-my-att-table-header">
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
               {COLUMNS.map((col, i) => (
                 <th

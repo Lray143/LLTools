@@ -164,7 +164,7 @@ export function BiometricFilterBar({
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
         {/* Attendance / Summary page toggle */}
-        <div style={{
+        <div id="tour-bio-tabs" style={{
           display: 'flex', alignItems: 'center',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '10px', padding: '3px', gap: '2px',
@@ -196,7 +196,7 @@ export function BiometricFilterBar({
         {!isSummary && (
           <>
             {/* Segmented Daily / Monthly / Yearly toggle */}
-            <div style={{
+            <div id="tour-bio-modes" style={{
               display: 'flex', alignItems: 'center',
               background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: '10px', padding: '3px', gap: '2px',
@@ -231,7 +231,7 @@ export function BiometricFilterBar({
 
         {/* DAILY */}
         {!isSummary && viewMode === 'Daily' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div id="tour-bio-date-nav" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button style={navBtn} onClick={() => stepDay(-1)}>
               <ChevronLeft size={14} strokeWidth={2.5} />
             </button>
@@ -285,11 +285,13 @@ export function BiometricFilterBar({
         )}
 
         {/* Department */}
-        <CustomSelect
-          value={selectedDept}
-          onChange={setSelectedDept}
-          options={departments}
-        />
+        <div id="tour-bio-dept">
+          <CustomSelect
+            value={selectedDept}
+            onChange={setSelectedDept}
+            options={departments}
+          />
+        </div>
 
       </div>
 
@@ -298,6 +300,7 @@ export function BiometricFilterBar({
         {!isSummary && (
           <>
             <button
+              id="tour-bio-import"
               onClick={onImportClick}
               disabled={isImporting}
               style={{
@@ -328,6 +331,7 @@ export function BiometricFilterBar({
               {isImporting ? 'Importing...' : 'Import'}
             </button>
             <button
+              id="tour-bio-export"
               onClick={onExport}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',

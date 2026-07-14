@@ -296,7 +296,7 @@ export function BiometricTable({ records, total, viewMode, isLoading }) {
       {/* Scrollable table */}
       <div className="overflow-x-auto flex-shrink-0">
         <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: '1080px' }}>
-          <thead>
+          <thead id="tour-bio-table-header">
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
               {COLUMNS.map((col, i) => (
                 <th
