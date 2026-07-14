@@ -227,7 +227,7 @@ export default function VisitsTable({
                   : true
 
   return (
-    <div className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
+    <div id="tour-clinic-table" className="flex-1 bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
 
       {/* Header controls section */}
       <div className="px-6 pt-5 pb-0">
@@ -243,6 +243,7 @@ export default function VisitsTable({
             {/* Complaint Filter Dropdown */}
             <div className="relative" ref={complaintDropdownRef}>
               <button
+                id="tour-clinic-complaint-filter"
                 onClick={() => {
                   setComplaintDropdownOpen(o => !o)
                   setComplaintSearch("")
@@ -376,7 +377,7 @@ export default function VisitsTable({
               )}
             </div>
 
-            <div style={{
+            <div id="tour-clinic-modes" style={{
               display: "flex", alignItems: "center",
               background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: "10px", padding: "3px", gap: "2px",
@@ -400,7 +401,7 @@ export default function VisitsTable({
               ))}
             </div>
 
-            <div className="flex items-center gap-0.5">
+            <div id="tour-clinic-date-nav" className="flex items-center gap-0.5">
               <button
                 onClick={prevPeriod}
                 disabled={!canGoPrev}
@@ -424,6 +425,7 @@ export default function VisitsTable({
             </div>
 
             <Button
+              id="tour-clinic-archive"
               variant="outline"
               size="icon"
               className="border-gray-200 text-gray-600 hover:bg-white w-8 h-8"
@@ -434,6 +436,7 @@ export default function VisitsTable({
             </Button>
 
             <Button
+              id="tour-clinic-export"
               variant="outline"
               size="icon"
               className="border-gray-200 text-green-600 hover:bg-green-50 hover:border-green-300 w-8 h-8"
@@ -448,6 +451,7 @@ export default function VisitsTable({
             </Button>
 
             <Button
+              id="tour-clinic-expand"
               variant="outline"
               size="icon"
               className="border-gray-200 text-gray-600 hover:bg-white w-8 h-8"

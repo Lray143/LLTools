@@ -63,7 +63,7 @@ export default function VisitArchiveModal({
         className="fixed inset-0 z-50 flex justify-end bg-black/40"
         onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
-        <div className="w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
+        <div id="tour-clinic-archive-panel" className="w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">

@@ -9,6 +9,7 @@ import VisitModal from "./components/VisitModal"
 import VisitDeleteModal from "./components/VisitDeleteModal"
 import VisitArchiveModal from "./components/VisitArchiveModal"
 import DetailModal from "./components/DetailModal" // Imported DetailModal component
+import PageGuide from '../../components/ui/PageGuide'
 
 const DISP_MAP = {
   "sent-back": "Back to work",
@@ -324,6 +325,117 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
     }
   }
 
+  const guideSteps = [
+    {
+      target: 'body',
+      content: 'Welcome to the Clinic Log! This is where you can record, view, and manage all employee health visits and medical incidents.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-clinic-entry-form',
+      content: 'This is the New Clinic Entry form. Fill in the patient\'s details — name, vitals, complaint, and disposition — then save to log the visit instantly.',
+      placement: 'right'
+    },
+    {
+      target: '#tour-clinic-search',
+      content: 'Use the search bar here to quickly find a visit by employee name, ID number, or complaint keyword. Results update live as you type.',
+      placement: 'bottom-end'
+    },
+    {
+      target: '#tour-clinic-table',
+      content: 'This is the Visit Log — every recorded clinic visit appears here. You can click any row to see the full details of that visit.',
+      placement: 'left'
+    },
+    {
+      target: '#tour-clinic-complaint-filter',
+      content: 'Use this filter to narrow down visits by a specific complaint or medical reason. It shows you how many cases each complaint has in the current period.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-clinic-modes',
+      content: 'Switch between Daily, Monthly, and Yearly views to browse visits across different time periods.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-clinic-date-nav',
+      content: 'Use these arrows to step forward or backward through time, or click the date pill to jump directly to a period.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-clinic-archive',
+      content: 'Click here to open the Archive — a safe holding area for visits removed from the active log. Let\'s open it now so you can see what\'s inside!',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-clinic-archive-panel',
+      content: 'Here is the Archive panel! You can search through archived records, restore them back to the active log, or permanently delete them. Click Next to close this panel.',
+      placement: 'left'
+    },
+    {
+      target: '#tour-clinic-export',
+      content: 'Export the currently filtered visit log to a neatly formatted Excel spreadsheet in one click.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-clinic-expand',
+      content: 'Toggle this button to hide the entry form and give the visit log the full width of the screen — perfect for reviewing a large number of records.',
+      placement: 'bottom'
+    },
+    {
+      target: '#page-tour-help-btn',
+      content: 'You can restart this guide anytime by clicking here.',
+      placement: 'bottom-end'
+    }
+  ]
+
+  useEffect(() => {
+    const transitionPanel = (stateFn, advanceFn) => {
+      document.body.classList.add('hide-joyride')
+      stateFn()
+      setTimeout(() => {
+        advanceFn?.()
+        document.body.classList.remove('hide-joyride')
+      }, 500)
+    }
+
+    const handleNext = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 7) { // Archive button step → open archive panel
+        transitionPanel(() => setModal({ mode: 'archive' }), window.advanceJoyride)
+      } else if (index === 8) { // Archive panel step → close it, continue
+        transitionPanel(() => setModal(null), window.advanceJoyride)
+      } else {
+        window.advanceJoyride?.()
+      }
+    }
+
+    const handlePrev = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 8) { // Going back from archive panel → close panel, go back to archive button
+        transitionPanel(() => setModal(null), window.retreatJoyride)
+      } else if (index === 9) { // Going back from export → reopen archive panel
+        transitionPanel(() => setModal({ mode: 'archive' }), window.retreatJoyride)
+      } else {
+        window.retreatJoyride?.()
+      }
+    }
+
+    const handleForceClose = () => {
+      if (modal?.mode === 'archive') setModal(null)
+    }
+
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    window.addEventListener('force-close-tour', handleForceClose)
+    return () => {
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+      window.removeEventListener('force-close-tour', handleForceClose)
+    }
+  }, [modal])
+
   return (
     <div className="flex flex-col w-full h-full" style={{ background: 'var(--page-bg)' }}>
 
@@ -391,7 +503,7 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div style={{ width: '14rem' }}>
+          <div id="tour-clinic-search" style={{ width: '14rem' }}>
             <SearchBar
               placeholder="Search name, ID, complaint…"
               value={searchQuery}
@@ -428,6 +540,7 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
         />
       </div>
 
+      <PageGuide steps={guideSteps} storageKey="seen_clinic_tour" />
     </div>
   )
 }

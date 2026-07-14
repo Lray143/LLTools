@@ -391,7 +391,7 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
   }
 
   return (
-    <div className="w-full h-full bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 overflow-y-auto">
+    <div id="tour-clinic-entry-form" className="w-full h-full bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-4 overflow-y-auto">
 
       <h2 className="text-sm font-semibold text-gray-900 flex-shrink-0">New Clinic Entry</h2>
 
