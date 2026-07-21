@@ -48,7 +48,7 @@ export function AppearanceSection({ currentUser }) {
         label="Theme"
         description="Pick a theme. Each option applies a completely cohesive color palette across the entire app."
       >
-        <div style={{
+        <div id="tour-settings-themes" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '16px',
@@ -148,6 +148,7 @@ export function AppearanceSection({ currentUser }) {
           </span>
         )}
         <button
+          id="tour-settings-save"
           onClick={handleSave}
           disabled={saveState === 'saving'}
           style={{

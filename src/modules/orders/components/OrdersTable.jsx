@@ -10,6 +10,7 @@ import OrdersReceiptModal from './OrdersReceiptModal'
 import OrdersMonthlySummary from './OrdersMonthlySummary'
 import OutletModal from '../../outlets/components/OutletModal'
 import { logModuleActivity, buildActivityDetails, snapshotFromFields, OUTLET_LOG_FIELDS } from '../../../lib/activityLog'
+import PageGuide from '../../../components/ui/PageGuide'
 
 const COLUMNS = [
   { label: 'No#',              width: 'w-24',  align: 'left'   },
@@ -42,6 +43,8 @@ export default function OrdersTable({ currentUser, refreshKey = 0, onNavigate })
   const [search,         setSearch]         = useState('')
   const [collapsed,      setCollapsed]      = useState({})
   const [showReceipt,    setShowReceipt]    = useState(false)
+  const [activityLogOpen, setActivityLogOpen] = useState(false)
+  const [isTourMode,      setIsTourMode]      = useState(false)
 
   // ── Outlet state ─────────────────────────────────────────────────
   const [outlets,          setOutlets]          = useState([])
@@ -133,6 +136,100 @@ export default function OrdersTable({ currentUser, refreshKey = 0, onNavigate })
       .filter((g) => g.rows.length > 0)
   }, [groups, search])
 
+  // ── Tour Guide ───────────────────────────────────────────────────
+  const guideSteps = [
+    { target: 'body', content: 'Welcome to the Orders module! This page allows you to create bulk product orders, view monthly vanselling performance, and generate invoices.', placement: 'center' },
+    { target: '#tour-orders-search', content: 'Use the search bar to quickly find products by name, description, or barcode.', placement: 'bottom' },
+    { target: '#tour-orders-view-toggles', content: 'Switch between the main Add Orders table and the Vanselling / Invoice monthly summaries.', placement: 'bottom' },
+    { target: '#tour-orders-monthly-summary', content: 'This is the Vanselling summary. It tracks your total amount and orders. The cards give you a quick breakdown of your overall performance.', placement: 'center' },
+    { target: '#tour-orders-monthly-summary', content: 'And this is the Invoice summary. It works just like the Vanselling tab but tracks your generated invoices instead.', placement: 'center' },
+    { target: '#tour-orders-outlet-selector', content: 'Select an outlet here to automatically apply their specific product discounts and price overrides.', placement: 'bottom' },
+    { target: '#tour-orders-table', content: 'This is the main product table. Here you can browse all items grouped by category and input the quantity you want to order.', placement: 'center' },
+    { target: 'body', content: 'To save an order, simply input quantities for the items you want. A summary bar will appear at the bottom. Click "View Receipt" to review your totals and save the order as an Invoice or Vanselling record.', placement: 'center' },
+    { target: '#tour-orders-activity', content: 'This is the Activity History button. Click Next and we will open it to see the log of changes.', placement: 'bottom' },
+    { target: '#tour-activity-log-panel', content: 'This is the Activity Log panel. It slides in from the right and shows everything that has happened in this module.', placement: 'left' },
+    { target: '#tour-activity-log-entries', content: 'Each entry shows who made the change, what was changed, and a before and after comparison. Click Next to close the log.', placement: 'left' },
+    { target: '#page-tour-help-btn', content: 'You can always click this button to restart the tour anytime!', placement: 'bottom-end' }
+  ]
+
+  useEffect(() => {
+    const transitionPanel = (stateFn, advanceFn, advanceFirst = false, delay = 500) => {
+      document.body.classList.add('hide-joyride')
+      if (advanceFirst) {
+        advanceFn?.()
+        setTimeout(() => {
+          stateFn()
+          document.body.classList.remove('hide-joyride')
+        }, delay)
+      } else {
+        stateFn()
+        setTimeout(() => {
+          advanceFn?.()
+          document.body.classList.remove('hide-joyride')
+        }, delay)
+      }
+    }
+
+    const handleNext = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 2) {
+        transitionPanel(() => setMode('vanselling'), window.advanceJoyride)
+      } else if (index === 3) {
+        transitionPanel(() => setMode('invoice'), window.advanceJoyride)
+      } else if (index === 4) {
+        transitionPanel(() => setMode('table'), window.advanceJoyride)
+      } else if (index === 8) {
+        transitionPanel(() => setActivityLogOpen(true), window.advanceJoyride, false, 900)
+      } else if (index === 10) {
+        transitionPanel(() => setActivityLogOpen(false), window.advanceJoyride, true)
+      } else {
+        window.advanceJoyride?.()
+      }
+    }
+
+    const handlePrev = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 3) {
+        transitionPanel(() => setMode('table'), window.retreatJoyride)
+      } else if (index === 4) {
+        transitionPanel(() => setMode('vanselling'), window.retreatJoyride)
+      } else if (index === 5) {
+        transitionPanel(() => setMode('invoice'), window.retreatJoyride)
+      } else if (index === 9) {
+        transitionPanel(() => setActivityLogOpen(false), window.retreatJoyride, true)
+      } else if (index === 10) {
+        transitionPanel(() => setActivityLogOpen(true), window.retreatJoyride)
+      } else if (index === 11) {
+        transitionPanel(() => setActivityLogOpen(true), window.retreatJoyride)
+      } else {
+        window.retreatJoyride?.()
+      }
+    }
+
+    const handleForceClose = () => {
+      setActivityLogOpen(false)
+      setIsTourMode(false)
+    }
+
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    window.addEventListener('force-close-tour', handleForceClose)
+    const handleStartTour = () => {
+      setActivityLogOpen(false)
+      setMode('table')
+      setIsTourMode(true)
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
+    return () => {
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+      window.removeEventListener('force-close-tour', handleForceClose)
+      window.removeEventListener('start-page-tour', handleStartTour)
+    }
+  }, [])
+
   // ── Totals ────────────────────────────────────────────────────────
   const { subtotal, lineCount, groupTotals } = useMemo(() => {
     let subtotal  = 0
@@ -171,6 +268,7 @@ export default function OrdersTable({ currentUser, refreshKey = 0, onNavigate })
 
   return (
     <>
+      <PageGuide steps={guideSteps} storageKey="seen_orders_tour" />
       <style>{`[role="dialog"]{outline:none!important;box-shadow:0 4px 24px rgba(0,0,0,0.12)!important;}`}</style>
 
       <OrdersToolbar
@@ -189,16 +287,19 @@ export default function OrdersTable({ currentUser, refreshKey = 0, onNavigate })
         currentUser={currentUser}
         refreshKey={refreshKey}
         onNavigate={onNavigate}
+        activityLogOpen={activityLogOpen}
+        setActivityLogOpen={setActivityLogOpen}
       />
 
       {/* ── VANSELLING / INVOICE SUMMARY MODE ───────────────────────── */}
       {(mode === 'vanselling' || mode === 'invoice') && (
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div id="tour-orders-monthly-summary" className="flex-1 min-h-0 overflow-y-auto">
           <div className="px-8 pb-8">
             <OrdersMonthlySummary 
               currentUser={currentUser} 
               refreshKey={refreshKey} 
               type={mode === 'vanselling' ? 'Vanselling' : 'Invoice'} 
+              isTourMode={isTourMode}
             />
           </div>
         </div>
@@ -209,7 +310,7 @@ export default function OrdersTable({ currentUser, refreshKey = 0, onNavigate })
         <>
           <div className="flex-1 min-h-0 overflow-y-auto">
             <div className="px-8 pb-8">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div id="tour-orders-table" className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <table className="w-full text-sm border-collapse">
 
                   <thead className="sticky top-0 z-10 bg-white border-b border-gray-200">

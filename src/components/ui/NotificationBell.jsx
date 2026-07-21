@@ -48,7 +48,7 @@ const STATUS_ICON = {
   'Pending':      Clock,
 }
 
-export default function NotificationBell({ currentUser, refreshKey, onNavigate, onBadgesChange, suppressNative = true, hideTourId = false }) {
+export default function NotificationBell({ currentUser, refreshKey, onNavigate, onBadgesChange, activePage, suppressNative = true, hideTourId = false }) {
   // Admin/HR incoming streams
   const [incomingReports,    setIncomingReports]    = useState([])
   const [incomingLeaves,     setIncomingLeaves]     = useState([])
@@ -261,6 +261,43 @@ export default function NotificationBell({ currentUser, refreshKey, onNavigate, 
       chat:          unseenChats.length     + ephemeralNotifs.filter(e => e.route === 'chat').length,
     })
   }, [unseenAnnouncements, unseenInReports, unseenMyReports, unseenInLeaves, unseenMyLeaves, unseenChats, ephemeralNotifs, onBadgesChange])
+
+  // ── Auto-clear notifications when visiting a module ───────────────────────
+  useEffect(() => {
+    if (!activePage) return
+
+    if (activePage === 'reports') {
+      if (incomingReports.length > 0) markAllSeen(SEEN_REPORTS_KEY, incomingReports.map(r => r.id))
+      if (myReports.length > 0)       markAllSeen(myRepKey,         myReports.map(r => r.id))
+      if (unseenInReports.length > 0) setUnseenInReports([])
+      if (unseenMyReports.length > 0) setUnseenMyReports([])
+      
+      // Also clear any ephemeral notifications for reports
+      setEphemeralNotifs(prev => prev.filter(n => n.route !== 'reports'))
+    } 
+    else if (activePage === 'leaves') {
+      if (incomingLeaves.length > 0) markAllSeen(SEEN_LEAVES_KEY, incomingLeaves.map(l => l.id))
+      if (myLeaves.length > 0)       markAllSeen(myLeavKey,       myLeaves.map(l => l.id))
+      if (unseenInLeaves.length > 0) setUnseenInLeaves([])
+      if (unseenMyLeaves.length > 0) setUnseenMyLeaves([])
+      
+      setEphemeralNotifs(prev => prev.filter(n => n.route !== 'leaves'))
+    } 
+    else if (activePage === 'announcements') {
+      if (myAnnouncements.length > 0) markAllSeen(myAnnKey, myAnnouncements.map(a => a.id))
+      if (unseenAnnouncements.length > 0) setUnseenAnnouncements([])
+      
+      setEphemeralNotifs(prev => prev.filter(n => n.route !== 'announcements'))
+    }
+    else if (activePage === 'chat') {
+      if (unseenChats.length > 0) {
+        unseenChats.forEach(c => window.electronAPI.markChatAsRead(empId, c.roomId).catch(() => {}))
+        setUnseenChats([])
+      }
+      setEphemeralNotifs(prev => prev.filter(n => n.route !== 'chat'))
+    }
+  }, [activePage, incomingReports, myReports, incomingLeaves, myLeaves, myAnnouncements, unseenChats, empId, myRepKey, myLeavKey, myAnnKey, unseenInReports, unseenMyReports, unseenInLeaves, unseenMyLeaves, unseenAnnouncements])
+
 
   // ── Fast chat-only poll (every 5s) ────────────────────────────────────────
   // The main fetchData only runs when refreshKey changes (DB sync cycle).

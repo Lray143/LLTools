@@ -333,22 +333,22 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
     },
     {
       target: '#tour-clinic-entry-form',
-      content: 'This is the New Clinic Entry form. Fill in the patient\'s details — name, vitals, complaint, and disposition — then save to log the visit instantly.',
+      content: 'This is the New Clinic Entry form. Fill in the patient name, vitals, complaint, and disposition, then save to log the visit right away.',
       placement: 'right'
     },
     {
       target: '#tour-clinic-search',
-      content: 'Use the search bar here to quickly find a visit by employee name, ID number, or complaint keyword. Results update live as you type.',
+      content: 'Type here to search for a visit by employee name, ID number, or complaint keyword. Results update live as you type.',
       placement: 'bottom-end'
     },
     {
       target: '#tour-clinic-table',
-      content: 'This is the Visit Log — every recorded clinic visit appears here. You can click any row to see the full details of that visit.',
-      placement: 'left'
+      content: 'This is the Visit Log. Every recorded clinic visit appears here, and you can click any row to see the full details of that visit.',
+      placement: 'center'
     },
     {
       target: '#tour-clinic-complaint-filter',
-      content: 'Use this filter to narrow down visits by a specific complaint or medical reason. It shows you how many cases each complaint has in the current period.',
+      content: 'Use this filter to narrow down visits by a specific complaint or medical reason. It also shows you how many cases each complaint has in the current period.',
       placement: 'bottom'
     },
     {
@@ -358,13 +358,13 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
     },
     {
       target: '#tour-clinic-date-nav',
-      content: 'Use these arrows to step forward or backward through time, or click the date pill to jump directly to a period.',
+      content: 'Use these arrows to step forward or backward through time, or click the date pill to jump directly to a specific period.',
       placement: 'bottom'
     },
     {
       target: '#tour-clinic-archive',
-      content: 'Click here to open the Archive — a safe holding area for visits removed from the active log. Let\'s open it now so you can see what\'s inside!',
-      placement: 'bottom'
+      content: 'Click here to open the Archive, a safe holding area for visits removed from the active log. Let\'s open it now!',
+      placement: 'bottom-end'
     },
     {
       target: '#tour-clinic-archive-panel',
@@ -373,12 +373,12 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
     },
     {
       target: '#tour-clinic-export',
-      content: 'Export the currently filtered visit log to a neatly formatted Excel spreadsheet in one click.',
+      content: 'Click here to export the currently filtered visit log to a neatly formatted Excel spreadsheet in one click.',
       placement: 'bottom'
     },
     {
       target: '#tour-clinic-expand',
-      content: 'Toggle this button to hide the entry form and give the visit log the full width of the screen — perfect for reviewing a large number of records.',
+      content: 'Toggle this to hide the entry form and give the visit log the full screen width. Great for reviewing a large number of records.',
       placement: 'bottom'
     },
     {
@@ -429,10 +429,15 @@ export default function ClinicLog({ refreshKey = 0, currentUser, onNavigate }) {
     window.addEventListener('tour-next-step', handleNext)
     window.addEventListener('tour-prev-step', handlePrev)
     window.addEventListener('force-close-tour', handleForceClose)
+    const handleStartTour = () => {
+      if (modal) setModal(null)
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
     return () => {
       window.removeEventListener('tour-next-step', handleNext)
       window.removeEventListener('tour-prev-step', handlePrev)
       window.removeEventListener('force-close-tour', handleForceClose)
+      window.removeEventListener('start-page-tour', handleStartTour)
     }
   }, [modal])
 

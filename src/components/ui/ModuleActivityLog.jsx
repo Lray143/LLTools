@@ -367,7 +367,7 @@ export default function ModuleActivityLog({ module, refreshKey = 0, forceOpen, o
   const [open, setOpen] = useState(false)
   const openedByTour = useRef(false)
 
-  // Sync open/close with the tour controller
+  // Sync open/close with the tour controller via props or global events
   useEffect(() => {
     if (forceOpen === true) {
       openedByTour.current = true
@@ -378,6 +378,25 @@ export default function ModuleActivityLog({ module, refreshKey = 0, forceOpen, o
     }
   }, [forceOpen])
 
+  useEffect(() => {
+    const handleForceOpen = () => {
+      openedByTour.current = true
+      setOpen(true)
+    }
+    const handleForceCloseEvent = () => {
+      if (openedByTour.current) {
+        openedByTour.current = false
+        setOpen(false)
+      }
+    }
+    window.addEventListener('force-open-activity-log', handleForceOpen)
+    window.addEventListener('force-close-activity-log', handleForceCloseEvent)
+    return () => {
+      window.removeEventListener('force-open-activity-log', handleForceOpen)
+      window.removeEventListener('force-close-activity-log', handleForceCloseEvent)
+    }
+  }, [])
+
   const handleClose = () => {
     openedByTour.current = false
     setOpen(false)
@@ -387,6 +406,7 @@ export default function ModuleActivityLog({ module, refreshKey = 0, forceOpen, o
   return (
     <>
       <button
+        id="tour-activity-log"
         type="button"
         onClick={() => setOpen(true)}
         title="Activity history"

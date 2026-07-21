@@ -72,7 +72,7 @@ export function AboutSection() {
       />
 
       {/* App card */}
-      <div style={{
+      <div id="tour-settings-about-info" style={{
         display: 'flex',
         alignItems: 'center',
         gap: '16px',
@@ -127,6 +127,7 @@ export function AboutSection() {
       <SettingRow label="Software Update" description="Check for and install the latest version over-the-air.">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
+            id="tour-settings-update"
             onClick={handleUpdateAction}
             disabled={updateState === 'checking' || updateState === 'downloading'}
             style={{

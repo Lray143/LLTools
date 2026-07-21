@@ -105,11 +105,13 @@ export default function ProductsToolbar({
       }}>
         {/* LEFT — outlet selector + stats */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <OutletSelect
-            value={selectedOutletId}
-            onChange={onSelectOutlet}
-            options={outlets}
-          />
+          <div id="tour-products-outlet">
+            <OutletSelect
+              value={selectedOutletId}
+              onChange={onSelectOutlet}
+              options={outlets}
+            />
+          </div>
 
 
 
@@ -135,26 +137,26 @@ export default function ProductsToolbar({
         {/* RIGHT — Archive · Lock/Unlock · Add Group */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {/* Archive */}
-          <button onClick={onOpenArchive}
+          <button id="tour-products-archive" onClick={onOpenArchive}
             style={{ ...pill }}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--hover-bg, #f9fafb)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--surface, #fff)'}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-hover)'; e.currentTarget.style.borderColor = 'var(--theme-300)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.borderColor = 'var(--border)' }}
           >
             <Archive size={14} color="var(--text-secondary)" />
             Archive
           </button>
 
           {/* Edit-mode toggle */}
-          <button onClick={onToggleEditMode}
+          <button id="tour-products-edit" onClick={onToggleEditMode}
             style={{
               ...pill,
-              background: editMode ? '#f0fdf4' : 'var(--surface, #f9fafb)',
-              borderColor: editMode ? '#86efac' : 'var(--border, #e5e7eb)',
-              color: editMode ? '#16a34a' : 'var(--text-primary, #374151)',
+              background: editMode ? 'var(--theme-50)' : 'var(--surface)',
+              borderColor: editMode ? 'var(--theme-300)' : 'var(--border)',
+              color: editMode ? 'var(--theme-600)' : 'var(--text-primary)',
               fontWeight: 600,
             }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--theme-100)'; e.currentTarget.style.borderColor = 'var(--theme-400)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = editMode ? 'var(--theme-50)' : 'var(--surface)'; e.currentTarget.style.borderColor = editMode ? 'var(--theme-300)' : 'var(--border)' }}
           >
             {editMode ? <Unlock size={14} /> : <Lock size={14} />}
             {editMode ? 'Editing' : 'Edit'}
@@ -162,7 +164,7 @@ export default function ProductsToolbar({
 
           {/* Add Group — only edit + default mode */}
           {editMode && !selectedOutletId && (
-            <button onClick={onAddGroup}
+            <button id="tour-products-add-group" onClick={onAddGroup}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '6px',
                 padding: '6px 16px', borderRadius: '8px', border: 'none',

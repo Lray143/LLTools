@@ -138,6 +138,8 @@ export default function OrdersToolbar({
   currentUser,
   refreshKey,
   onNavigate,
+  activityLogOpen,
+  setActivityLogOpen,
 }) {
   const isSummary = mode === 'vanselling' || mode === 'invoice'
 
@@ -192,14 +194,21 @@ export default function OrdersToolbar({
         </div>
         <div className="flex items-center gap-3">
           {/* Search — always visible */}
-          <div style={{ width: '14rem' }}>
+          <div id="tour-orders-search" style={{ width: '14rem' }}>
             <SearchBar
               placeholder="Search products…"
               value={search}
               onChange={e => onSearchChange(e.target.value)}
             />
           </div>
-          <ModuleActivityLog module="orders" refreshKey={refreshKey} />
+          <div id="tour-orders-activity">
+            <ModuleActivityLog
+              module="orders"
+              refreshKey={refreshKey}
+              forceOpen={activityLogOpen}
+              onForceClose={() => setActivityLogOpen(false)}
+            />
+          </div>
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
       </div>
@@ -211,7 +220,7 @@ export default function OrdersToolbar({
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
 
           {/* Table / Monthly Summary segmented toggle */}
-          <div style={{
+          <div id="tour-orders-view-toggles" style={{
             display: 'flex', alignItems: 'center',
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '3px', gap: '2px',
@@ -246,13 +255,15 @@ export default function OrdersToolbar({
               <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
 
               {/* Outlet selector */}
-              <CustomSelect
-                value={selectedOutletId ?? ''}
-                onChange={(val) => onSelectOutlet(val || null)}
-                options={outletOptions}
-                minWidth="160px"
-                onAdd={onAddOutlet}
-              />
+              <div id="tour-orders-outlet-selector">
+                <CustomSelect
+                  value={selectedOutletId ?? ''}
+                  onChange={(val) => onSelectOutlet(val || null)}
+                  options={outletOptions}
+                  minWidth="160px"
+                  onAdd={onAddOutlet}
+                />
+              </div>
 
               {/* Count */}
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 400, userSelect: 'none' }}>

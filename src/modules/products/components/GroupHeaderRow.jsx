@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Check, X } from 'lucide-react'
 
 export default function GroupHeaderRow({
+  groupIndex,
   group, collapsed,
   onToggleCollapse, onRenameGroup, onAddRow, onDeleteGroup,
   editMode,
@@ -85,6 +86,7 @@ export default function GroupHeaderRow({
             <div className="flex items-center gap-1 ml-auto">
               {!editing && (
                 <button
+                  id={groupIndex === 0 ? 'tour-products-rename' : undefined}
                   onClick={() => setEditing(true)}
                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-transparent text-xs font-medium cursor-pointer transition-colors"
                   style={{ color: 'var(--accent-bg)' }}
@@ -95,6 +97,7 @@ export default function GroupHeaderRow({
                 </button>
               )}
               <button
+                id={groupIndex === 0 ? 'tour-products-add-row' : undefined}
                 onClick={() => onAddRow(group.id)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-transparent text-xs font-medium cursor-pointer transition-colors"
                 style={{ color: 'var(--accent-bg)' }}
@@ -104,6 +107,7 @@ export default function GroupHeaderRow({
                 <Plus size={12} /> Add Row
               </button>
               <button
+                id={groupIndex === 0 ? 'tour-products-delete-group' : undefined}
                 onClick={() => onDeleteGroup(group.id)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border-none bg-transparent text-red-500 text-xs font-medium cursor-pointer transition-colors hover:bg-red-100"
               >

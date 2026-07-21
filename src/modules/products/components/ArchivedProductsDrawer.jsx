@@ -72,7 +72,7 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
         className="fixed inset-0 z-50 flex justify-end bg-black/40"
         onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
-        <div className="w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
+        <div id="tour-products-archive-panel" className="w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -117,7 +117,7 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
                       key={opt.value}
                       onClick={() => { setSortBy(opt.value); setSortOpen(false) }}
                       className="block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
-                      style={{ color: sortBy === opt.value ? '#f97316' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
+                      style={{ color: sortBy === opt.value ? 'var(--theme-500)' : '#374151', fontWeight: sortBy === opt.value ? 600 : 400 }}
                     >
                       {opt.label}
                     </button>
@@ -171,11 +171,11 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
               return (
                 <div key={groupName} className="mb-6">
                   {/* Group label */}
-                  <div className="flex items-center gap-2 pb-2 mb-2 border-b border-orange-200">
-                    <span className="text-xs font-bold text-theme-500 uppercase tracking-wider">
+                  <div className="flex items-center gap-2 pb-2 mb-2 border-b" style={{ borderColor: 'var(--theme-200)' }}>
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--theme-500)' }}>
                       {groupName}
                     </span>
-                    <span className="text-xs text-orange-400">
+                    <span className="text-xs" style={{ color: 'var(--theme-400)' }}>
                       ({groupRows.length} item{groupRows.length !== 1 ? 's' : ''})
                     </span>
                     {groupIsGone && (
@@ -191,7 +191,7 @@ export default function ArchivedProductsDrawer({ rows, loading, onRestore, onPer
                     {groupRows.map(row => (
                       <div
                         key={row.id}
-                        className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
+                        className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-theme-50/50 border border-gray-100 hover:border-theme-100 rounded-lg transition-colors group"
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">

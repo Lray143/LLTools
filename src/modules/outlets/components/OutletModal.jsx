@@ -85,8 +85,11 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
   }
 
   return (
-    <Dialog open={true} onOpenChange={val => { if (!val) onClose() }}>
-      <DialogContent className="sm:max-w-lg bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[92vh] overflow-y-auto">
+    <Dialog open={true} onOpenChange={val => { if (!val) onClose() }} modal={false}>
+      <DialogContent 
+        className="sm:max-w-lg bg-white outline-none focus:outline-none ring-0 focus:ring-0 border-0 max-h-[92vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="pb-1">
           <DialogTitle className="text-gray-900 text-base font-semibold">
             {isEditing ? 'Edit Outlet' : 'Add Outlet'}
@@ -96,7 +99,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
           </p>
         </DialogHeader>
 
-        <div className="flex flex-col gap-5 py-2">
+        <div id="tour-outlet-modal-form" className="flex flex-col gap-5 py-2">
 
           {/* ── SECTION: Basic Info ── */}
           <div>

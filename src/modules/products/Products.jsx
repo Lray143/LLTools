@@ -47,7 +47,7 @@ export default function Products({ refreshKey = 0, currentUser, onNavigate }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div style={{ width: '14rem' }}>
+          <div id="tour-products-search" style={{ width: '14rem' }}>
             <SearchBar
               placeholder="Search products..."
               value={search}

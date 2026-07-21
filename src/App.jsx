@@ -171,6 +171,8 @@ function App() {
   const [moduleBadges, setModuleBadges] = useState({})
   const handleBadgesChange = useCallback((counts) => setModuleBadges(counts), [])
 
+  window.__CURRENT_USER_ID__ = currentUser?.id || 'anon'
+
   useEffect(() => {
     applyThemeToDocument(getSavedTheme())
     
@@ -397,6 +399,7 @@ function App() {
           refreshKey={refreshKey}
           onNavigate={setActivePage}
           onBadgesChange={handleBadgesChange}
+          activePage={activePage}
           suppressNative={false}
           hideTourId={true}
         />

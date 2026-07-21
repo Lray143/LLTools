@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Settings as SettingsIcon, HelpCircle } from 'lucide-react'
 import { SettingsNav }        from './components/SettingsNav'
 import { AppearanceSection }  from './components/AppearanceSection'
 import { AccountSection }     from './components/AccountSection'
 import { AboutSection }       from './components/AboutSection'
+import PageGuide from '../../components/ui/PageGuide'
 
 function Settings({ currentUser }) {
   const [activeSection, setActiveSection] = useState('appearance')
@@ -15,6 +16,120 @@ function Settings({ currentUser }) {
     window.addEventListener('navigate-settings', handleNavigation)
     return () => window.removeEventListener('navigate-settings', handleNavigation)
   }, [])
+
+  const isAdmin = currentUser?.username === 'admin@doublel.com'
+
+  const guideSteps = useMemo(() => {
+    const steps = [
+      {
+        target: 'body',
+        content: 'Welcome to Settings! Here you can customize the app and manage your account.',
+        placement: 'center',
+      },
+      {
+        target: '#tour-settings-nav-appearance',
+        content: 'The Appearance tab lets you customize the visual style of the application.',
+        placement: 'right',
+      },
+      {
+        target: '#tour-settings-themes',
+        content: 'Choose from a variety of curated color themes. Clicking one will preview it immediately.',
+        placement: 'bottom',
+      },
+      {
+        target: '#tour-settings-save',
+        content: 'Don\'t forget to click Save Appearance to keep your new theme!',
+        placement: 'left',
+      },
+      {
+        target: '#tour-settings-nav-account',
+        content: 'Now let\'s check out the Account tab. Click Next to open it.',
+        placement: 'right',
+      },
+      {
+        target: '#tour-settings-account-info',
+        content: 'This section displays your registered employee details, current role, and department.',
+        placement: 'bottom',
+      },
+      {
+        target: '#tour-settings-creds',
+        content: 'You can update your username or change your password here.',
+        placement: 'left',
+      }
+    ]
+
+    if (isAdmin) {
+      steps.push({
+        target: '#tour-settings-wipe',
+        content: 'As an admin, you have the ability to completely wipe the test data from the database here.',
+        placement: 'left',
+      })
+    }
+
+    steps.push(
+      {
+        target: '#tour-settings-nav-about',
+        content: 'Finally, the About tab contains system information. Click Next to open it.',
+        placement: 'right',
+      },
+      {
+        target: '#tour-settings-about-info',
+        content: 'Here you can see the application version, developers, and platform information.',
+        placement: 'bottom',
+      },
+      {
+        target: '#tour-settings-update',
+        content: 'You can check for and install software updates directly from this button.',
+        placement: 'bottom',
+      },
+      {
+        target: '#page-tour-help-btn',
+        content: 'You can restart this tour anytime by clicking the help icon. You\'re all set!',
+        placement: 'bottom-end',
+      }
+    )
+    return steps
+  }, [isAdmin])
+
+  useEffect(() => {
+    const handleNext = (e) => {
+      const { index } = e.detail
+      const currentStep = guideSteps[index]
+      if (currentStep?.target === '#tour-settings-nav-account') {
+        e.preventDefault()
+        setActiveSection('account')
+        setTimeout(() => window.advanceJoyride?.(), 150)
+      } else if (currentStep?.target === '#tour-settings-nav-about') {
+        e.preventDefault()
+        setActiveSection('about')
+        setTimeout(() => window.advanceJoyride?.(), 150)
+      }
+    }
+    const handlePrev = (e) => {
+      const { index } = e.detail
+      const currentStep = guideSteps[index]
+      if (currentStep?.target === '#tour-settings-account-info') {
+        e.preventDefault()
+        setActiveSection('appearance')
+        setTimeout(() => window.retreatJoyride?.(), 150)
+      } else if (currentStep?.target === '#tour-settings-about-info') {
+        e.preventDefault()
+        setActiveSection('account')
+        setTimeout(() => window.retreatJoyride?.(), 150)
+      }
+    }
+    const handleStartTour = () => {
+      setActiveSection('appearance')
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    return () => {
+      window.removeEventListener('start-page-tour', handleStartTour)
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+    }
+  }, [guideSteps])
 
   function renderSection() {
     if (activeSection === 'appearance') return <AppearanceSection currentUser={currentUser} />
@@ -86,6 +201,7 @@ function Settings({ currentUser }) {
           {renderSection()}
         </div>
       </div>
+      <PageGuide steps={guideSteps} storageKey="seen_settings_tour" />
     </div>
   )
 }

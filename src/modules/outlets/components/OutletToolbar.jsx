@@ -124,7 +124,7 @@ export default function OutletToolbar({
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
         
         {/* Cards / List / Orders segmented toggle */}
-        <div style={{
+        <div id="tour-outlet-view-toggle" style={{
           display: 'flex', alignItems: 'center',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: '10px', padding: '3px', gap: '2px',
@@ -158,26 +158,32 @@ export default function OutletToolbar({
           <>
             <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', flexShrink: 0 }} />
             
+            <div id="tour-outlet-status-filter">
             <CustomSelect
               value={statusFilter}
               onChange={setStatusFilter}
               options={statusOptions}
               minWidth="136px"
             />
+            </div>
 
+            <div id="tour-outlet-region-filter">
             <CustomSelect
               value={regionFilter}
               onChange={setRegionFilter}
               options={regionOptions}
               minWidth="152px"
             />
+            </div>
 
+            <div id="tour-outlet-ownership-filter">
             <CustomSelect
               value={ownershipFilter}
               onChange={setOwnershipFilter}
               options={ownershipOptions}
               minWidth="136px"
             />
+            </div>
 
             <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 400, userSelect: 'none' }}>
               {total} outlet{total !== 1 ? 's' : ''}
@@ -192,6 +198,7 @@ export default function OutletToolbar({
 
 
         <button
+          id="tour-outlet-archive-btn"
           type="button"
           onClick={onArchive}
           style={{
@@ -205,6 +212,7 @@ export default function OutletToolbar({
           Archive
         </button>
         <button
+          id="tour-outlet-add-btn"
           type="button"
           onClick={onAdd}
           style={{

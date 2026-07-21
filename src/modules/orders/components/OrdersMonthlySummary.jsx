@@ -672,7 +672,7 @@ function TrendBadge({ current, previous }) {
 }
 
 // ── Main component ────────────────────────────────────────────────
-export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type = 'Vanselling' }) {
+export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type = 'Vanselling', isTourMode = false }) {
   const [orders,         setOrders]         = useState([])
   const [archivedOrders, setArchivedOrders] = useState([])
   const [loading,        setLoading]        = useState(true)
@@ -842,7 +842,7 @@ export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type
   return (
     <div className="space-y-5">
 
-      {orders.length === 0 ? (
+      {(orders.length === 0 && !isTourMode) ? (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8">
           <div className="flex justify-end mb-8">
             <button
@@ -861,6 +861,49 @@ export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type
             </p>
           </div>
         </div>
+      ) : orders.length === 0 && isTourMode ? (
+        /* ── Tour-mode mock: show the layout even with no real data ── */
+        <>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-theme-100 flex items-center justify-center shrink-0">
+                <Receipt size={18} className="text-theme-500" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Total Orders</p>
+                <p className="text-2xl font-bold text-gray-900">—</p>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-theme-100 flex items-center justify-center shrink-0">
+                <Calendar size={18} className="text-theme-500" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Monthly Periods</p>
+                <p className="text-2xl font-bold text-gray-900">—</p>
+              </div>
+            </div>
+            <div className="bg-theme-50 rounded-xl border border-theme-200 shadow-sm p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-theme-200 flex items-center justify-center shrink-0">
+                <TrendingUp size={18} className="text-theme-600" />
+              </div>
+              <div>
+                <p className="text-xs text-theme-500 uppercase tracking-wide mb-0.5">Total Amount</p>
+                <p className="text-2xl font-bold text-theme-700">₱0.00</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-800">Monthly Breakdown</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Orders grouped by month will appear here once you start saving {type === 'Invoice' ? 'invoices' : 'vanselling orders'}.</p>
+            </div>
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+              <Receipt size={28} className="text-gray-200" />
+              <p className="text-sm text-gray-400">No {type === 'Invoice' ? 'invoices' : 'vanselling orders'} yet</p>
+            </div>
+          </div>
+        </>
       ) : (
         <>
           {/* All-time stat cards */}
@@ -892,7 +935,7 @@ export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type
             <TrendingUp size={18} className="text-theme-600" />
           </div>
           <div>
-            <p className="text-xs text-theme-500 uppercase tracking-wide mb-0.5">All-Time Revenue</p>
+            <p className="text-xs text-theme-500 uppercase tracking-wide mb-0.5">Total Amount</p>
             <p className="text-2xl font-bold text-theme-700">₱{fmt(allTimeTotal)}</p>
             <p className="text-xs text-theme-400">
               avg ₱{fmt(allTimeTotal / allTimeOrders)} / order

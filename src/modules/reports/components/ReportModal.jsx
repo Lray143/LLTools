@@ -108,7 +108,7 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
   return (
     <Dialog open={open} onOpenChange={val => { if (!val) onClose() }}>
       <DialogContent className="outline-none focus:outline-none ring-0 focus:ring-0 border-0 p-0 flex flex-col overflow-hidden" style={{ width: '620px', maxWidth: '95vw', maxHeight: '90vh', background: 'var(--surface)', color: 'var(--text-primary)' }}>
-        <div className="p-8 pb-4 overflow-y-auto flex-1">
+        <div id="tour-report-modal" className="p-8 pb-4 overflow-y-auto flex-1">
           {/* Header */}
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--surface-hover)', border: '1px solid var(--theme-200)' }}>

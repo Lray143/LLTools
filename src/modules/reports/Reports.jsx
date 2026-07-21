@@ -10,6 +10,8 @@ import { Button }               from '../../components/ui/button'
 import SearchBar                from '../../components/ui/SearchBar'
 import { canManageReports }     from '../../lib/permissions'
 import NotificationBell         from '../../components/ui/NotificationBell'
+import ModuleActivityLog        from '../../components/ui/ModuleActivityLog'
+import PageGuide                from '../../components/ui/PageGuide'
 
 // ── CustomSelect (matches Employees & LeaveRequests pattern) ─────
 function CustomSelect({ value, onChange, options, minWidth = '148px' }) {
@@ -112,6 +114,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [successMsg,    setSuccessMsg]    = useState('')
   const [errorMsg,      setErrorMsg]      = useState('')
+  const [activityLogOpen, setActivityLogOpen] = useState(false)
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(search), 300)
@@ -249,6 +252,8 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
     )
     return matchStatus && matchType && matchPriority && matchSearch
   })
+  const filteredRef = useRef(filtered)
+  useEffect(() => { filteredRef.current = filtered }, [filtered])
 
   const counts = {
     All:           sourceRows.length,
@@ -269,9 +274,235 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
     ...PRIORITIES.map(p => ({ label: p, value: p })),
   ]
 
+  // ── Tour Guide ────────────────────────────────────────────────────
+  const TOUR_MOCK_REPORT = {
+    _isMock: true,
+    id: null,
+    reportNo: 'RPT-001',
+    subject: 'Sample Material Request',
+    reportType: 'Material Request',
+    status: 'Pending',
+    priority: 'Medium',
+    employeeName: currentUser?.employeeName || 'Sample Employee',
+    employeeNo: currentUser?.employeeNo || '—',
+    assignedTo: null,
+    createdAt: new Date().toISOString(),
+    reportDetailsJson: null,
+  }
+  const baseSteps = [
+    {
+      target: 'body',
+      content: 'Welcome to the Reports module! This is where employees submit work reports and admins review, track, and resolve them.',
+      placement: 'center',
+    },
+  ]
+
+  const adminSteps = isAdmin ? [
+    {
+      target: '#tour-reports-admin-tabs',
+      content: 'As an admin, you have three views available. By default, you see "Manage All" to oversee everyone\'s reports.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-reports-tab-mine',
+      content: 'The "My Reports" tab shows only the reports you have submitted yourself. Click Next to open it!',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-reports-tab-archived',
+      content: 'The "Archived" tab stores resolved or rejected reports that are no longer active. Click Next to open it!',
+      placement: 'bottom',
+    },
+  ] : []
+
+  const remainingSteps = [
+    {
+      target: '#tour-reports-new-btn',
+      content: 'Click "New Report" to submit a report. Let\'s open it now to see how it works!',
+      placement: 'bottom-end',
+    },
+    {
+      target: '#tour-report-modal',
+      content: 'Here you can set a title, type, priority, description, and attach supporting files. Click Next to close it and continue.',
+      placement: 'center',
+    },
+    {
+      target: '#tour-reports-stat-cards',
+      content: 'These cards give you a quick overview of all report statuses — Total, Pending, Under Review, In Progress, Resolved, and Rejected.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-reports-status-filter',
+      content: 'Click these pills to filter reports by their current status. The number inside each pill shows how many reports are in that state.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-reports-type-filter',
+      content: 'Filter reports by their type — such as Incident, Maintenance, or Safety reports.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-reports-priority-filter',
+      content: 'Filter by priority: Low, Medium, High, or Critical. Use this to focus on the most urgent reports first.',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-reports-search',
+      content: 'Search for a specific report by its title, type, or description. Results update live as you type.',
+      placement: 'bottom-end',
+    },
+    {
+      target: '#tour-reports-table',
+      content: 'This is the main reports list. Each row shows the report title, status, priority, type, and who submitted it. Click Next to open a report and see how the details panel looks!',
+      placement: 'center',
+    },
+    {
+      target: '#tour-report-details-drawer',
+      content: filtered.length > 0
+        ? 'Here you can view the full report details, see all activity and comments, and (if you have permission) change the status or assign it to someone. Click Next to close.'
+        : 'This is the report details panel. Even though there are no reports yet, this is what it looks like when you click on one — you can view details, update the status, assign it, and leave comments. Click Next to close.',
+      placement: 'left',
+    },
+    {
+      target: '#tour-reports-activity',
+      content: 'This is the Activity History button. It shows a full log of every action taken in this module. Click Next and we will open it!',
+      placement: 'bottom',
+    },
+    {
+      target: '#tour-activity-log-panel',
+      content: 'This is the Activity Log panel. It slides in from the right and shows everything that has happened in this module.',
+      placement: 'left',
+    },
+    {
+      target: '#tour-activity-log-entries',
+      content: 'Each entry shows who made the change, what was changed, and a before and after comparison. Click Next to close the log.',
+      placement: 'left',
+    },
+    {
+      target: '#page-tour-help-btn',
+      content: 'You can always click this button to restart the tour anytime!',
+      placement: 'bottom-end',
+    },
+  ]
+
+  const guideSteps = [...baseSteps, ...adminSteps, ...remainingSteps]
+
+  useEffect(() => {
+    const transitionPanel = (stateFn, advanceFn, advanceFirst = false, delay = 500) => {
+      document.body.classList.add('hide-joyride')
+      if (advanceFirst) {
+        advanceFn?.()
+        setTimeout(() => {
+          stateFn()
+          document.body.classList.remove('hide-joyride')
+        }, delay)
+      } else {
+        stateFn()
+        setTimeout(() => {
+          advanceFn?.()
+          document.body.classList.remove('hide-joyride')
+        }, delay)
+      }
+    }
+
+    const newBtnIndex = baseSteps.length + adminSteps.length
+    const modalIndex = newBtnIndex + 1
+
+    const tableIndex = guideSteps.length - 6
+    const drawerIndex = guideSteps.length - 5
+    const activityBtnIndex = guideSteps.length - 4
+    const activityPanelIndex = guideSteps.length - 3
+    const activityEntriesIndex = guideSteps.length - 2
+    const helpBtnIndex = guideSteps.length - 1
+
+    const handleNext = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (isAdmin && index === 1) {
+        transitionPanel(() => setAdminTab('mine'), window.advanceJoyride)
+      } else if (isAdmin && index === 2) {
+        transitionPanel(() => setAdminTab('archived'), window.advanceJoyride)
+      } else if (isAdmin && index === 3) {
+        transitionPanel(() => setAdminTab('all'), window.advanceJoyride)
+      } else if (index === newBtnIndex) {
+        transitionPanel(() => setShowModal(true), window.advanceJoyride)
+      } else if (index === modalIndex) {
+        transitionPanel(() => setShowModal(false), window.advanceJoyride, true)
+      } else if (index === tableIndex) {
+        const reportToOpen = filteredRef.current && filteredRef.current.length > 0
+          ? filteredRef.current[0]
+          : TOUR_MOCK_REPORT
+        transitionPanel(() => setDrawerReport(reportToOpen), window.advanceJoyride)
+      } else if (index === drawerIndex) {
+        transitionPanel(() => setDrawerReport(null), window.advanceJoyride, true)
+      } else if (index === activityBtnIndex) {
+        // Open activity log — use 900ms to allow the panel to mount + load data
+        transitionPanel(() => setActivityLogOpen(true), window.advanceJoyride, false, 900)
+      } else if (index === activityEntriesIndex) {
+        // Close activity log, advance first
+        transitionPanel(() => setActivityLogOpen(false), window.advanceJoyride, true)
+      } else {
+        window.advanceJoyride?.()
+      }
+    }
+
+    const handlePrev = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (isAdmin && index === 2) {
+        transitionPanel(() => setAdminTab('all'), window.retreatJoyride)
+      } else if (isAdmin && index === 3) {
+        transitionPanel(() => setAdminTab('mine'), window.retreatJoyride)
+      } else if (isAdmin && index === 4) {
+        transitionPanel(() => setAdminTab('archived'), window.retreatJoyride)
+      } else if (index === modalIndex + 1) {
+        transitionPanel(() => setShowModal(true), window.retreatJoyride)
+      } else if (index === modalIndex) {
+        transitionPanel(() => setShowModal(false), window.retreatJoyride, true)
+      } else if (index === drawerIndex + 1) {
+        const reportToOpen = filteredRef.current && filteredRef.current.length > 0
+          ? filteredRef.current[0]
+          : TOUR_MOCK_REPORT
+        transitionPanel(() => setDrawerReport(reportToOpen), window.retreatJoyride)
+      } else if (index === drawerIndex) {
+        transitionPanel(() => setDrawerReport(null), window.retreatJoyride, true)
+      } else if (index === activityPanelIndex) {
+        // Going back from panel step: close log first
+        transitionPanel(() => setActivityLogOpen(false), window.retreatJoyride, true)
+      } else if (index === activityEntriesIndex) {
+        transitionPanel(() => setActivityLogOpen(true), window.retreatJoyride)
+      } else if (index === helpBtnIndex) {
+        transitionPanel(() => setActivityLogOpen(true), window.retreatJoyride)
+      } else {
+        window.retreatJoyride?.()
+      }
+    }
+
+    const handleForceClose = () => { setActivityLogOpen(false); setShowModal(false); }
+
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    window.addEventListener('force-close-tour-panels', handleForceClose)
+    const handleStartTour = () => {
+      setAdminTab(isAdmin ? 'all' : 'mine')
+      setActivityLogOpen(false)
+      setShowModal(false)
+      setDrawerReport(prev => prev?._isMock ? null : prev)
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
+    return () => {
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+      window.removeEventListener('force-close-tour-panels', handleForceClose)
+      window.removeEventListener('start-page-tour', handleStartTour)
+    }
+  }, [])
+
   // ── Render ────────────────────────────────────────────────────────
+
   return (
     <div className="flex flex-col w-full h-full overflow-hidden" style={{ background: 'var(--page-bg)' }}>
+      <PageGuide steps={guideSteps} storageKey="seen_reports_tour" />
       {/* ── TOP HEADER ── */}
       <div className="flex items-center justify-between px-8 py-4 border-b" style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -314,7 +545,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
         <div className="flex items-center gap-3">
           {/* Admin tab switcher */}
           {isAdmin && (
-            <div style={{
+            <div id="tour-reports-admin-tabs" style={{
               display: 'flex', alignItems: 'center',
               background: 'var(--surface)', border: '1px solid var(--border)',
               borderRadius: '10px', padding: '3px', gap: '2px', marginRight: '8px'
@@ -327,6 +558,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
                 const active = adminTab === id
                 return (
                   <button key={id}
+                    id={`tour-reports-tab-${id}`}
                     onClick={() => { setAdminTab(id); setStatusFilter('All'); setSearch('') }}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -347,6 +579,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
           )}
 
           <Button
+            id="tour-reports-new-btn"
             className="border-0 text-sm h-9 px-4 rounded-lg flex items-center gap-1.5"
             style={{ background: 'var(--theme-500)', color: '#fff' }}
             onClick={() => setShowModal(true)}
@@ -354,6 +587,14 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
             <Plus size={14} />
             New Report
           </Button>
+          <div id="tour-reports-activity" style={{ display: 'inline-flex' }}>
+            <ModuleActivityLog
+              module="reports"
+              refreshKey={refreshKey}
+              forceOpen={activityLogOpen}
+              onForceClose={() => setActivityLogOpen(false)}
+            />
+          </div>
           <NotificationBell currentUser={currentUser} refreshKey={refreshKey} onNavigate={onNavigate} />
         </div>
       </div>
@@ -365,7 +606,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
         {errorMsg   && <Banner type="error">{errorMsg}</Banner>}
 
         {/* Stat cards */}
-        <div className="grid grid-cols-6 gap-3">
+        <div id="tour-reports-stat-cards" className="grid grid-cols-6 gap-3">
           {[
             { label: 'Total',        val: counts.All,            color: 'var(--theme-500)' },
             { label: 'Pending',      val: counts.Pending,        color: '#d97706' },
@@ -388,7 +629,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
         {/* ── FILTER BAR ── */}
         <div className="flex items-center gap-3 py-1 flex-wrap">
           {/* Status pills */}
-          <div style={{
+          <div id="tour-reports-status-filter" style={{
             display: 'flex', alignItems: 'center',
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '10px', padding: '4px', gap: '4px',
@@ -429,13 +670,17 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
           </div>
 
           {/* Type filter */}
-          <CustomSelect value={typeFilter} onChange={setTypeFilter} options={typeOptions} minWidth="140px" />
+          <div id="tour-reports-type-filter">
+            <CustomSelect value={typeFilter} onChange={setTypeFilter} options={typeOptions} minWidth="140px" />
+          </div>
 
           {/* Priority filter */}
-          <CustomSelect value={priorityFilter} onChange={setPriorityFilter} options={priorityOptions} minWidth="130px" />
+          <div id="tour-reports-priority-filter">
+            <CustomSelect value={priorityFilter} onChange={setPriorityFilter} options={priorityOptions} minWidth="130px" />
+          </div>
 
           {/* Search */}
-          <div style={{ width: '16rem', marginLeft: 'auto' }}>
+          <div id="tour-reports-search" style={{ width: '16rem', marginLeft: 'auto' }}>
             <SearchBar
               placeholder="Search reports..."
               value={search}
@@ -445,7 +690,7 @@ export default function Reports({ currentUser, refreshKey = 0, onNavigate }) {
         </div>
 
         {/* Table container */}
-        <div className="rounded-xl shadow-sm overflow-hidden flex-1 flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <div id="tour-reports-table" className="rounded-xl shadow-sm overflow-hidden flex-1 flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           {loading ? (
             <div className="flex flex-col items-center justify-center flex-1 py-20 opacity-50" style={{ color: 'var(--text-secondary)' }}>
               <p className="text-sm">Loading reports...</p>

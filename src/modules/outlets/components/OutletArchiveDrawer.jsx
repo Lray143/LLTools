@@ -47,7 +47,7 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
         className="fixed inset-0 z-50 flex justify-end bg-black/40"
         onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
-        <div className="w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
+        <div id="tour-outlet-archive-panel" className="w-full max-w-lg h-full bg-white shadow-2xl flex flex-col">
 
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -68,7 +68,7 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
           </div>
 
           {/* Search + Sort */}
-          <div className="px-6 py-3 border-b border-gray-200 flex gap-2">
+          <div id="tour-outlet-archive-search" className="px-6 py-3 border-b border-gray-200 flex gap-2">
             <div className="flex-1">
               <SearchBar
                 placeholder="Search by name or address…"
@@ -103,7 +103,7 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div id="tour-outlet-archive-list" className="flex-1 overflow-y-auto px-6 py-4">
 
             {outlets.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-gray-400">
@@ -153,21 +153,22 @@ export default function OutletArchiveDrawer({ outlets, onRestore, onPermDelete, 
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                         <Button
-                          size="sm"
                           variant="ghost"
-                          className="h-8 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 gap-1 px-2.5"
+                          size="sm"
                           onClick={() => onRestore(o.id)}
+                          title="Restore outlet"
+                          className="h-8 text-xs text-[var(--text-secondary)] hover:text-green-600 hover:bg-green-50 gap-1 px-2.5"
                         >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          Restore
+                          <RotateCcw size={14} /> Restore
                         </Button>
                         <Button
-                          size="sm"
                           variant="ghost"
-                          className="h-8 text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 gap-1 px-2.5"
+                          size="sm"
                           onClick={() => setConfirmDeleteOut(o)}
+                          title="Permanently delete"
+                          className="h-8 text-xs text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 gap-1 px-2.5"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                           Delete

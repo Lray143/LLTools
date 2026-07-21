@@ -94,6 +94,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
   if (!report) return null
 
   async function handleStatusChange(newStatus) {
+    if (!report.id) return
     setSubmitting(true)
     try {
       await window.electronAPI.updateReportStatus(report.id, newStatus, currentUser.employeeName || currentUser.username)
@@ -103,7 +104,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
   }
 
   async function handleAssign() {
-    if (!assignTo) return
+    if (!report.id || !assignTo) return
     setSubmitting(true)
     try {
       await window.electronAPI.assignReport(report.id, assignTo, currentUser.employeeName || currentUser.username)
@@ -112,7 +113,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
   }
 
   async function handleComment() {
-    if (!newComment.trim()) return
+    if (!report.id || !newComment.trim()) return
     setSubmitting(true)
     try {
       await window.electronAPI.addReportComment({
@@ -126,18 +127,22 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
   }
 
   async function handleArchive() {
+    if (!report.id) return
     setSubmitting(true)
     try { await window.electronAPI.archiveReport(report.id); onRefresh(); onClose() } finally { setSubmitting(false) }
   }
   async function handleUnarchive() {
+    if (!report.id) return
     setSubmitting(true)
     try { await window.electronAPI.unarchiveReport(report.id); onRefresh(); onClose() } finally { setSubmitting(false) }
   }
   function handleDelete() {
+    if (!report.id) return
     setShowDeleteConfirm(true)
   }
 
   async function confirmDelete() {
+    if (!report.id) return
     setShowDeleteConfirm(false)
     setSubmitting(true)
     try { await window.electronAPI.permanentDeleteReport(report.id); onRefresh(); onClose() } finally { setSubmitting(false) }
@@ -170,6 +175,7 @@ export function ReportDetailsDrawer({ report, onClose, currentUser, onRefresh, e
 
       {/* ── Drawer panel ──────────────────────────────────────────────── */}
       <div
+        id="tour-report-details-drawer"
         className="flex flex-col h-full shadow-2xl"
         style={{
           width: '520px',

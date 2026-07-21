@@ -126,17 +126,24 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
   const [tourKey, setTourKey] = useState(0)
 
   useEffect(() => {
+    // Scope both the app tour and page tour keys to the currently logged in user
+    const userId = window.__CURRENT_USER_ID__ || 'anon'
+    const scopedStorageKey = `${storageKey}_${userId}`
+    const appTourKey = `app_has_seen_tour_${userId}`
+
     // Check if THIS specific page tour has been seen before
-    const hasSeenTour = localStorage.getItem(storageKey)
+    const hasSeenTour = localStorage.getItem(scopedStorageKey)
     
     // NOTE: For page tours, we ONLY auto-run if the user has ALREADY SEEN the general app tour
     // AND they haven't seen this specific page tour yet.
     // However, if the general tour is currently running, we wait for it to finish and dispatch the event instead.
-    const hasSeenAppTour = localStorage.getItem('app_has_seen_tour')
-    if (hasSeenAppTour && !hasSeenTour) {
+    const hasSeenAppTour = localStorage.getItem(appTourKey)
+    const isAppTourRunning = sessionStorage.getItem('app_tour_running')
+    
+    if (hasSeenAppTour && !hasSeenTour && !isAppTourRunning) {
       setRun(true)
       // Immediately flag it as seen so it never auto-runs again on subsequent visits
-      localStorage.setItem(storageKey, 'true')
+      localStorage.setItem(scopedStorageKey, 'true')
     }
 
     // Listen for custom event to trigger the tour manually (or chained from the general tour)
@@ -148,7 +155,7 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
     // Force close listener perfectly tied to our CustomTooltip buttons
     const forceClose = () => {
       setRun(false)
-      localStorage.setItem(storageKey, 'true')
+      localStorage.setItem(scopedStorageKey, 'true')
     }
     
     window.addEventListener(eventName, startTour)
@@ -193,7 +200,8 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
       action === 'close'
     ) {
       setRun(false)
-      localStorage.setItem(storageKey, 'true')
+      const userId = window.__CURRENT_USER_ID__ || 'anon'
+      localStorage.setItem(`${storageKey}_${userId}`, 'true')
     }
 
     if (onCallback) {

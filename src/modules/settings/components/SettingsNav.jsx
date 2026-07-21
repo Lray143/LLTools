@@ -34,6 +34,7 @@ export function SettingsNav({ active, onChange }) {
         return (
           <button
             key={item.id}
+            id={`tour-settings-nav-${item.id}`}
             onClick={() => onChange(item.id)}
             style={{
               display: 'flex',

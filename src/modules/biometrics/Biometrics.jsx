@@ -186,6 +186,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
   const [selectedDept,     setSelectedDept]     = useState('All Departments')
   const [viewMode,         setViewMode]         = useState('Daily')
   const [pageMode,         setPageMode]         = useState('attendance')
+  const [isTourMode,       setIsTourMode]       = useState(false)
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchQuery), 300)
@@ -243,8 +244,29 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     records.map(r => isoYear(timeframeToISO(r.timeframe))).filter(Boolean)
   )].sort((a, b) => b - a)
 
+  const TOUR_MOCK_RECORD = {
+    id: 99999,
+    employee_no: 'MOCK-1',
+    name: 'Sample Employee',
+    department: 'Sales',
+    timeframe: new Date().toISOString(),
+    log_in_1: '07:55',
+    log_out_1: '12:00',
+    log_in_2: '13:00',
+    log_out_2: '17:35',
+    status: 'Full Time',
+    sched_in: '08:00',
+    sched_out: '17:30',
+    calculated_hours: 8,
+    calculated_late: 0,
+    calculated_undertime: 0,
+    calculated_overtime: 0,
+    extra_taps: [],
+    _isMock: true
+  }
+
   const filteredRecords = useMemo(() => {
-    return records.filter(r => {
+    let result = records.filter(r => {
       const iso = timeframeToISO(r.timeframe)
 
       const matchView = (() => {
@@ -269,7 +291,13 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
 
       return matchView && matchDept && matchSearch
     })
-  }, [records, viewMode, selectedDate, selectedYear, selectedMonth, selectedYearOnly, selectedDept, debouncedSearch])
+
+    if (result.length === 0 && isTourMode) {
+      result = [TOUR_MOCK_RECORD]
+    }
+
+    return result
+  }, [records, viewMode, selectedDate, selectedYear, selectedMonth, selectedYearOnly, selectedDept, debouncedSearch, isTourMode])
 
   // Tally up each status category for the stat cards at the top.
   const stats = useMemo(() => {
@@ -380,44 +408,47 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     },
     {
       target: '#tour-bio-stat-cards',
-      content: 'These summary cards give you an instant snapshot of your attendance data for the current filter. Each card counts employees by their attendance status: Full Time, Late, Undertime, Late & Undertime, Incomplete, One Tap, Worked Rest Day, and On Leave.',
+      content: 'These summary cards give you a quick snapshot of attendance data for the current filter. Each card counts employees by their status, like Full Time, Late, Undertime, Incomplete, One Tap, and On Leave.',
       placement: 'bottom'
     },
     {
-      target: '#tour-bio-modes', // Visible in Attendance
+      target: '#tour-bio-modes',
       content: 'Use these to switch between Daily, Monthly, and Yearly attendance logs.',
       placement: 'bottom'
     },
     {
-      target: '#tour-bio-date-nav', // Visible in Attendance
-      content: 'Quickly navigate through time using these arrows, or click the date itself to open a calendar picker.',
+      target: '#tour-bio-date-nav',
+      content: 'Navigate through time using these arrows, or click the date itself to open a calendar picker.',
       placement: 'bottom'
     },
     {
-      target: '#tour-bio-table-header', // Visible in Attendance
-      content: 'Click on any column header to sort the attendance log. You can also click the "SCHED/ACTUAL" button to instantly toggle between calculated shift hours and raw punching times!',
+      target: '#tour-bio-dept',
+      content: 'Use this dropdown to filter the attendance log by a specific department, or keep it on All Departments to see everyone.',
       placement: 'bottom'
     },
     {
-      target: '#tour-bio-import', // Visible in Attendance
-      content: 'Clicking here opens a file browser to upload raw biometric .dat or .txt files straight from your fingerprint scanner.',
+      target: '#tour-bio-table-header',
+      content: 'Click on any column header to sort the log. You can also click the SCHED/ACTUAL button to toggle between calculated shift hours and raw punching times.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-bio-import',
+      content: 'Click here to upload raw biometric .dat or .txt files directly from your fingerprint scanner.',
       placement: 'bottom'
     },
     {
-      target: '#tour-bio-export', // Visible in Attendance
+      target: '#tour-bio-export',
       content: 'Export whichever view you are currently looking at into a neatly formatted Excel spreadsheet.',
-      placement: 'bottom-end'
+      placement: 'bottom'
     },
     {
       target: '#tour-bio-tabs',
-      content: 'Toggle between the detailed Attendance Log and the overarching Manhours Summary. Let\'s click Next to switch to the Summary view!',
+      content: 'Toggle between the detailed Attendance Log and the Manhours Summary. Click Next to switch to the Summary view!',
       placement: 'bottom-start'
     },
     {
-      target: '#tour-bio-dept', // In summary view, this is visible
-      content: records.length > 0 
-        ? 'Here in the Summary view, you can see total hours aggregated. Use this dropdown to filter by specific departments.'
-        : 'Normally, you would see total manhours aggregated here. Since you have no records yet, use this dropdown to filter once you import some data.',
+      target: '#tour-bio-dept',
+      content: 'Here in the Summary view you can see total hours aggregated by employee. You can also filter by department using this same dropdown.',
       placement: 'bottom'
     },
     {
@@ -440,7 +471,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     const handleNext = (e) => {
       e.preventDefault()
       const { index } = e.detail
-      if (index === 7) { // Moving from step 7 (Tabs) to step 8 (Summary Dept)
+      if (index === 8) { // Moving from step 8 (Tabs) to step 9 (Summary Dept)
         transitionPanel(() => setPageMode('summary'), window.advanceJoyride)
       } else {
         window.advanceJoyride?.()
@@ -450,7 +481,7 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     const handlePrev = (e) => {
       e.preventDefault()
       const { index } = e.detail
-      if (index === 8) { // Moving backward from step 8 (Summary Dept) to step 7 (Tabs)
+      if (index === 9) { // Moving backward from step 9 (Summary Dept) to step 8 (Tabs)
         transitionPanel(() => setPageMode('attendance'), window.retreatJoyride)
       } else {
         window.retreatJoyride?.()
@@ -459,15 +490,22 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
     
     const handleForceClose = () => {
       if (pageMode === 'summary') setPageMode('attendance')
+      setIsTourMode(false)
     }
 
     window.addEventListener('tour-next-step', handleNext)
     window.addEventListener('tour-prev-step', handlePrev)
     window.addEventListener('force-close-tour', handleForceClose)
+    const handleStartTour = () => {
+      if (pageMode === 'summary') setPageMode('attendance')
+      setIsTourMode(true)
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
     return () => {
       window.removeEventListener('tour-next-step', handleNext)
       window.removeEventListener('tour-prev-step', handlePrev)
       window.removeEventListener('force-close-tour', handleForceClose)
+      window.removeEventListener('start-page-tour', handleStartTour)
     }
   }, [pageMode])
 
@@ -524,7 +562,11 @@ function Biometrics({ refreshKey = 0, currentUser, onNavigate }) {
         )}
 
         {pageMode === 'summary' ? (
-          <BiometricManhoursSummary records={records} selectedDept={selectedDept} refreshKey={refreshKey} />
+          <BiometricManhoursSummary 
+            records={records.length === 0 && isTourMode ? [TOUR_MOCK_RECORD] : records} 
+            selectedDept={selectedDept} 
+            refreshKey={refreshKey} 
+          />
         ) : (
           <>
             <BiometricStatCards stats={stats} isLoading={isLoading} />

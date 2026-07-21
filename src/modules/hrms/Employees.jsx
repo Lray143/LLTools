@@ -238,27 +238,43 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
       e.preventDefault() // Take control of timing from PageGuide
       const { index } = e.detail
       
-      const transitionPanel = (stateFn, advanceFn) => {
+      const transitionPanel = (stateFn, advanceFn, advanceFirst = false, delay = 500) => {
         document.body.classList.add('hide-joyride')
-        stateFn() // Open/close the panel
-        setTimeout(() => {
-          advanceFn?.() // Move Joyride only after DOM is stable
-          document.body.classList.remove('hide-joyride')
-        }, 500)
+        if (advanceFirst) {
+          advanceFn?.()
+          setTimeout(() => {
+            stateFn()
+            document.body.classList.remove('hide-joyride')
+          }, delay)
+        } else {
+          stateFn()
+          setTimeout(() => {
+            advanceFn?.()
+            document.body.classList.remove('hide-joyride')
+          }, delay)
+        }
       }
 
-      if (index === 7) {
-        transitionPanel(() => setActivityLogOpen(true), window.advanceJoyride)
+      if (index === 6) {
+        if (filteredRef.current.length > 0) {
+          transitionPanel(() => setModal({ mode: 'edit', employee: filteredRef.current[0] }), window.advanceJoyride)
+        } else {
+          window.advanceJoyride?.()
+        }
+      } else if (index === 8) {
+        transitionPanel(() => setModal(null), window.advanceJoyride, true)
       } else if (index === 9) {
-        transitionPanel(() => setActivityLogOpen(false), window.advanceJoyride)
-      } else if (index === 10) {
+        transitionPanel(() => setActivityLogOpen(true), window.advanceJoyride, false, 900)
+      } else if (index === 11) {
+        transitionPanel(() => setActivityLogOpen(false), window.advanceJoyride, true)
+      } else if (index === 12) {
         transitionPanel(() => setModal({ mode: 'archive' }), window.advanceJoyride)
-      } else if (index === 13) {
-        transitionPanel(() => setModal(null), window.advanceJoyride)
-      } else if (index === 14) {
+      } else if (index === 15) {
+        transitionPanel(() => setModal(null), window.advanceJoyride, true)
+      } else if (index === 16) {
         transitionPanel(() => setModal({ mode: 'add' }), window.advanceJoyride)
-      } else if (index === 17) {
-        transitionPanel(() => setModal(null), window.advanceJoyride)
+      } else if (index === 19) {
+        transitionPanel(() => setModal(null), window.advanceJoyride, true)
       } else {
         window.advanceJoyride?.()
       }
@@ -267,30 +283,46 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
       e.preventDefault()
       const { index } = e.detail
       
-      const transitionPanel = (stateFn, retreatFn) => {
+      const transitionPanel = (stateFn, retreatFn, advanceFirst = false) => {
         document.body.classList.add('hide-joyride')
-        stateFn() // Open/close the panel
-        setTimeout(() => {
-          retreatFn?.() // Move Joyride only after DOM is stable
-          document.body.classList.remove('hide-joyride')
-        }, 500)
+        if (advanceFirst) {
+          retreatFn?.()
+          setTimeout(() => {
+            stateFn()
+            document.body.classList.remove('hide-joyride')
+          }, 500)
+        } else {
+          stateFn()
+          setTimeout(() => {
+            retreatFn?.()
+            document.body.classList.remove('hide-joyride')
+          }, 500)
+        }
       }
 
-      if (index === 8) {
-        transitionPanel(() => setActivityLogOpen(false), window.retreatJoyride)
+      if (index === 7) {
+        transitionPanel(() => setModal(null), window.retreatJoyride, true)
       } else if (index === 9) {
-        transitionPanel(() => setActivityLogOpen(true), window.retreatJoyride)
+        if (filteredRef.current.length > 0) {
+          transitionPanel(() => setModal({ mode: 'edit', employee: filteredRef.current[0] }), window.retreatJoyride)
+        } else {
+          window.retreatJoyride?.()
+        }
+      } else if (index === 10) {
+        transitionPanel(() => setActivityLogOpen(false), window.retreatJoyride, true)
       } else if (index === 11) {
-        transitionPanel(() => setModal(null), window.retreatJoyride)
-      } else if (index === 12) {
-        transitionPanel(() => setModal({ mode: 'archive' }), window.retreatJoyride)
+        transitionPanel(() => setActivityLogOpen(true), window.retreatJoyride)
       } else if (index === 13) {
+        transitionPanel(() => setModal(null), window.retreatJoyride, true)
+      } else if (index === 14) {
         transitionPanel(() => setModal({ mode: 'archive' }), window.retreatJoyride)
       } else if (index === 15) {
-        transitionPanel(() => setModal(null), window.retreatJoyride)
-      } else if (index === 16) {
-        transitionPanel(() => setModal({ mode: 'add' }), window.retreatJoyride)
+        transitionPanel(() => setModal({ mode: 'archive' }), window.retreatJoyride)
       } else if (index === 17) {
+        transitionPanel(() => setModal(null), window.retreatJoyride, true)
+      } else if (index === 18) {
+        transitionPanel(() => setModal({ mode: 'add' }), window.retreatJoyride)
+      } else if (index === 19) {
         transitionPanel(() => setModal({ mode: 'add' }), window.retreatJoyride)
       } else {
         window.retreatJoyride?.()
@@ -304,10 +336,16 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
     window.addEventListener('tour-next-step', handleNext)
     window.addEventListener('tour-prev-step', handlePrev)
     window.addEventListener('force-close-tour', handleForceClose)
+    const handleStartTour = () => {
+      setActivityLogOpen(false)
+      setModal(null)
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
     return () => {
       window.removeEventListener('tour-next-step', handleNext)
       window.removeEventListener('tour-prev-step', handlePrev)
       window.removeEventListener('force-close-tour', handleForceClose)
+      window.removeEventListener('start-page-tour', handleStartTour)
     }
   }, [])
 
@@ -488,6 +526,12 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
         (onlineFilter === "offline" && !e.isOnline)
       return matchSearch && matchDept && matchStatus && matchOnline
     })
+
+  // Keep a ref always pointing at the latest filtered so our stable
+  // event-listener useEffect can read it without becoming a dependency.
+  const filteredRef = useRef(filtered)
+  filteredRef.current = filtered
+
 
   // Options for dropdowns
   const deptOptions = [
@@ -727,39 +771,53 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
           },
           {
             target: '#tour-employees-search',
-            content: 'Use this search bar to quickly find any employee by name or employee number.',
+            content: 'Type here to search for any employee by name or employee number.',
             placement: 'bottom',
           },
           {
             target: '#tour-employees-view-toggle',
-            content: 'Switch between Card view (a visual grid) and List view (a compact table) depending on your preference.',
+            content: 'Toggle between Card view and List view depending on what you prefer. Card view shows a visual grid, and List view is a compact table.',
             placement: 'bottom',
           },
           {
             target: '#tour-employees-dept-filter',
-            content: 'Filter employees by their Department, such as Sales, HR, or Operations.',
+            content: 'Use this to filter employees by department, like Sales, HR, or Operations.',
             placement: 'bottom',
           },
           {
             target: '#tour-employees-status-filter',
-            content: 'Filter by Status — Active means working normally, while On Leave means they have an approved leave today.',
+            content: 'Filter by status. Active means the employee is working normally, and On Leave means they have an approved leave today.',
             placement: 'bottom',
           },
           {
             target: '#tour-employees-presence-filter',
-            content: 'Filter by online presence. Online means the employee is currently logged into the system in real-time.',
+            content: 'Filter by whether an employee is currently logged into the system in real-time.',
             placement: 'bottom',
           },
           {
             target: filtered.length > 0 ? '#tour-employee-card' : 'body',
-            content: filtered.length > 0 
-              ? 'This is an employee card. Hover over it to reveal the Edit and Delete actions in the top right corner. The Edit button opens the same form as Add Employee, but pre-filled with their details.'
-              : 'Normally, employee cards appear here in the center of the screen. You can hover over them to quickly Edit or Delete their records.',
+            content: filtered.length > 0
+              ? 'This is an employee card. Hover over it to reveal the Edit and Delete buttons in the top right corner. Let\'s click Next to force open the Edit form!'
+              : 'Normally, employee cards appear here. You can hover over them to quickly Edit or Delete their records.',
             placement: filtered.length > 0 ? 'right' : 'center',
           },
           {
+            target: filtered.length > 0 ? '#tour-emp-modal-basic' : 'body',
+            content: filtered.length > 0
+              ? 'This is the Edit Employee form. You can update any of their information here.'
+              : 'Normally, you can edit an employee\'s information here.',
+            placement: filtered.length > 0 ? 'right' : 'center',
+          },
+          {
+            target: filtered.length > 0 ? '#tour-emp-modal-reset' : 'body',
+            content: filtered.length > 0
+              ? 'The Reset Credentials button will reset their login credentials back to default. Very useful if they forget their password! Click Next to close the form.'
+              : 'You can also reset their login credentials if they forget their password.',
+            placement: filtered.length > 0 ? 'top' : 'center',
+          },
+          {
             target: '#tour-employees-activity',
-            content: 'This is the Activity History Log button. It shows a full audit trail of every add, edit, archive, and restore action. Click Next to open it!',
+            content: 'This is the Activity History button. It shows a full log of every add, edit, archive, and restore action. Click Next and we will open it!',
             placement: 'bottom',
           },
           {
@@ -769,12 +827,12 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
           },
           {
             target: '#tour-activity-log-entries',
-            content: 'Each entry shows who made the change, what was changed, and a before/after comparison. Click Next to close the log and continue.',
+            content: 'Each entry shows who made the change, what was changed, and a before and after comparison. Click Next to close the log.',
             placement: 'left',
           },
           {
             target: '#tour-employees-archive-btn',
-            content: 'The Archive button opens a side panel with all inactive employees. Click Next to open it and see what it looks like!',
+            content: 'The Archive button opens a side panel with all inactive employees. Click Next to open it!',
             placement: 'bottom',
           },
           {
@@ -784,37 +842,37 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
           },
           {
             target: '#tour-archive-search-sort',
-            content: 'You can search archived employees by name, department, or ID, and sort the list however you like.',
+            content: 'Search archived employees by name, department, or ID, and sort the list however you like.',
             placement: 'bottom',
           },
           {
             target: '#tour-archive-list',
-            content: 'Hover over any employee to reveal the Restore and Delete buttons. Restore brings them back to active, while Delete removes them permanently. Click Next to close and continue.',
+            content: 'Hover over any employee to reveal the Restore and Delete buttons. Restore brings them back to active, and Delete removes them permanently. Click Next to close and continue.',
             placement: 'left',
           },
           {
             target: '#tour-employees-add-btn',
-            content: 'Click this to add a brand new employee. Click Next to open the form and walk through each field!',
+            content: 'Click here to add a brand new employee. Click Next to open the form!',
             placement: 'bottom',
           },
           {
             target: '#tour-emp-modal-basic',
-            content: 'Fill in the employee\'s basic info here — Employee No. (auto-generated if left blank), Full Name, Position, Contact Info, and Department.',
+            content: 'Fill in the basic info here, like Employee No., Full Name, Position, Contact Info, and Department.',
             placement: 'right',
           },
           {
             target: '#tour-emp-modal-schedule',
-            content: 'Set the employee\'s work schedule here. Toggle each day on or off for rest days, and set shift start/end times per day.',
+            content: 'Set the work schedule here. Toggle days on or off for rest days, and set shift start and end times per day.',
             placement: 'left',
           },
           {
             target: '#tour-emp-modal-save',
-            content: 'Once everything is filled in, click here to save the employee to the system. Click Next to close the form.',
+            content: 'Once everything is filled in, click here to save. Click Next to close the form.',
             placement: 'top',
           },
           {
             target: '#page-tour-help-btn',
-            content: 'You can always click this ? button to restart this tour anytime!',
+            content: 'You can always click this button to restart the tour anytime!',
             placement: 'bottom-end',
           },
         ]}

@@ -254,32 +254,32 @@ function MyAttendance({ currentUser, refreshKey = 0, onNavigate }) {
   const guideSteps = [
     {
       target: 'body',
-      content: 'Welcome to the My Attendance page! Here you can keep track of all your personal attendance logs.',
+      content: 'Welcome to the My Attendance page! Here you can keep track of all your personal attendance records.',
       placement: 'center'
     },
     {
       target: '#tour-my-att-stat-cards',
-      content: 'These summary cards show a quick breakdown of your attendance status for the selected period. Each colored number tells you how many days you were Full Time, Late, Undertime, Late & Undertime, Incomplete, or On Leave.',
+      content: 'These summary cards show a quick breakdown of your attendance status for the selected period. Each card tells you how many days you were Full Time, Late, Undertime, Incomplete, or On Leave.',
       placement: 'bottom'
     },
     {
       target: '#tour-my-att-modes',
-      content: 'Switch between Daily, Monthly, and Yearly views to analyze your attendance trends over different time periods.',
+      content: 'Switch between Daily, Monthly, and Yearly views to look at your attendance over different time periods.',
       placement: 'bottom'
     },
     {
       target: '#tour-my-att-date-nav',
-      content: 'Navigate through time using these arrows, or click the date pill to quickly jump to a specific period using the calendar.',
+      content: 'Navigate through time using these arrows, or click the date pill to jump to a specific period using the calendar.',
       placement: 'bottom'
     },
     {
       target: '#tour-my-att-table-header',
-      content: 'Click on any column header to easily sort your logs. You can also click the "SCHED/ACTUAL" button on the Total Hours column to instantly toggle between your calculated shift hours and your raw tapping times!',
-      placement: 'bottom'
+      content: 'Click on any column header to sort your logs. You can also click the SCHED/ACTUAL button on the Total Hours column to toggle between your calculated shift hours and your raw tapping times.',
+      placement: 'center'
     },
     {
       target: '#tour-my-att-export',
-      content: 'Need a copy of your records? Click here to export your currently filtered view into a cleanly formatted Excel spreadsheet.',
+      content: 'Need a copy of your records? Click here to export your current view into a cleanly formatted Excel spreadsheet.',
       placement: 'bottom-end'
     },
     {

@@ -125,7 +125,7 @@ export function AccountSection({ currentUser }) {
         description="Your account information as configured by your administrator."
       />
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
+      <div id="tour-settings-account-info" style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{
         display: 'flex',
@@ -191,6 +191,7 @@ export function AccountSection({ currentUser }) {
 
       <SettingRow label="Account Credentials" description="Update your login username or password.">
         <button
+          id="tour-settings-creds"
           onClick={() => {
             setNewUsername(currentUser?.username || '')
             setOldPassword('')
@@ -321,6 +322,7 @@ export function AccountSection({ currentUser }) {
         <>
           <SettingRow label="Wipe Test Data" description="Delete all records (employees, products, chats, etc.) to prepare for production use.">
             <button
+              id="tour-settings-wipe"
               onClick={() => {
                 setWipePassword('')
                 setWipeError('')

@@ -5,6 +5,7 @@ import ChatSidebar from './components/ChatSidebar'
 import ChatMessages from './components/ChatMessages'
 import ChatInput from './components/ChatInput'
 import NotificationBell from '../../components/ui/NotificationBell'
+import PageGuide from '../../components/ui/PageGuide'
 
 const DEPARTMENTS = [
   'Sales', 'HR', 'Accounting', 'Admin', 'Warehouse'
@@ -196,14 +197,12 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
     const handleMessageSeen = (data) => {
       if (!data?.roomId || !data?.userId) return
-      // Ignore our own read-receipt events (check both userId and employeeId)
       const myId = String(myParticipantIdRef.current)
       if (
         String(data.userId) === myId ||
         String(data.userId) === String(currentUser?.id) ||
         String(data.userId) === String(currentUser?.employeeId)
       ) return
-      // Only update receipts for the room we're currently viewing
       if (data.roomId !== currentRoomIdRef.current) return
 
       setReadReceipts(prev => {
@@ -234,6 +233,90 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }, [])
 
+  // ── Tour Guide Logic ──
+  const guideSteps = useMemo(() => [
+    {
+      target: 'body',
+      content: 'Welcome to Chats! This is where you can communicate with your team in real-time.',
+      placement: 'center',
+    },
+    {
+      target: '#tour-chat-sidebar',
+      content: 'This sidebar contains all your channels and direct messages.',
+      placement: 'right',
+    },
+    {
+      target: '#tour-chat-channel-list',
+      content: 'These are your Channels. They act like group chats where multiple people from a department are included.',
+      placement: 'right',
+    },
+    {
+      target: '#tour-chat-tabs',
+      content: 'You can switch between group Channels and private Direct Messages here. Let\'s open Direct Messages!',
+      placement: 'right',
+    },
+    {
+      target: '#tour-chat-search',
+      content: 'Use this to quickly search for a specific channel or person.',
+      placement: 'right',
+    },
+    {
+      target: '#tour-chat-main-area',
+      content: 'This is the main chat area where your conversation happens.',
+      placement: 'left',
+    },
+    {
+      target: '#tour-chat-input',
+      content: 'Type your messages here. You can also mention people using @.',
+      placement: 'top',
+    },
+    {
+      target: '#tour-chat-actions',
+      content: 'Use these buttons to attach files or add emojis to your message.',
+      placement: 'top-start',
+    },
+    {
+      target: '#tour-chat-sidebar-toggle',
+      content: 'Need more space? You can hide or show the left sidebar using this button.',
+      placement: 'bottom-end',
+    },
+    {
+      target: '#page-tour-help-btn',
+      content: 'You can always restart this tour by clicking this help button. Happy chatting!',
+      placement: 'bottom-end',
+    }
+  ], [])
+
+  useEffect(() => {
+    const handleNext = (e) => {
+      const { index } = e.detail
+      if (index === 3) {
+        e.preventDefault()
+        setActiveTab('dms')
+        setTimeout(() => window.advanceJoyride?.(), 150)
+      }
+    }
+    const handlePrev = (e) => {
+      const { index } = e.detail
+      if (index === 4) {
+        e.preventDefault()
+        setActiveTab('channels')
+        setTimeout(() => window.retreatJoyride?.(), 150)
+      }
+    }
+    const handleStartTour = () => {
+      setActiveTab('channels')
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    return () => {
+      window.removeEventListener('start-page-tour', handleStartTour)
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+    }
+  }, [])
+
   // ── Mark current room as read when user switches rooms ───────────────────
   useEffect(() => {
     const roomId = activeTab === 'channels'
@@ -241,11 +324,9 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
     if (!roomId) return
     const seenAt = new Date().toISOString()
-    // Always use currentUser.id (users table PK) so receipts match getRoomReceipts join
     window.electronAPI.markChatAsRead(currentUser.id, roomId)
       .then(() => {
         loadSidebarData()
-        // Broadcast real-time seen receipt so the sender sees it instantly
         window.electronAPI?.sendPusherEvent?.({
           channel: 'lltools-updates',
           event: 'message-seen',
@@ -261,7 +342,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       .catch(console.error)
   }, [selectedDept, selectedUser, activeTab])
 
-  // ── Broadcast online/offline on app startup and close (NOT on focus/blur) ─
+  // ── Broadcast online/offline on app startup and close ─
   useEffect(() => {
     const broadcastOnline = () => {
       window.electronAPI?.sendPusherEvent?.({
@@ -270,7 +351,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         data: { userId: myParticipantId },
       }).catch(() => {})
       
-      // Also request others to broadcast their status so we know who is online
       window.electronAPI?.sendPusherEvent?.({
         channel: 'lltools-updates',
         event: 'request-status',
@@ -286,12 +366,9 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       }).catch(() => {})
     }
 
-    // Broadcast online once when app loads (only once on mount)
     broadcastOnline()
 
-    // Broadcast offline when window closes or app unloads
     const handleBeforeUnload = () => {
-      // Use sendBeacon for reliable delivery on app close
       const data = new FormData()
       data.append('event', 'user-offline')
       data.append('userId', myParticipantId)
@@ -299,11 +376,9 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
-    // Optional: Send heartbeat every 5 minutes to confirm still online
-    // This helps if Pusher connection drops without triggering offline
     const heartbeatInterval = setInterval(() => {
       broadcastOnline()
-    }, 5 * 60 * 1000) // 5 minutes
+    }, 5 * 60 * 1000)
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
@@ -312,7 +387,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }, [myParticipantId])
 
-  // Check if user is scrolled near the bottom of the messages container
   const isNearBottom = useCallback(() => {
     const el = scrollContainerRef.current
     if (!el) return true
@@ -324,19 +398,16 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     if (el) el.scrollTop = el.scrollHeight
   }, [])
 
-  // Programmatic smooth scroll localized to the container
   const scrollToBottomSmooth = useCallback(() => {
     const el = scrollContainerRef.current
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
   }, [])
 
-  // ── Load messages when room changes ──────────────────────────────────────
   const loadMessages = useCallback(async (forceScroll = false) => {
     const reqRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
     if (!reqRoomId) return
     const wasNearBottom = isNearBottom()
     try {
-      // Fetch messages AND receipts in parallel — cuts load time in half
       const [msgs, receipts] = await Promise.all([
         activeTab === 'channels'
           ? window.electronAPI.getChatMessages(selectedDept)
@@ -367,7 +438,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
   const activeRoomId = activeTab === 'channels' ? selectedDept : getRoomId(myParticipantId, selectedUser?.id)
 
-  // Room switch → jump to bottom instantly (before paint, no scroll animation)
   useLayoutEffect(() => {
     const roomChanged = lastScrolledRoomRef.current !== activeRoomId
     if (roomChanged) {
@@ -384,14 +454,12 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     else scrollToBottomSmooth()
   }, [activeRoomId, messageCache[activeRoomId], scrollToBottomInstant, scrollToBottomSmooth])
 
-  // Room switch → load messages for the new room
   useEffect(() => {
     setReplyTo(null)
     pendingScrollRef.current = 'instant'
     loadMessages(true)
   }, [selectedDept, selectedUser, activeTab])
 
-  // Background sync → only scroll if already near bottom; run both in parallel
   useEffect(() => {
     if (isTypingRef.current) {
       pendingRefresh.current = true
@@ -400,9 +468,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }, [refreshKey])
 
-  // Receipts are already fetched inside loadMessages() — no separate effect needed
-
-  // ── Send message ──────────────────────────────────────────────────────────
   const handleSend = async (e, forcedFileUrl = null, forcedId = null) => {
     if (e) e.preventDefault()
     if (!inputMsg.trim() && !forcedFileUrl) return
@@ -411,7 +476,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     
     let finalMsgText = inputMsg.trim() || (forcedFileUrl ? 'Sent an attachment' : '')
     if (replyTo && finalMsgText) {
-      // Strip ALL [reply] tags from the quoted message so reply-to-reply renders cleanly
       const cleanReplyMsg = (replyTo.message || 'Attachment').replace(/\[reply\][\s\S]*?\[\/reply\]\n?/g, '').trim()
       const replySnippet = cleanReplyMsg.replace(/\n/g, ' ').substring(0, 80)
       finalMsgText = `[reply]${replyTo.senderName}|${replySnippet}[/reply]\n${finalMsgText}`
@@ -453,7 +517,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       }
 
       const seenAt = new Date().toISOString()
-      // Always use currentUser.id (users table PK) so receipts match getRoomReceipts join
       window.electronAPI.markChatAsRead(currentUser.id, roomId)
         .then(() => {
           window.electronAPI?.sendPusherEvent?.({
@@ -471,10 +534,9 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         .catch(console.error)
       loadSidebarData()
 
-      // ── Parse message for @mentions and reply-to so the bell can target correctly ──
       const mentionedNames = [...finalMsgText.matchAll(/@(\w+)/g)].map(m => m[1].toLowerCase())
       const mentionsEveryone = mentionedNames.includes('everyone')
-      const replyMatch = finalMsgText.match(/\[reply\]([^|]+)\|/)  // [reply]SenderName|snippet[/reply]
+      const replyMatch = finalMsgText.match(/\[reply\]([^|]+)\|/)
       const replyToSenderName = replyMatch ? replyMatch[1].trim() : null
       const replyToSenderId   = replyTo?.senderId ?? null
 
@@ -511,8 +573,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }
 
-  // ── Typing detection ─ pauses background refresh mid-keystroke ───────────
-  const lastTypingPusherSent = useRef(0)
   const handleTyping = useCallback(() => {
     isTypingRef.current = true
     clearTimeout(typingTimer.current)
@@ -524,7 +584,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         loadSidebarData()
       }
     }, 1500)
-    // Broadcast typing event via Pusher at most once every 2 seconds
     const now = Date.now()
     if (now - lastTypingPusherSent.current < 2000) return
     lastTypingPusherSent.current = now
@@ -541,7 +600,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }).catch(() => {})
   }, [loadMessages, loadSidebarData, activeTab, selectedDept, selectedUser, myParticipantId, currentUser])
 
-  // ── File upload ───────────────────────────────────────────────────────────
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -551,7 +609,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
       const msgId = crypto.randomUUID()
       const msgType = activeTab === 'dms' ? 'dm' : 'channel'
       
-      // OPTIMIZATION: Pass the file path natively instead of serializing huge arrays over IPC
       const fileData = file.path || await file.arrayBuffer()
       const fileUrl = await window.electronAPI.uploadAttachment(fileData, file.name, file.type, msgId, msgType)
       await handleSend(null, fileUrl, msgId)
@@ -563,7 +620,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     }
   }
 
-  // ── Sidebar derived state ─────────────────────────────────────────────────
   const visibleDepts = useMemo(() => {
     if (canSeeAll) return DEPARTMENTS
     if (currentUser.department) return [currentUser.department]
@@ -600,18 +656,15 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
 
   const inputDisabled = activeTab === 'dms' && !selectedUser
   const currentRoomId = activeTab === 'channels' ? selectedDept : (selectedUser ? getRoomId(myParticipantId, selectedUser.id) : null)
-  // Keep ref in sync so the Pusher message-seen handler can read the current room
   useEffect(() => { currentRoomIdRef.current = currentRoomId }, [currentRoomId])
   const currentMessages = currentRoomId ? (messageCache[currentRoomId] || []) : []
 
-  // Count total unreads for the header badge
   const totalUnreads = useMemo(() => {
     const deptUnreads = sidebarData.departments.filter(d => d.unread).length
     const dmUnreads = sidebarData.dms.filter(d => d.unread).length
     return deptUnreads + dmUnreads
   }, [sidebarData])
 
-  // Context info for header strip
   const contextInfo = useMemo(() => {
     if (activeTab === 'channels') {
       const memberCount = employees.filter(e => e.department === selectedDept).length
@@ -623,7 +676,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
     return { type: 'none' }
   }, [activeTab, selectedDept, selectedUser, employees])
 
-  // ── Optimistic Action Handlers ────────────────────────────────────────────
   const handleToggleReaction = useCallback(async (msgId, senderId, userName, emoji, isDm) => {
     const roomId = isDm ? getRoomId(myParticipantId, selectedUser.id) : selectedDept
 
@@ -713,7 +765,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
   return (
     <div className="absolute inset-0 flex flex-col overflow-hidden" style={{ background: 'var(--page-bg)' }}>
 
-      {/* ── TOP HEADER BAR (matches app-wide pattern) ── */}
       <div className="flex items-center justify-between px-8 py-4 border-b shrink-0"
         style={{ background: 'var(--page-bg)', borderColor: 'var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -752,7 +803,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Sync status indicator */}
           {canSeeSyncStatus && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '12px' }}>
@@ -761,7 +811,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
             </div>
           )}
 
-          {/* Unread badge */}
           {totalUnreads > 0 && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)', fontSize: '12px' }}>
@@ -771,6 +820,7 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           )}
 
           <button
+            id="tour-chat-sidebar-toggle"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="flex items-center justify-center p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
             style={{ color: 'var(--text-secondary)', border: 'none', background: 'transparent', cursor: 'pointer' }}
@@ -783,7 +833,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
         </div>
       </div>
 
-      {/* ── CONTENT AREA ── */}
       <div className="flex-1 min-h-0 flex p-6 gap-4">
 
         {isSidebarOpen && (
@@ -798,11 +847,9 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           </div>
         )}
 
-        {/* ── MAIN CHAT AREA ── */}
-        <div className="flex-1 flex flex-col rounded-xl shadow-sm overflow-hidden"
+        <div id="tour-chat-main-area" className="flex-1 flex flex-col rounded-xl shadow-sm overflow-hidden"
           style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
 
-          {/* Context strip */}
           <div className="px-5 py-3 border-b flex items-center justify-between shrink-0"
             style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
             {activeTab === 'channels' ? (
@@ -848,7 +895,6 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
               </div>
             )}
 
-            {/* Message count badge */}
             <div className="text-[11px] px-2.5 py-1 rounded-md"
               style={{ background: 'var(--page-bg-alt)', color: 'var(--text-secondary)', fontWeight: 500 }}>
               {currentMessages.length} message{currentMessages.length !== 1 ? 's' : ''}
@@ -894,9 +940,10 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
           })()}
 
           {/* Input */}
-          <ChatInput
-            inputMsg={inputMsg}
-            setInputMsg={setInputMsg}
+          <div id="tour-chat-input">
+            <ChatInput
+              inputMsg={inputMsg}
+              setInputMsg={setInputMsg}
             onSend={handleSend}
             onFileChange={handleFileChange}
             isSending={isSending}
@@ -905,11 +952,13 @@ export default function Chat({ currentUser, refreshKey, typingUsers = {}, onNavi
             onTyping={handleTyping}
             members={channelMembers}
             activeTab={activeTab}
-            replyTo={replyTo}
-            setReplyTo={setReplyTo}
-          />
+              replyTo={replyTo}
+              setReplyTo={setReplyTo}
+            />
+          </div>
         </div>
       </div>
+      <PageGuide steps={guideSteps} storageKey="seen_chat_tour" />
     </div>
   )
 }

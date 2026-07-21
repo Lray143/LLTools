@@ -102,14 +102,15 @@ export default function AppGuide({ currentUser }) {
   const [tourKey, setTourKey] = useState(0)
 
   const displayName = currentUser?.employeeName || currentUser?.username || 'there'
-  // Use a global key so it only auto-runs ONCE per machine/installation, regardless of account
-  const localStorageKey = 'app_has_seen_tour'
+  // Use a per-user key so each user sees the tour on their first login on this machine
+  const localStorageKey = `app_has_seen_tour_${window.__CURRENT_USER_ID__ || 'anon'}`
 
   useEffect(() => {
     // Check if the tour has been seen before
     const hasSeenTour = localStorage.getItem(localStorageKey)
     if (!hasSeenTour) {
       setRun(true)
+      sessionStorage.setItem('app_tour_running', 'true')
       // Immediately flag it as seen so it NEVER auto-runs again on subsequent logins
       localStorage.setItem(localStorageKey, 'true')
     }
@@ -123,8 +124,9 @@ export default function AppGuide({ currentUser }) {
     // Force close listener perfectly tied to our CustomTooltip buttons
     const forceClose = () => {
       setRun(false)
+      sessionStorage.removeItem('app_tour_running')
       localStorage.setItem(localStorageKey, 'true')
-      window.dispatchEvent(new CustomEvent('start-page-tour'))
+      setTimeout(() => window.dispatchEvent(new CustomEvent('start-page-tour')), 300)
     }
     
     window.addEventListener('start-tour', startTour)
@@ -214,8 +216,9 @@ export default function AppGuide({ currentUser }) {
       action === 'close'
     ) {
       setRun(false)
+      sessionStorage.removeItem('app_tour_running')
       localStorage.setItem(localStorageKey, 'true')
-      window.dispatchEvent(new CustomEvent('start-page-tour'))
+      setTimeout(() => window.dispatchEvent(new CustomEvent('start-page-tour')), 300)
     }
   }
 

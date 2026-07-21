@@ -153,7 +153,7 @@ export default function VisitArchiveModal({
                 {filtered.map((v, i) => (
                   <div
                     key={i}
-                    className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-orange-50/50 border border-gray-100 hover:border-orange-100 rounded-lg transition-colors group"
+                    className="flex items-center justify-between py-2.5 px-3 bg-white hover:bg-theme-50/50 border border-gray-100 hover:border-theme-100 rounded-lg transition-colors group"
                   >
                     <div>
                       <p className="text-sm font-medium text-gray-800">
@@ -171,7 +171,7 @@ export default function VisitArchiveModal({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 gap-1 px-2.5"
+                        className="h-8 text-xs text-[var(--text-secondary)] hover:text-green-600 hover:bg-green-50 gap-1 px-2.5"
                         onClick={() => onUnarchive(v)}
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
@@ -180,7 +180,7 @@ export default function VisitArchiveModal({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 gap-1 px-2.5"
+                        className="h-8 text-xs text-[var(--text-secondary)] hover:text-red-600 hover:bg-red-50 gap-1 px-2.5"
                         onClick={() => setConfirmDelete(v)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />

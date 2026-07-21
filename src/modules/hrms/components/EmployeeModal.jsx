@@ -312,7 +312,7 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
             <div className="flex justify-end gap-2 w-full">
               {isEdit && (
                 <div className="flex-1 flex justify-start">
-                  <Button type="button" variant="ghost" className="text-muted-foreground hover:text-theme-600 hover:bg-theme-50 text-sm px-2 flex items-center gap-1.5" onClick={() => setResetOpen(true)}>
+                  <Button id="tour-emp-modal-reset" type="button" variant="ghost" className="text-muted-foreground hover:text-theme-600 hover:bg-theme-50 text-sm px-2 flex items-center gap-1.5" onClick={() => setResetOpen(true)}>
                     <RotateCcw className="w-4 h-4" />
                     Reset Credentials
                   </Button>

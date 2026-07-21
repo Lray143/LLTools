@@ -217,7 +217,7 @@ export default function ChatInput({
         <div className="flex items-end gap-2">
 
         {/* Action buttons (left side) */}
-        <div className="flex items-center gap-0.5 shrink-0 pb-1">
+        <div id="tour-chat-actions" className="flex items-center gap-0.5 shrink-0 pb-1">
 
           {/* Attach button */}
           <button

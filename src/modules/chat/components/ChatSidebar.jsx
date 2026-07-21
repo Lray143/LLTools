@@ -17,11 +17,11 @@ const ChatSidebar = memo(function ChatSidebar({
   )
 
   return (
-    <div className="w-72 shrink-0 flex flex-col rounded-xl shadow-sm overflow-hidden"
+    <div id="tour-chat-sidebar" className="w-72 shrink-0 flex flex-col rounded-xl shadow-sm overflow-hidden"
       style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
 
       {/* ── Tab Toggle (pill style matching LeaveRequests HR switcher) ── */}
-      <div className="p-3 border-b" style={{ borderColor: 'var(--border)' }}>
+      <div id="tour-chat-tabs" className="p-3 border-b" style={{ borderColor: 'var(--border)' }}>
         <div style={{
           display: 'flex', alignItems: 'center',
           background: 'var(--page-bg-alt)', border: '1px solid var(--border)',
@@ -55,7 +55,7 @@ const ChatSidebar = memo(function ChatSidebar({
       </div>
 
       {/* ── Search Bar (matching app-wide input style) ── */}
-      <div className="px-3 py-2.5 border-b" style={{ borderColor: 'var(--border)' }}>
+      <div id="tour-chat-search" className="px-3 py-2.5 border-b" style={{ borderColor: 'var(--border)' }}>
         <div className="relative chat-input-focus" style={{
           borderRadius: '8px',
           border: searchFocused ? '1px solid var(--theme-500)' : '1px solid var(--border)',
@@ -84,7 +84,7 @@ const ChatSidebar = memo(function ChatSidebar({
       {/* ── Tab Content ── */}
       <div className="flex-1 overflow-y-auto p-2 chat-scroll">
         {activeTab === 'channels' && (
-          <>
+          <div id="tour-chat-channel-list">
             {/* Section label */}
             <div className="px-3 py-1.5 mb-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
@@ -148,7 +148,7 @@ const ChatSidebar = memo(function ChatSidebar({
                 </button>
               )
             })}
-          </>
+          </div>
         )}
 
         {activeTab === 'dms' && (

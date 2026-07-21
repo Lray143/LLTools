@@ -77,8 +77,10 @@ export default function OutletCardGrid({ outlets, onEdit, onDelete, onViewOrders
 
   return (
     <div className="grid grid-cols-3 gap-4">
-      {outlets.map((o) => (
-        <OutletCard key={o.id} outlet={o} onEdit={onEdit} onDelete={onDelete} onViewOrders={onViewOrders} />
+      {outlets.map((o, index) => (
+        <div key={o.id} id={index === 0 ? 'tour-outlet-card' : undefined}>
+          <OutletCard outlet={o} onEdit={onEdit} onDelete={onDelete} onViewOrders={onViewOrders} />
+        </div>
       ))}
     </div>
   )

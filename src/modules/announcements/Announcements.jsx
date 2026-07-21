@@ -882,10 +882,16 @@ export default function Announcements({ currentUser, refreshKey, onNavigate }) {
     window.addEventListener('tour-next-step', handleNext)
     window.addEventListener('tour-prev-step', handlePrev)
     window.addEventListener('force-close-tour', handleForceClose)
+    const handleStartTour = () => {
+      if (composing) setComposing(false)
+      if (view === 'archived') setView('feed')
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
     return () => {
       window.removeEventListener('tour-next-step', handleNext)
       window.removeEventListener('tour-prev-step', handlePrev)
       window.removeEventListener('force-close-tour', handleForceClose)
+      window.removeEventListener('start-page-tour', handleStartTour)
     }
   }, [canPost, composing, view])
 

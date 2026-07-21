@@ -26,6 +26,7 @@ import GroupHeaderRow         from './GroupHeaderRow'
 import ProductRow             from './ProductRow'
 import AddGroupModal          from './AddGroupModal'
 import ArchivedProductsDrawer from './ArchivedProductsDrawer'
+import PageGuide              from '../../../components/ui/PageGuide'
 
 const COLUMNS = [
   { label: '',                 width: '32px'                     },
@@ -352,6 +353,157 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
     }
   }
 
+  const guideSteps = [
+    {
+      target: 'body',
+      content: 'Welcome to the Products page! This is your central catalog for managing all items, prices, and groups.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-products-search',
+      content: 'Use this search bar to quickly find products by name, barcode, or item number.',
+      placement: 'bottom-end'
+    },
+    {
+      target: '#tour-products-outlet',
+      content: 'This dropdown lets you switch between your Default Prices and Outlet-specific prices. If you select an Outlet, you can override the default prices for that specific store!',
+      placement: 'bottom-start'
+    },
+    {
+      target: '#tour-products-table',
+      content: 'Here is your product catalog, neatly organized into groups. You can expand or collapse each group using the arrows.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-products-edit',
+      content: 'Click this Edit button to unlock the catalog. Let\'s turn it on now to see what changes!',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-products-add-group',
+      content: 'A new "Add Group" button appears! Use this to create a new product category for your catalog.',
+      placement: 'bottom'
+    },
+    {
+      target: '#tour-products-add-row',
+      content: 'Inside each group header, an "Add Row" button lets you instantly add a new blank product to that group.',
+      placement: 'right'
+    },
+    {
+      target: '#tour-products-rename',
+      content: 'The Rename button lets you change the group name at any time. Just click it, type a new name, and press Enter to save.',
+      placement: 'right'
+    },
+    {
+      target: '#tour-products-delete-group',
+      content: 'The Delete button archives the entire group and all its products. Don\'t worry, you can restore them from the Archive drawer later!',
+      placement: 'right'
+    },
+    {
+      target: '#tour-products-table',
+      content: 'You can also click directly on any cell like a price or description to edit it in place. Click Next to lock the catalog again.',
+      placement: 'center'
+    },
+    {
+      target: '#tour-products-archive',
+      content: 'Click here to open the Archive drawer, a safe holding area for products you have removed from the catalog. Let\'s open it now!',
+      placement: 'bottom-end'
+    },
+    {
+      target: '#tour-products-archive-panel',
+      content: 'Here is the Archive drawer! You can search through archived products, restore them, or permanently delete them. Click Next to close this drawer.',
+      placement: 'left'
+    },
+    {
+      target: '#tour-activity-log',
+      content: 'Click the History button anytime to view a complete log of changes made to the catalog. Let\'s check it out!',
+      placement: 'bottom-end'
+    },
+    {
+      target: '#tour-activity-log-panel',
+      content: 'This drawer tracks everything! From price adjustments to removed products, you can see exactly who changed what and when. Click Next to close it.',
+      placement: 'left'
+    },
+    {
+      target: '#page-tour-help-btn',
+      content: 'You can restart this guide anytime by clicking here.',
+      placement: 'bottom-end'
+    }
+  ]
+
+  useEffect(() => {
+    const transitionPanel = (stateFn, advanceFn, delay = 500) => {
+      document.body.classList.add('hide-joyride')
+      stateFn()
+      setTimeout(() => {
+        advanceFn?.()
+        document.body.classList.remove('hide-joyride')
+      }, delay)
+    }
+
+    const handleNext = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 4) {  // Edit btn → turn ON edit mode, expand all groups
+        transitionPanel(() => { setEditMode(true); setCollapsed({}) }, window.advanceJoyride, 800)
+      } else if (index === 9) {  // Inline-edit step → turn OFF edit mode before archive
+        transitionPanel(() => setEditMode(false), window.advanceJoyride, 600)
+      } else if (index === 10) { // Archive button → open archive panel
+        transitionPanel(() => setShowArchive(true), window.advanceJoyride)
+      } else if (index === 11) { // Archive panel → close it
+        transitionPanel(() => setShowArchive(false), window.advanceJoyride)
+      } else if (index === 12) { // History button → open history panel
+        transitionPanel(() => window.dispatchEvent(new CustomEvent('force-open-activity-log')), window.advanceJoyride)
+      } else if (index === 13) { // History panel → close history panel
+        transitionPanel(() => window.dispatchEvent(new CustomEvent('force-close-activity-log')), window.advanceJoyride)
+      } else {
+        window.advanceJoyride?.()
+      }
+    }
+
+    const handlePrev = (e) => {
+      e.preventDefault()
+      const { index } = e.detail
+      if (index === 5) {  // Back from Add Group → turn OFF edit mode
+        transitionPanel(() => setEditMode(false), window.retreatJoyride, 600)
+      } else if (index === 10) { // Back from Archive btn → just retreat (edit already off)
+        transitionPanel(() => setEditMode(false), window.retreatJoyride, 600)
+      } else if (index === 11) { // Back from archive panel → close panel
+        transitionPanel(() => setShowArchive(false), window.retreatJoyride)
+      } else if (index === 12) { // Back from history btn → re-open archive panel
+        transitionPanel(() => setShowArchive(true), window.retreatJoyride)
+      } else if (index === 13) { // Back from history panel → close history panel
+        transitionPanel(() => window.dispatchEvent(new CustomEvent('force-close-activity-log')), window.retreatJoyride)
+      } else if (index === 14) { // Back from help button → re-open history panel
+        transitionPanel(() => window.dispatchEvent(new CustomEvent('force-open-activity-log')), window.retreatJoyride)
+      } else {
+        window.retreatJoyride?.()
+      }
+    }
+
+    const handleForceClose = () => {
+      setEditMode(false)
+      setShowArchive(false)
+      window.dispatchEvent(new CustomEvent('force-close-activity-log'))
+    }
+
+    window.addEventListener('tour-next-step', handleNext)
+    window.addEventListener('tour-prev-step', handlePrev)
+    window.addEventListener('force-close-tour', handleForceClose)
+    const handleStartTour = () => {
+      setEditMode(false)
+      setShowArchive(false)
+      window.dispatchEvent(new CustomEvent('force-close-activity-log'))
+    }
+    window.addEventListener('start-page-tour', handleStartTour)
+    return () => {
+      window.removeEventListener('tour-next-step', handleNext)
+      window.removeEventListener('tour-prev-step', handlePrev)
+      window.removeEventListener('force-close-tour', handleForceClose)
+      window.removeEventListener('start-page-tour', handleStartTour)
+    }
+  }, [])
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
@@ -407,7 +559,7 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
       )}
 
       {/* ── Table area (mirrors BiometricTable container) ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-8 pb-8 pt-4">
+      <div id="tour-products-table" className="flex-1 min-h-0 overflow-y-auto px-8 pb-8 pt-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full text-sm border-collapse">
 
@@ -454,9 +606,10 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
                 </tr>
               )}
 
-              {filteredGroups.map((group) => (
+              {filteredGroups.map((group, groupIndex) => (
                 <Fragment key={group.id}>
                   <GroupHeaderRow
+                    groupIndex={groupIndex}
                     group={group}
                     collapsed={!!collapsed[group.id]}
                     onToggleCollapse={handleToggleCollapse}
@@ -515,6 +668,8 @@ export default function ProductsTable({ search = '', onSearchChange, refreshKey 
           onClose={() => setShowArchive(false)}
         />
       )}
+
+      <PageGuide steps={guideSteps} storageKey="seen_products_tour" />
     </div>
   )
 }
