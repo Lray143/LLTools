@@ -20,7 +20,8 @@ function CustomTooltip({
         border: '1px solid var(--border)',
         borderRadius: '12px',
         padding: '16px',
-        maxWidth: '320px',
+        maxWidth: 'min(320px, calc(100vw - 40px))',
+        width: 'min(320px, calc(100vw - 40px))',
         boxShadow: '0 12px 28px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08)',
         color: 'var(--text-primary)',
         fontFamily: 'inherit',
@@ -34,7 +35,7 @@ function CustomTooltip({
           {...skipProps}
           onClick={(e) => {
             if (skipProps.onClick) skipProps.onClick(e)
-            window.dispatchEvent(new CustomEvent('force-close-tour'))
+            window.dispatchEvent(new CustomEvent('force-close-app-tour'))
           }}
           style={{
             background: 'transparent',
@@ -74,7 +75,7 @@ function CustomTooltip({
             onClick={(e) => {
               if (primaryProps.onClick) primaryProps.onClick(e)
               if (isLastStep) {
-                window.dispatchEvent(new CustomEvent('force-close-tour'))
+                window.dispatchEvent(new CustomEvent('force-close-app-tour'))
               }
             }}
             style={{
@@ -130,10 +131,10 @@ export default function AppGuide({ currentUser }) {
     }
     
     window.addEventListener('start-tour', startTour)
-    window.addEventListener('force-close-tour', forceClose)
+    window.addEventListener('force-close-app-tour', forceClose)
     return () => {
       window.removeEventListener('start-tour', startTour)
-      window.removeEventListener('force-close-tour', forceClose)
+      window.removeEventListener('force-close-app-tour', forceClose)
     }
   }, [])
 
@@ -227,7 +228,9 @@ export default function AppGuide({ currentUser }) {
       key={tourKey}
       callback={handleJoyrideCallback}
       continuous
-      disableScrolling={true}
+      disableScrolling={false}
+      scrollToFirstStep
+      scrollOffset={120}
       disableOverlayClose={true}
       disableCloseOnEsc={true}
       spotlightClicks={true}

@@ -20,7 +20,8 @@ function CustomTooltip({
         border: '1px solid var(--border)',
         borderRadius: '12px',
         padding: '16px',
-        maxWidth: '320px',
+        maxWidth: 'min(320px, calc(100vw - 40px))',
+        width: 'min(320px, calc(100vw - 40px))',
         boxShadow: '0 12px 28px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08)',
         color: 'var(--text-primary)',
         fontFamily: 'inherit',
@@ -35,7 +36,7 @@ function CustomTooltip({
           {...skipProps}
           onClick={(e) => {
             if (skipProps.onClick) skipProps.onClick(e)
-            window.dispatchEvent(new CustomEvent('force-close-tour'))
+            window.dispatchEvent(new CustomEvent('force-close-page-tour'))
           }}
           style={{
             background: 'transparent',
@@ -98,7 +99,7 @@ function CustomTooltip({
               }
               
               if (isLastStep) {
-                window.dispatchEvent(new CustomEvent('force-close-tour'))
+                window.dispatchEvent(new CustomEvent('force-close-page-tour'))
               }
             }}
             style={{
@@ -159,10 +160,10 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
     }
     
     window.addEventListener(eventName, startTour)
-    window.addEventListener('force-close-tour', forceClose)
+    window.addEventListener('force-close-page-tour', forceClose)
     return () => {
       window.removeEventListener(eventName, startTour)
-      window.removeEventListener('force-close-tour', forceClose)
+      window.removeEventListener('force-close-page-tour', forceClose)
     }
   }, [storageKey, eventName])
 
@@ -227,7 +228,9 @@ export default function PageGuide({ steps = [], storageKey = 'seen_page_tour', e
       key={tourKey}
       callback={handleJoyrideCallback}
       continuous
-      disableScrolling={true}
+      disableScrolling={false}
+      scrollToFirstStep
+      scrollOffset={120}
       disableOverlayClose={true}
       disableCloseOnEsc={true}
       spotlightClicks={true}

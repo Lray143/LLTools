@@ -12,7 +12,7 @@ const { uploadFileToR2, getBucketSize } = require('./r2.cjs')
 const fs = require('fs')
 const crypto = require('crypto')
 const {
-  initDb, loginUser, syncCloud, wipeAllData, getDatabaseSize,
+  initDb, loginUser, syncCloud, wipeAllData, wipeModuleData, getDatabaseSize,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance,
@@ -285,6 +285,7 @@ ipcMain.handle('users:heartbeat',      (_, id)               => heartbeatUser(id
 ipcMain.handle('users:logout',         (_, id)               => logoutUser(id))
 
 ipcMain.handle('db:wipeAll',           ()                    => wipeAllData())
+ipcMain.handle('db:wipeModule',        (_, scopes)           => wipeModuleData(scopes))
 
 ipcMain.handle('getSystemUsage', async () => {
   let tursoBytes = 0

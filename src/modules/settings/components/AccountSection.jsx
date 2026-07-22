@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Database, Cloud, Activity, Server } from 'lucide-react'
+import { Eye, EyeOff, Database, Cloud, Activity, Server, Users, Fingerprint, Megaphone, HeartPulse, Package, Store, ShoppingCart, FileText, MessageSquare, CalendarOff, ScrollText, AlertTriangle, Trash2 } from 'lucide-react'
 import { SectionHeading, SettingRow } from './AppearanceSection'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -25,6 +25,7 @@ export function AccountSection({ currentUser }) {
   const [wipePassword, setWipePassword] = useState('')
   const [wipeError, setWipeError] = useState('')
   const [isWiping, setIsWiping] = useState(false)
+  const [selectedScopes, setSelectedScopes] = useState([])
 
   const [credModalOpen, setCredModalOpen] = useState(false)
   const [newUsername, setNewUsername] = useState(currentUser?.username || '')
@@ -86,8 +87,39 @@ export function AccountSection({ currentUser }) {
     }
   }
 
+  const WIPE_MODULES = [
+    { key: 'all',          label: 'Everything',     desc: 'All records, users & files',        icon: Trash2,        danger: true  },
+    { key: 'employees',    label: 'Employees',      desc: 'Employee records & attendance',     icon: Users,         danger: false },
+    { key: 'biometrics',   label: 'Biometrics',     desc: 'Attendance logs only',              icon: Fingerprint,   danger: false },
+    { key: 'announcements',label: 'Announcements',  desc: 'Posts, comments & reads',           icon: Megaphone,     danger: false },
+    { key: 'clinic',       label: 'Clinic Log',     desc: 'All clinic visit records',          icon: HeartPulse,    danger: false },
+    { key: 'products',     label: 'Products',       desc: 'Products, groups & outlet pricing', icon: Package,       danger: false },
+    { key: 'outlets',      label: 'Outlets',        desc: 'Outlet records & product pricing',  icon: Store,         danger: false },
+    { key: 'orders',       label: 'Orders',         desc: 'Saved & vanselling orders',         icon: ShoppingCart,  danger: false },
+    { key: 'reports',      label: 'Reports',        desc: 'Reports, comments & status logs',   icon: FileText,      danger: false },
+    { key: 'chats',        label: 'Chats',          desc: 'Messages & file attachments',       icon: MessageSquare, danger: false },
+    { key: 'leave',        label: 'Leave Requests', desc: 'All leave request records',         icon: CalendarOff,   danger: false },
+    { key: 'activity_logs',label: 'Activity Logs',  desc: 'Module audit history',              icon: ScrollText,    danger: false },
+  ]
+
+  const isAllSelected = selectedScopes.includes('all')
+  const toggleScope = (key) => {
+    if (key === 'all') {
+      setSelectedScopes(isAllSelected ? [] : ['all'])
+    } else {
+      setSelectedScopes(prev => {
+        const filtered = prev.filter(k => k !== 'all')
+        return filtered.includes(key) ? filtered.filter(k => k !== key) : [...filtered, key]
+      })
+    }
+  }
+
   async function handleWipe() {
     setWipeError('')
+    if (selectedScopes.length === 0) {
+      setWipeError('Please select at least one module to wipe.')
+      return
+    }
     if (!wipePassword) {
       setWipeError('Password is required.')
       return
@@ -104,16 +136,20 @@ export function AccountSection({ currentUser }) {
         return
       }
 
-      await window.electronAPI.wipeAllData()
+      await window.electronAPI.wipeModuleData(selectedScopes)
+      const isAll = selectedScopes.includes('all')
       setNotificationState({
         open: true,
-        title: 'Database Wiped',
-        message: 'Database completely wiped! Reloading app...',
+        title: isAll ? 'Database Wiped' : 'Module Data Wiped',
+        message: isAll
+          ? 'Database completely wiped! Reloading app...'
+          : `Selected data cleared successfully. Reloading app...`,
         type: 'info'
       })
       setTimeout(() => window.location.reload(), 2000)
     } catch (err) {
-      setWipeError('An error occurred.')
+      console.error('[Wipe] Error:', err)
+      setWipeError(err?.message || 'An unexpected error occurred. Check the console for details.')
       setIsWiping(false)
     }
   }
@@ -343,38 +379,114 @@ export function AccountSection({ currentUser }) {
             </button>
           </SettingRow>
 
-          <Dialog open={wipeModalOpen} onOpenChange={setWipeModalOpen}>
-            <DialogContent className="p-6 max-w-[400px]" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <Dialog open={wipeModalOpen} onOpenChange={open => { setWipeModalOpen(open); if (!open) { setSelectedScopes([]); setWipePassword(''); setWipeError('') } }}>
+            <DialogContent className="p-6" style={{ background: 'var(--surface)', borderColor: 'var(--border)', maxWidth: 520, width: '95vw' }}>
               <DialogHeader>
-                <DialogTitle className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>Wipe Database</DialogTitle>
-                <p className="text-sm mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                  Are you absolutely sure you want to completely WIPE all data? This will clear the entire database. <strong className="text-red-500">It cannot be undone.</strong>
+                <DialogTitle className="font-semibold text-lg" style={{ color: 'var(--text-primary)' }}>Selective Data Wipe</DialogTitle>
+                <p className="text-sm mt-1 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  Select the modules you want to clear. This <strong className="text-red-500">cannot be undone.</strong>
                 </p>
               </DialogHeader>
 
-              <div className="mt-4 flex flex-col gap-2">
+              {/* Module grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+                {WIPE_MODULES.map(mod => {
+                  const checked  = isAllSelected ? mod.key === 'all' : selectedScopes.includes(mod.key)
+                  const disabled = isAllSelected && mod.key !== 'all'
+                  const activeColor = mod.danger ? '#ef4444' : 'var(--theme-500)'
+                  const ModIcon = mod.icon
+                  return (
+                    <button
+                      key={mod.key}
+                      onClick={() => toggleScope(mod.key)}
+                      disabled={disabled}
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
+                        borderRadius: 10,
+                        border: `1.5px solid ${checked ? activeColor : 'var(--border)'}`,
+                        background: checked
+                          ? mod.danger ? 'rgba(239,68,68,0.06)' : 'var(--theme-50, rgba(var(--theme-500-rgb,245,158,11),0.06))'
+                          : 'var(--page-bg-alt)',
+                        cursor: disabled ? 'not-allowed' : 'pointer', textAlign: 'left',
+                        opacity: disabled ? 0.4 : 1, transition: 'all 150ms',
+                        gridColumn: mod.key === 'all' ? '1 / -1' : undefined,
+                      }}
+                    >
+                      {/* Custom checkbox */}
+                      <div style={{
+                        width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 2,
+                        border: `2px solid ${checked ? activeColor : 'var(--text-secondary)'}`,
+                        background: checked ? activeColor : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 150ms',
+                      }}>
+                        {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                      </div>
+                      {/* Icon + text */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flex: 1 }}>
+                        <ModIcon size={14} style={{ color: checked ? activeColor : 'var(--text-secondary)', marginTop: 2, flexShrink: 0 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: checked ? activeColor : 'var(--text-primary)' }}>{mod.label}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 1 }}>{mod.desc}</div>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Warning banner */}
+              {selectedScopes.length > 0 && (
+                <div style={{
+                  marginTop: 12, padding: '10px 14px', borderRadius: 8,
+                  background: isAllSelected ? 'rgba(239,68,68,0.07)' : 'rgba(var(--theme-500-rgb,245,158,11),0.07)',
+                  border: `1px solid ${isAllSelected ? 'rgba(239,68,68,0.25)' : 'var(--theme-200, rgba(245,158,11,0.3))'}`,
+                  fontSize: 12.5,
+                  color: isAllSelected ? '#dc2626' : 'var(--theme-600, #b45309)',
+                  fontWeight: 500,
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                }}>
+                  <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>
+                    {isAllSelected
+                      ? 'This will wipe the entire database including all users and files.'
+                      : `This will permanently delete data for: ${selectedScopes.map(k => WIPE_MODULES.find(m => m.key === k)?.label).join(', ')}.`
+                    }
+                  </span>
+                </div>
+              )}
+
+              {/* Password */}
+              <div className="mt-3 flex flex-col gap-2">
                 <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Confirm Password</label>
                 <Input
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Enter your password to confirm"
                   value={wipePassword}
                   onChange={e => setWipePassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleWipe()}
                   className="text-sm h-10 mt-1"
                   style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
                 />
                 {wipeError && <p className="text-xs text-red-500 mt-1 font-medium">{wipeError}</p>}
               </div>
 
-              <DialogFooter className="mt-6 gap-2">
+              <DialogFooter className="mt-4 gap-2">
                 <Button variant="outline" onClick={() => setWipeModalOpen(false)} disabled={isWiping} style={{ background: 'transparent', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
                   Cancel
                 </Button>
-                <Button onClick={handleWipe} disabled={isWiping} className="bg-red-500 hover:bg-red-600 text-white font-medium border-none">
-                  {isWiping ? 'Wiping...' : 'Wipe All Data'}
+                <Button
+                  onClick={handleWipe}
+                  disabled={isWiping || selectedScopes.length === 0}
+                  className="text-white font-medium border-none"
+                  style={{ background: isAllSelected ? '#ef4444' : 'var(--theme-500)' }}
+                >
+                  {isWiping ? 'Wiping...' : isAllSelected ? 'Wipe Everything' : `Wipe ${selectedScopes.length} Module${selectedScopes.length > 1 ? 's' : ''}`}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
         </>
       )}
 

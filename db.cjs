@@ -25,8 +25,8 @@ function getClient() {
     })
     console.log('[DB] Client created (cloud sync enabled)')
   } catch (err) {
-    if (err.message && err.message.includes('InvalidLocalState') && !isRecovering) {
-      console.warn('[DB] InvalidLocalState detected during init. Auto-recovering...')
+    if (err.message && (err.message.includes('InvalidLocalState') || err.message.includes('WalConflict')) && !isRecovering) {
+      console.warn(`[DB] ${err.message.includes('WalConflict') ? 'WalConflict' : 'InvalidLocalState'} detected during init. Auto-recovering...`)
       return recoverDatabase()
     }
     console.warn('[DB] Cloud connection failed, falling back to local-only:', err.message)
@@ -167,7 +167,11 @@ const syncCloud = async () => {
     }
     lastDataVersion = currentVersion;
   } catch (e) {
-    // console.warn('[DB] Sync skipped:', e.message)
+    const msg = e.message || ''
+    if (msg.includes('WalConflict') || msg.includes('InvalidLocalState')) {
+      console.warn(`[DB] ${msg.includes('WalConflict') ? 'WalConflict' : 'InvalidLocalState'} during sync. Triggering auto-recovery...`)
+      recoverDatabase()
+    }
   } finally {
     isSyncing = false;
   }
@@ -603,7 +607,14 @@ const initDb = async () => {
       const msg = err.message || ''
       if (msg.includes('SQLITE_BUSY') || msg.includes('database is locked') || msg.includes('WalConflict')) {
         schemaRetries--
-        if (schemaRetries === 0) throw err
+        if (schemaRetries === 0) {
+          if (msg.includes('WalConflict')) {
+            console.warn('[DB] WalConflict persisted during init. Triggering auto-recovery...')
+            recoverDatabase()
+            break // Cloud sync pulled the correct schema
+          }
+          throw err
+        }
         await new Promise(r => setTimeout(r, 500))
       } else {
         throw err
@@ -1839,6 +1850,95 @@ const wipeAllData = async () => {
   }
 }
 
+// ── SELECTIVE WIPE ────────────────────────────────────────────────────────────
+// Maps each module scope key → the exact tables that belong to it
+const MODULE_TABLES = {
+  // Employees module — employee records + their attendance biometrics
+  // Also wipes linked user accounts (except admin)
+  employees:     ['employees', 'attendance'],
+
+  // Biometrics module — only the attendance clock-in/out data
+  biometrics:    ['attendance'],
+
+  // Announcements module — posts + all related tables
+  announcements: ['announcements', 'announcement_acknowledgements', 'announcement_reads', 'announcement_comments', 'announcement_reactions'],
+
+  // Clinic Log module
+  clinic:        ['clinic_logs'],
+
+  // Products module — product groups, products, and per-outlet pricing
+  products:      ['products', 'product_groups', 'outlet_product_prices'],
+
+  // Outlets module — outlet records + their product pricing
+  // NOTE: does NOT wipe saved_orders (those belong to Orders)
+  outlets:       ['outlets', 'outlet_product_prices'],
+
+  // Orders module — saved/vanselling order records only
+  orders:        ['saved_orders'],
+
+  // Reports module — reports + comments + status change history
+  reports:       ['reports', 'report_comments', 'report_status_logs'],
+
+  // Chats module — department group chats + direct messages + read receipts
+  // Also triggers Cloudflare R2 file attachment wipe
+  chats:         ['department_chats', 'direct_messages', 'chat_read_receipts'],
+
+  // Leave Requests module
+  leave:         ['leave_requests'],
+
+  // Activity Logs — cross-module audit trail
+  activity_logs: ['module_activity_logs'],
+}
+
+const wipeModuleData = async (scopes) => {
+  // scopes = array of keys from MODULE_TABLES, or ['all']
+  while (isSyncing) {
+    await new Promise(r => setTimeout(r, 100))
+  }
+  isBulkOperating = true
+  try {
+    let tables
+    if (scopes.includes('all')) {
+      // Same as wipeAllData but without resetting users & reinit
+      tables = [
+        'attendance', 'clinic_logs', 'saved_orders', 'leave_requests', 'reports',
+        'report_comments', 'report_status_logs', 'department_chats',
+        'direct_messages', 'chat_read_receipts', 'module_activity_logs', 'outlet_product_prices', 'outlets',
+        'products', 'product_groups', 'employees',
+        'announcements', 'announcement_acknowledgements', 'announcement_comments', 'announcement_reactions', 'announcement_reads'
+      ]
+    } else {
+      // Deduplicate tables across all selected scopes
+      const set = new Set()
+      for (const scope of scopes) {
+        const t = MODULE_TABLES[scope]
+        if (t) t.forEach(tbl => set.add(tbl))
+      }
+      tables = [...set]
+    }
+
+    for (const t of tables) {
+      try { await run(`DELETE FROM ${t}`) } catch(e) {}
+      await new Promise(r => setTimeout(r, 50))
+    }
+
+    if (scopes.includes('all')) {
+      try { await run(`DELETE FROM users WHERE username != 'admin@doublel.com'`) } catch(e) {}
+      await emptyBucket()
+      await initDb()
+    } else if (scopes.includes('chats')) {
+      // Wipe R2 chat attachments too
+      await emptyBucket()
+    }
+
+    const { BrowserWindow } = require('electron')
+    const windows = BrowserWindow.getAllWindows()
+    if (windows.length > 0) windows[0].webContents.send('db:synced')
+  } finally {
+    isBulkOperating = false
+  }
+}
+
 // ── ANNOUNCEMENTS ─────────────────────────────────────────────────────────────
 
 const getAnnouncements = async (employeeId = null, includeArchived = false) => {
@@ -2080,7 +2180,7 @@ const getDatabaseSize = async () => {
 };
 
 module.exports = {
-  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud, wipeAllData, getDatabaseSize,
+  initDb, loginUser, refreshUser, queryAll, queryOne, run, syncCloud, wipeAllData, wipeModuleData, getDatabaseSize,
   getEmployees, getArchivedEmployees,
   upsertEmployee, archiveEmployee, unarchiveEmployee, permanentDeleteEmployee,
   getAttendance, getAttendanceByDate, getMyAttendance, importAttendance, importAttendanceRawText,

@@ -1,10 +1,13 @@
-import { Pencil, Trash2, Tag, ScrollText, MapPin } from 'lucide-react'
+import { Pencil, Trash2, Tag, ScrollText, MapPin, User } from 'lucide-react'
 import { getOutletColor } from '../outletConstants'
 
-function OutletCard({ outlet, onEdit, onDelete, onViewOrders }) {
+function OutletCard({ outlet, employees = [], onEdit, onDelete, onViewOrders }) {
   const colorClass = getOutletColor(outlet.name)
   const initial    = (outlet.name || '?').charAt(0).toUpperCase()
   const discounts  = outlet.discounts ?? []
+
+  const emp = employees.find(e => String(e.no) === String(outlet.added_by) || String(e.employee_no) === String(outlet.added_by) || String(e.id) === String(outlet.added_by) || e.name === outlet.added_by)
+  const addedByName = emp ? (emp.name || `${emp.first} ${emp.surname}`) : outlet.added_by
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col items-center gap-2 hover:shadow-md transition-shadow relative group">
@@ -61,11 +64,16 @@ function OutletCard({ outlet, onEdit, onDelete, onViewOrders }) {
           <span className="truncate">{outlet.region}</span>
         </span>
       )}
+      
+      <div className="flex items-center gap-1.5 mt-2 text-[11px] text-gray-400 border-t border-gray-100 pt-3 w-full justify-center">
+        <User size={12} className="text-gray-300" />
+        <span>Added by: <span className="font-medium text-gray-500">{addedByName || 'Unknown'}</span></span>
+      </div>
     </div>
   )
 }
 
-export default function OutletCardGrid({ outlets, onEdit, onDelete, onViewOrders }) {
+export default function OutletCardGrid({ outlets, employees = [], onEdit, onDelete, onViewOrders }) {
   if (outlets.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
@@ -79,7 +87,7 @@ export default function OutletCardGrid({ outlets, onEdit, onDelete, onViewOrders
     <div className="grid grid-cols-3 gap-4">
       {outlets.map((o, index) => (
         <div key={o.id} id={index === 0 ? 'tour-outlet-card' : undefined}>
-          <OutletCard outlet={o} onEdit={onEdit} onDelete={onDelete} onViewOrders={onViewOrders} />
+          <OutletCard outlet={o} employees={employees} onEdit={onEdit} onDelete={onDelete} onViewOrders={onViewOrders} />
         </div>
       ))}
     </div>

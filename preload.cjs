@@ -6,6 +6,7 @@ window.electronAPI = {
   login:                   (creds)              => ipcRenderer.invoke('auth:login', creds),
   refreshUser:             (id)                 => ipcRenderer.invoke('auth:refresh', id),
   wipeAllData:             ()                   => ipcRenderer.invoke('db:wipeAll'),
+  wipeModuleData:          (scopes)             => ipcRenderer.invoke('db:wipeModule', scopes),
 
   // ── App Links ───────────────────────────────────────────────────
   getAppLinks:             ()                   => ipcRenderer.invoke('appLinks:getAll'),

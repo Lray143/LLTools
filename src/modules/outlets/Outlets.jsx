@@ -19,6 +19,7 @@ import OutletOrdersDrawer  from './components/OutletOrdersDrawer'
 export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
   const [outlets,         setOutlets]         = useState([])
   const [archivedOutlets, setArchivedOutlets] = useState([])
+  const [employees,       setEmployees]       = useState([])
   const [loading,         setLoading]         = useState(true)
 
   // UI state — 'cards' | 'list' | 'orders'
@@ -39,14 +40,18 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
   // ── Data loading ────────────────────────────────────────────────
   const load = async (showSpinner = true) => {
     if (showSpinner) setLoading(true)
-    const [active, archived] = await Promise.all([
+    const [active, archived, emps] = await Promise.all([
       window.electronAPI.getOutlets(),
       window.electronAPI.getArchivedOutlets(),
+      window.electronAPI.getEmployees ? window.electronAPI.getEmployees() : Promise.resolve([]),
     ])
     const newActive   = active   ?? []
     const newArchived = archived ?? []
+    const newEmps     = (emps ?? []).map ? (emps ?? []) : []
+    
     setOutlets(prev        => JSON.stringify(prev) === JSON.stringify(newActive)   ? prev : newActive)
     setArchivedOutlets(prev => JSON.stringify(prev) === JSON.stringify(newArchived) ? prev : newArchived)
+    setEmployees(prev      => JSON.stringify(prev) === JSON.stringify(newEmps)     ? prev : newEmps)
     setLoading(false)
   }
 
@@ -60,7 +65,7 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
       region: payload.region, status: payload.status, discounts: payload.discounts,
     }
     const payloadToSave = { ...payload }
-    if (isNew) payloadToSave.added_by = currentUser?.name || 'Unknown'
+    if (isNew) payloadToSave.added_by = currentUser?.employeeId || currentUser?.id || 'Unknown'
     await window.electronAPI.upsertOutlet(payloadToSave)
     if (isNew) {
       await logModuleActivity(currentUser, 'outlets', 'add', payload.name, payload.id, buildActivityDetails({
@@ -442,20 +447,27 @@ export default function Outlets({ refreshKey = 0, currentUser, onNavigate }) {
             </div>
           ) : view === 'orders' ? (
             <OutletOrdersView outlets={outlets} />
-          ) : view === 'cards' ? (
-            <OutletCardGrid
-              outlets={filtered}
-              onEdit={o => setEditTarget(o)}
-              onDelete={o => setDeleteTarget(o)}
-              onViewOrders={o => setOrdersTarget(o)}
-            />
           ) : (
-            <OutletListView
-              outlets={filtered}
-              onEdit={o => setEditTarget(o)}
-              onDelete={o => setDeleteTarget(o)}
-              onViewOrders={o => setOrdersTarget(o)}
-            />
+            <>
+              {view === 'cards' && (
+                <OutletCardGrid
+                  outlets={filtered}
+                  employees={employees}
+                  onEdit={setEditTarget}
+                  onDelete={setDeleteTarget}
+                  onViewOrders={setOrdersTarget}
+                />
+              )}
+              {view === 'list' && (
+                <OutletListView
+                  outlets={filtered}
+                  employees={employees}
+                  onEdit={setEditTarget}
+                  onDelete={setDeleteTarget}
+                  onViewOrders={setOrdersTarget}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { Pencil, Trash2, Tag, ScrollText } from 'lucide-react'
 import { getOutletColor } from '../outletConstants'
 
-export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders }) {
+export default function OutletListView({ outlets, employees = [], onEdit, onDelete, onViewOrders }) {
   if (outlets.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-gray-400">
@@ -29,6 +29,9 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
             const colorClass = getOutletColor(o.name)
             const initial    = (o.name || '?').charAt(0).toUpperCase()
             const discounts  = o.discounts ?? []
+            
+            const emp = employees.find(e => String(e.no) === String(o.added_by) || String(e.employee_no) === String(o.added_by) || String(e.id) === String(o.added_by) || e.name === o.added_by)
+            const addedByName = emp ? (emp.name || `${emp.first} ${emp.surname}`) : o.added_by
 
             return (
               <tr key={o.id} className="hover:bg-white transition-colors group">
@@ -72,7 +75,7 @@ export default function OutletListView({ outlets, onEdit, onDelete, onViewOrders
                 </td>
 
                 <td className="px-4 py-3 text-gray-500">
-                  {o.added_by || 'Unknown'}
+                  {addedByName || 'Unknown'}
                 </td>
 
                 <td className="px-4 py-3">
