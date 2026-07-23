@@ -85,10 +85,13 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState("")
+  const [shakeError, setShakeError] = useState(false)
 
   async function handleSave() {
     if (!form.name.trim()) {
       setError("Full Name is required.")
+      setShakeError(true)
+      setTimeout(() => setShakeError(false), 500)
       return
     }
     setError("")
@@ -175,14 +178,15 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
               {/* FULL NAME */}
               <div className="col-span-2 flex flex-col gap-1.5">
-                <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>Full Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>Full Name <span className={shakeError && error ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
                 <Input
                   placeholder="e.g. Juan dela Cruz"
                   value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  onChange={e => { setForm({ ...form, name: e.target.value }); setError('') }}
                   onBlur={e => setForm(f => ({ ...f, name: toTitleCase(f.name) }))}
-                  style={{ background: 'var(--page-bg)', borderColor: 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36 }}
+                  style={{ background: 'var(--page-bg)', borderColor: error ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)', fontSize: 13, height: 36 }}
                 />
+                {error && <p className="text-xs text-red-500 -mt-0.5">{error}</p>}
               </div>
 
               {/* POSITION */}
@@ -306,9 +310,8 @@ export function EmployeeModal({ open, mode, employee, onSave, onClose }) {
 
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="py-3 mt-4 border-t" style={{ borderColor: 'var(--border)' }}>
           <div className="flex flex-col w-full">
-            {error && <div className="text-red-500 text-xs mb-3 font-medium text-right">{error}</div>}
             <div className="flex justify-end gap-2 w-full">
               {isEdit && (
                 <div className="flex-1 flex justify-start">

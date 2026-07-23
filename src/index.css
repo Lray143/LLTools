@@ -40,6 +40,18 @@
   }
 }
 
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.shake {
+  display: inline-block;
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  color: #ef4444 !important; /* ensure it stays red/danger colored when shaking */
+}
+
 /* ── Dark mode overrides for Tailwind utility classes ────────────────────────
    When .dark is on <html>, override common hardcoded bg/text classes so the
    entire app adapts without touching every component file.                    */

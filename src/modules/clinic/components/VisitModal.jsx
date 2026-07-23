@@ -263,6 +263,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState("")
+  const [shakeError, setShakeError] = useState(false)
 
   useEffect(() => {
     if (open && visit) {
@@ -284,7 +285,8 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
 
   async function handleSave() {
     if (!form.fullName.trim()) {
-      setError("Employee Name is required.")
+      setShakeError(true)
+      setTimeout(() => setShakeError(false), 500)
       return
     }
     setError("")
@@ -329,14 +331,15 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
 
           {/* Employee name */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Employee Name</label>
+            <label className="text-sm font-medium text-gray-700">Employee Name <span className={shakeError && error ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
             <Input
               placeholder="Full name"
               value={form.fullName}
-              onChange={e => f("fullName", e.target.value)}
+              onChange={e => { f("fullName", e.target.value); setError("") }}
               onBlur={() => f("fullName", toTitleCase(form.fullName))}
-              className="bg-white border-gray-200"
+              className={`bg-white ${error ? 'border-red-400' : 'border-gray-200'}`}
             />
+            {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
           </div>
 
           {/* Gender + Age */}
@@ -459,8 +462,7 @@ export default function VisitModal({ open, visit, onSave, onClose }) {
 
         </div>
 
-        <DialogFooter className="flex flex-col w-full gap-3">
-          {error && <div className="text-red-500 text-xs font-medium text-right w-full">{error}</div>}
+        <DialogFooter className="flex flex-col w-full gap-3 mt-4 pt-4 border-t border-gray-100">
           <div className="flex justify-end gap-2 w-full">
             <Button
               variant="outline"

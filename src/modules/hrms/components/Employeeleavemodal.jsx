@@ -133,6 +133,7 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
   const [leaveStart, setLeaveStart] = useState("")
   const [leaveEnd,   setLeaveEnd]   = useState("")
   const [error,      setError]      = useState("")
+  const [shakeError, setShakeError] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -147,10 +148,13 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
   const selectedEmp = employees.find(e => e.id === employeeId)
 
   function handleSave() {
-    if (!employeeId)               { setError("Please select an employee.");        return }
-    if (!leaveStart)               { setError("Please set a leave start date.");    return }
-    if (!leaveEnd)                 { setError("Please set a leave end date.");      return }
-    if (leaveEnd < leaveStart)     { setError("End date must be after start date."); return }
+    if (!employeeId || !leaveStart || !leaveEnd) {
+      setShakeError(true)
+      setError("required")
+      setTimeout(() => setShakeError(false), 500)
+      return
+    }
+    if (leaveEnd < leaveStart) { setError("End date must be after start date."); return }
     setError("")
     onSave({ employeeId, leaveType, leaveStart, leaveEnd })
   }
@@ -169,12 +173,15 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
 
           {/* EMPLOYEE PICKER */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700">Employee</label>
-            <EmployeeCombobox
-              employees={employees}
-              value={employeeId}
-              onChange={setEmployeeId}
-            />
+            <label className="text-sm font-medium text-gray-700">Employee <span className={shakeError && !employeeId ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
+            <div className={error === "required" && !employeeId ? "border border-red-400 rounded-md" : ""}>
+              <EmployeeCombobox
+                employees={employees}
+                value={employeeId}
+                onChange={v => { setEmployeeId(v); if(error==="required") setError("") }}
+              />
+            </div>
+            {error === "required" && !employeeId && <p className="text-xs text-red-500 mt-0.5">Employee is required.</p>}
 
             {/* Mini preview card */}
             {selectedEmp && (
@@ -214,23 +221,25 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
           {/* DATE RANGE */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Leave Start</label>
+              <label className="text-sm font-medium text-gray-700">Leave Start <span className={shakeError && !leaveStart ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
               <Input
                 type="date"
                 value={leaveStart}
-                onChange={e => setLeaveStart(e.target.value)}
-                className="bg-white border-gray-200"
+                onChange={e => { setLeaveStart(e.target.value); if(error==="required") setError("") }}
+                className={`bg-white ${error === "required" && !leaveStart ? 'border-red-400' : 'border-gray-200'}`}
               />
+              {error === "required" && !leaveStart && <p className="text-xs text-red-500 -mt-0.5">Start date is required.</p>}
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700">Leave End</label>
+              <label className="text-sm font-medium text-gray-700">Leave End <span className={shakeError && !leaveEnd ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
               <Input
                 type="date"
                 value={leaveEnd}
                 min={leaveStart || undefined}
-                onChange={e => setLeaveEnd(e.target.value)}
-                className="bg-white border-gray-200"
+                onChange={e => { setLeaveEnd(e.target.value); if(error==="required") setError("") }}
+                className={`bg-white ${error === "required" && !leaveEnd ? 'border-red-400' : 'border-gray-200'}`}
               />
+              {error === "required" && !leaveEnd && <p className="text-xs text-red-500 -mt-0.5">End date is required.</p>}
             </div>
           </div>
 
@@ -251,7 +260,7 @@ export function EmployeeLeaveModal({ open, employees, onSave, onClose }) {
           )}
 
           {/* ERROR */}
-          {error && (
+          {(error && error !== "required") && (
             <p className="text-xs text-red-500 -mt-1">{error}</p>
           )}
         </div>

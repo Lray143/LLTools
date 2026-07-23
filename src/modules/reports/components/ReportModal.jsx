@@ -29,6 +29,7 @@ const emptyForm = () => ({
 export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
   const [form, setForm] = useState(emptyForm())
   const [error, setError] = useState("")
+  const [shakeError, setShakeError] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -72,7 +73,12 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
   }
 
   function handleSubmit() {
-    if (!form.subject.trim()) return
+    if (!form.subject.trim()) {
+      setShakeError(true)
+      setError("Subject is required.")
+      setTimeout(() => setShakeError(false), 500)
+      return
+    }
     // Build report_details_json based on type
     let reportDetailsJson = null
     if (form.report_type === 'Material Request') {
@@ -143,8 +149,9 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
             {/* Subject + Priority */}
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-2 flex flex-col gap-1.5">
-                <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Subject *</label>
-                <Input value={form.subject} onChange={e => set('subject', e.target.value)} onBlur={() => set('subject', toSentenceCase(form.subject))} placeholder="Brief subject..." className="text-sm h-10" style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+                <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Subject <span className={shakeError && error ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
+                <Input value={form.subject} onChange={e => { set('subject', e.target.value); setError('') }} onBlur={() => set('subject', toSentenceCase(form.subject))} placeholder="Brief subject..." className="text-sm h-10" style={{ background: 'var(--surface)', borderColor: error ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)' }} />
+                {error && <p className="text-xs text-red-500 -mt-0.5">{error}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Priority</label>
@@ -263,9 +270,8 @@ export function ReportModal({ open, onClose, onSubmit, loading, editReport }) {
         </div>
 
         {/* Footer */}
-        <div className="px-8 pb-8 flex flex-col gap-2">
-          {error && <div className="text-red-500 text-xs font-medium text-right w-full">{error}</div>}
-          <div className="flex justify-end gap-2 w-full">
+        <div className="p-5 border-t shrink-0 flex items-center justify-end" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+          <div className="flex gap-2 w-full justify-end">
             <Button variant="outline" className="text-sm h-10" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }} onClick={onClose} disabled={loading}>
               Cancel
             </Button>

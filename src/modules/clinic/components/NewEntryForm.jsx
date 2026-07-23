@@ -50,7 +50,7 @@ function getFileIcon(name = "") {
 }
 
 // ── Employee autocomplete ─────────────────────────────────────────────────────
-function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
+function EmployeeAutocomplete({ employees = [], value, onChange, onSelect, error }) {
   const [open,  setOpen]  = useState(false)
   const [query, setQuery] = useState(value ?? "")
   const containerRef      = useRef(null)
@@ -107,7 +107,7 @@ function EmployeeAutocomplete({ employees = [], value, onChange, onSelect }) {
           placeholder="Search name or ID…"
           onChange={handleChange}
           onFocus={() => setOpen(true)}
-          className="w-full h-9 pl-8 pr-8 text-sm border border-gray-200 rounded-md bg-white outline-none focus:border-orange-400 transition-colors placeholder:text-gray-400 text-gray-800"
+          className={`w-full h-9 pl-8 pr-8 text-sm border rounded-md bg-white outline-none focus:border-orange-400 transition-colors placeholder:text-gray-400 text-gray-800 ${error ? 'border-red-400' : 'border-gray-200'}`}
         />
         {query && (
           <button type="button" onClick={handleClear} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
@@ -380,9 +380,12 @@ function ComplaintAutocomplete({ value, onChange }) {
 // ── Main form ─────────────────────────────────────────────────────────────────
 export default function NewEntryForm({ form, set, saved, onSave, employees = [] }) {
   const [error, setError] = useState("")
+  const [shakeError, setShakeError] = useState(false)
 
   const handleSaveClick = () => {
     if (!form.employee?.trim()) {
+      setShakeError(true)
+      setTimeout(() => setShakeError(false), 500)
       setError("Employee Name is required.")
       return
     }
@@ -409,15 +412,17 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
 
       {/* ── Row 2: Employee Name ── */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">Employee Name</label>
+        <label className="block text-xs font-medium text-gray-500 mb-1.5">Employee Name <span className={shakeError && !form.employee?.trim() ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
         <EmployeeAutocomplete
           employees={employees}
           value={form.employee}
-          onChange={v => set("employee", v)}
+          error={error === "Employee Name is required."}
+          onChange={v => { set("employee", v); setError("") }}
           onSelect={emp => {
             set("employeeCode", emp ? (emp.employee_no ?? "") : "")
           }}
         />
+        {(error === "Employee Name is required.") && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
       </div>
 
       {/* ── Row 3: Gender + Age ── */}
@@ -552,7 +557,6 @@ export default function NewEntryForm({ form, set, saved, onSave, employees = [] 
 
       {/* ── Save button ── */}
       <div className="flex flex-col gap-2 mt-2">
-        {error && <div className="text-red-500 text-xs font-medium text-center">{error}</div>}
         <Button
           onClick={handleSaveClick}
           className={`w-full h-9 text-sm font-medium flex-shrink-0 transition-opacity hover:opacity-90 ${saved ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}

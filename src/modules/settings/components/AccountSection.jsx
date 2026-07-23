@@ -24,6 +24,7 @@ export function AccountSection({ currentUser }) {
   const [wipeModalOpen, setWipeModalOpen] = useState(false)
   const [wipePassword, setWipePassword] = useState('')
   const [wipeError, setWipeError] = useState('')
+  const [shakeWipeError, setShakeWipeError] = useState(false)
   const [isWiping, setIsWiping] = useState(false)
   const [selectedScopes, setSelectedScopes] = useState([])
 
@@ -36,6 +37,7 @@ export function AccountSection({ currentUser }) {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [credError, setCredError] = useState('')
+  const [shakeCredError, setShakeCredError] = useState(false)
   const [isUpdatingCreds, setIsUpdatingCreds] = useState(false)
   const [notificationState, setNotificationState] = useState({ open: false, title: '', message: '', type: 'info' })
   const [systemUsage, setSystemUsage] = useState(null)
@@ -52,14 +54,21 @@ export function AccountSection({ currentUser }) {
 
   async function handleUpdateCreds() {
     setCredError('')
+    let hasError = false
     if (!newUsername.trim()) {
       setCredError('Username cannot be empty.')
-      return
-    }
-    if (!oldPassword) {
+      hasError = true
+    } else if (!oldPassword) {
       setCredError('Current password is required to make changes.')
+      hasError = true
+    }
+    
+    if (hasError) {
+      setShakeCredError(true)
+      setTimeout(() => setShakeCredError(false), 500)
       return
     }
+
     if (newPassword && newPassword !== confirmPassword) {
       setCredError('New passwords do not match.')
       return
@@ -122,6 +131,8 @@ export function AccountSection({ currentUser }) {
     }
     if (!wipePassword) {
       setWipeError('Password is required.')
+      setShakeWipeError(true)
+      setTimeout(() => setShakeWipeError(false), 500)
       return
     }
     setIsWiping(true)
@@ -262,26 +273,27 @@ export function AccountSection({ currentUser }) {
 
           <div className="mt-4 flex flex-col gap-3">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>New Username</label>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>New Username <span className={shakeCredError && !newUsername.trim() ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
               <Input
                 placeholder="Enter new username"
                 value={newUsername}
-                onChange={e => setNewUsername(e.target.value)}
+                onChange={e => { setNewUsername(e.target.value); setCredError('') }}
                 onBlur={() => setNewUsername(u => u.trim())}
                 className="text-sm h-10 mt-1"
-                style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                style={{ background: 'var(--page-bg-alt)', borderColor: credError === 'Username cannot be empty.' ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)' }}
               />
+              {credError === 'Username cannot be empty.' && <p className="text-xs text-red-500 mt-1 font-medium">{credError}</p>}
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Current Password</label>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Current Password <span className={shakeCredError && !oldPassword ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
               <div className="relative">
                 <Input
                   type={showOldPassword ? "text" : "password"}
                   placeholder="Enter current password (required)"
                   value={oldPassword}
-                  onChange={e => setOldPassword(e.target.value)}
+                  onChange={e => { setOldPassword(e.target.value); setCredError('') }}
                   className="text-sm h-10 mt-1 pr-10"
-                  style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  style={{ background: 'var(--page-bg-alt)', borderColor: credError === 'Current password is required to make changes.' ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)' }}
                 />
                 <button
                   type="button"
@@ -291,9 +303,10 @@ export function AccountSection({ currentUser }) {
                   {showOldPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {credError === 'Current password is required to make changes.' && <p className="text-xs text-red-500 mt-1 font-medium">{credError}</p>}
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>New Password</label>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>New Password <span className="normal-case font-normal opacity-60">(optional)</span></label>
               <div className="relative">
                 <Input
                   type={showNewPassword ? "text" : "password"}
@@ -313,7 +326,7 @@ export function AccountSection({ currentUser }) {
               </div>
             </div>
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Confirm New Password</label>
+              <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Confirm New Password <span className="normal-case font-normal opacity-60">(optional)</span></label>
               <div className="relative">
                 <Input
                   type={showConfirmPassword ? "text" : "password"}
@@ -332,7 +345,9 @@ export function AccountSection({ currentUser }) {
                 </button>
               </div>
             </div>
-            {credError && <p className="text-xs text-red-500 mt-1 font-medium">{credError}</p>}
+            {(credError && credError !== 'Username cannot be empty.' && credError !== 'Current password is required to make changes.') && (
+              <p className="text-xs text-red-500 mt-1 font-medium">{credError}</p>
+            )}
           </div>
 
           <DialogFooter className="mt-6 gap-2">
@@ -458,17 +473,18 @@ export function AccountSection({ currentUser }) {
 
               {/* Password */}
               <div className="mt-3 flex flex-col gap-2">
-                <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Confirm Password</label>
+                <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>Confirm Password <span className={shakeWipeError && !wipePassword ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
                 <Input
                   type="password"
                   placeholder="Enter your password to confirm"
                   value={wipePassword}
-                  onChange={e => setWipePassword(e.target.value)}
+                  onChange={e => { setWipePassword(e.target.value); setWipeError('') }}
                   onKeyDown={e => e.key === 'Enter' && handleWipe()}
                   className="text-sm h-10 mt-1"
-                  style={{ background: 'var(--page-bg-alt)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  style={{ background: 'var(--page-bg-alt)', borderColor: wipeError === 'Password is required.' ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)' }}
                 />
-                {wipeError && <p className="text-xs text-red-500 mt-1 font-medium">{wipeError}</p>}
+                {wipeError === 'Password is required.' && <p className="text-xs text-red-500 -mt-1 font-medium">{wipeError}</p>}
+                {wipeError && wipeError !== 'Password is required.' && <p className="text-xs text-red-500 mt-1 font-medium">{wipeError}</p>}
               </div>
 
               <DialogFooter className="mt-4 gap-2">

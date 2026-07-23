@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Joyride, STATUS, EVENTS, ACTIONS } from 'react-joyride'
 
 // Custom Tooltip perfectly matching the app's UI
@@ -101,6 +101,8 @@ function CustomTooltip({
 export default function AppGuide({ currentUser }) {
   const [run, setRun] = useState(false)
   const [tourKey, setTourKey] = useState(0)
+  // Track whether the tour was auto-started (first visit) vs manually triggered
+  const isFirstVisitRun = useRef(false)
 
   const displayName = currentUser?.employeeName || currentUser?.username || 'there'
   // Use a per-user key so each user sees the tour on their first login on this machine
@@ -110,6 +112,7 @@ export default function AppGuide({ currentUser }) {
     // Check if the tour has been seen before
     const hasSeenTour = localStorage.getItem(localStorageKey)
     if (!hasSeenTour) {
+      isFirstVisitRun.current = true
       setRun(true)
       sessionStorage.setItem('app_tour_running', 'true')
       // Immediately flag it as seen so it NEVER auto-runs again on subsequent logins
@@ -118,6 +121,7 @@ export default function AppGuide({ currentUser }) {
 
     // Listen for custom event to trigger the tour manually
     const startTour = () => {
+      isFirstVisitRun.current = false  // manually triggered — do NOT chain to page tour
       setTourKey(k => k + 1)
       setRun(true)
     }
@@ -127,7 +131,11 @@ export default function AppGuide({ currentUser }) {
       setRun(false)
       sessionStorage.removeItem('app_tour_running')
       localStorage.setItem(localStorageKey, 'true')
-      setTimeout(() => window.dispatchEvent(new CustomEvent('start-page-tour')), 300)
+      // Only chain to the module page tour if this was the first-visit auto-run
+      if (isFirstVisitRun.current) {
+        isFirstVisitRun.current = false
+        setTimeout(() => window.dispatchEvent(new CustomEvent('start-page-tour')), 300)
+      }
     }
     
     window.addEventListener('start-tour', startTour)
@@ -219,7 +227,11 @@ export default function AppGuide({ currentUser }) {
       setRun(false)
       sessionStorage.removeItem('app_tour_running')
       localStorage.setItem(localStorageKey, 'true')
-      setTimeout(() => window.dispatchEvent(new CustomEvent('start-page-tour')), 300)
+      // Only chain to the module page tour if this was the first-visit auto-run
+      if (isFirstVisitRun.current) {
+        isFirstVisitRun.current = false
+        setTimeout(() => window.dispatchEvent(new CustomEvent('start-page-tour')), 300)
+      }
     }
   }
 

@@ -4,6 +4,8 @@ import { X } from 'lucide-react'
 
 export default function AddGroupModal({ onAdd, onClose }) {
   const [name, setName] = useState('')
+  const [shakeError, setShakeError] = useState(false)
+  const [error, setError] = useState(false)
   const inputRef = useRef(null)
 
   useEffect(() => {
@@ -12,7 +14,13 @@ export default function AddGroupModal({ onAdd, onClose }) {
 
   const handleSubmit = () => {
     const trimmed = name.trim().toUpperCase()
-    if (!trimmed) return
+    if (!trimmed) {
+      setShakeError(true)
+      setError(true)
+      setTimeout(() => setShakeError(false), 500)
+      return
+    }
+    setError(false)
     onAdd(trimmed)
     onClose()
   }
@@ -67,25 +75,26 @@ export default function AddGroupModal({ onAdd, onClose }) {
           textTransform: 'uppercase', letterSpacing: '0.07em',
           marginBottom: '6px',
         }}>
-          Group Name
+          Group Name <span className={shakeError && error ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span>
         </label>
         <input
           ref={inputRef}
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => { setName(e.target.value); setError(false) }}
           onKeyDown={handleKeyDown}
           placeholder="e.g. TONERS"
           style={{
             width: '100%', boxSizing: 'border-box',
             padding: '9px 12px', fontSize: '13px',
-            border: '1px solid #e5e7eb', borderRadius: '10px',
+            border: `1px solid ${error && !name.trim() ? '#ef4444' : '#e5e7eb'}`, borderRadius: '10px',
             outline: 'none', color: 'var(--text-primary)',
             transition: 'border-color 150ms',
           }}
-          onFocus={e => e.target.style.borderColor = 'var(--theme-500)'}
-          onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+          onFocus={e => e.target.style.borderColor = (error && !name.trim()) ? '#ef4444' : 'var(--theme-500)'}
+          onBlur={e => e.target.style.borderColor = (error && !name.trim()) ? '#ef4444' : '#e5e7eb'}
         />
+        {(error && !name.trim()) && <p style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px', marginBottom: 0 }}>Group name is required.</p>}
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '20px' }}>
           <button

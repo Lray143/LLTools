@@ -16,6 +16,7 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
     leave_type: LEAVE_TYPES[0], start_date: '', end_date: '', reason: '',
   })
   const [error, setError] = useState("")
+  const [shakeError, setShakeError] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -31,7 +32,9 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
 
   async function handleSubmit() {
     if (!form.start_date || !form.end_date) {
-      setError("Start Date and End Date are required.")
+      setShakeError(true)
+      setError("required")
+      setTimeout(() => setShakeError(false), 500)
       return
     }
     if (new Date(form.end_date) < new Date(form.start_date)) {
@@ -84,25 +87,26 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
             {/* Date range */}
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Start Date</label>
+                <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Start Date <span className={shakeError && !form.start_date ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
                 <Input
                   type="date"
                   value={form.start_date}
-                  onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))}
-                  className="text-sm h-10"
-                  style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  onChange={e => { setForm({ ...form, start_date: e.target.value }); setError('') }}
+                  className="h-10 text-sm"
+                  style={{ background: 'var(--surface)', borderColor: (error === 'required' && !form.start_date) ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)' }}
                 />
+                {(error === 'required' && !form.start_date) && <p className="text-xs text-red-500 -mt-0.5">Start date is required.</p>}
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>End Date</label>
+                <label className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>End Date <span className={shakeError && !form.end_date ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span></label>
                 <Input
                   type="date"
                   value={form.end_date}
-                  min={form.start_date}
-                  onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))}
-                  className="text-sm h-10"
-                  style={{ background: 'var(--surface)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  onChange={e => { setForm({ ...form, end_date: e.target.value }); setError('') }}
+                  className="h-10 text-sm"
+                  style={{ background: 'var(--surface)', borderColor: (error === 'required' && form.start_date && !form.end_date) ? '#ef4444' : 'var(--border)', color: 'var(--text-primary)' }}
                 />
+                {(error === 'required' && form.start_date && !form.end_date) && <p className="text-xs text-red-500 -mt-0.5">End date is required.</p>}
               </div>
             </div>
 
@@ -133,9 +137,11 @@ export function LeaveModal({ open, onClose, onSubmit, loading }) {
         </div>
 
         {/* Footer */}
-        <div className="px-8 pb-8 flex flex-col gap-2">
-          {error && <div className="text-red-500 text-xs font-medium text-right w-full">{error}</div>}
-          <div className="flex justify-end gap-2 w-full">
+        <div className="p-5 border-t shrink-0 flex items-center" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
+          <div className="flex-1">
+            {(error && error !== 'required') && <p className="text-xs text-red-500 font-medium">{error}</p>}
+          </div>
+          <div className="flex gap-2">
             <Button variant="outline" className="text-sm h-10" style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }} onClick={onClose} disabled={loading}>
               Cancel
             </Button>

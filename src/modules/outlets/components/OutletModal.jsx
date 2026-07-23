@@ -22,6 +22,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
   const [status,    setStatus]    = useState('Active')
   const [discounts, setDiscounts] = useState([])
   const [errors,    setErrors]    = useState({})
+  const [shakeError, setShakeError] = useState(false)
   const [saving,    setSaving]    = useState(false)
   const [regionOpen, setRegionOpen] = useState(false)
   const regionRef = useRef(null)
@@ -66,7 +67,11 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
   }
 
   const handleSave = async () => {
-    if (!validate()) return
+    if (!validate()) {
+      setShakeError(true)
+      setTimeout(() => setShakeError(false), 500)
+      return
+    }
     setSaving(true)
     const payload = {
       id:        outlet?.id ?? crypto.randomUUID(),
@@ -109,7 +114,7 @@ export default function OutletModal({ outlet, onSave, onClose, regions = [] }) {
               {/* Outlet Name — full width */}
               <div className="col-span-2 flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-gray-600">
-                  Outlet Name <span className="text-red-400">*</span>
+                  Outlet Name <span className={`text-red-400 ${shakeError ? 'shake' : ''}`}>*</span>
                 </label>
                 <Input
                   placeholder="e.g. Main Branch – Makati"

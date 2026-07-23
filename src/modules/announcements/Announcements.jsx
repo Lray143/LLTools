@@ -176,6 +176,8 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
   const [allowComments, setAllowComments] = useState(true)
   const [targetIds,     setTargetIds]     = useState([])
   const [submitting,    setSubmitting]    = useState(false)
+  const [error,         setError]         = useState('')
+  const [shakeError,    setShakeError]    = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showSubjectEmoji, setShowSubjectEmoji] = useState(false)
   const [isUploading,   setIsUploading]   = useState(false)
@@ -382,7 +384,14 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
   
   const handlePost = async () => {
     const contentStr = serializeContent()
-    if (!subject.trim() || !contentStr || submitting || isUploading) return
+    if (submitting || isUploading) return
+    if (!subject.trim() || !contentStr) {
+      setShakeError(true)
+      setError("required")
+      setTimeout(() => setShakeError(false), 500)
+      return
+    }
+    setError("")
     setSubmitting(true)
     try {
       await window.electronAPI.upsertAnnouncement({
@@ -464,7 +473,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
       <div style={{ marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Subject *
+            Subject <span className={shakeError && !subject.trim() ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span>
           </label>
           <div style={{ position: 'relative' }} data-emoji-container>
             <button
@@ -501,14 +510,15 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
         <input
           id="tour-announcements-subject"
           value={subject}
-          onChange={e => setSubject(e.target.value)}
+          onChange={e => { setSubject(e.target.value); setError("") }}
           placeholder="e.g. Holiday Schedule Update"
           style={{
             width: '100%', padding: '9px 12px', borderRadius: 10, fontSize: 14,
-            background: 'var(--surface-hover)', border: '1.5px solid var(--border)',
+            background: 'var(--surface-hover)', border: `1.5px solid ${error === "required" && !subject.trim() ? '#ef4444' : 'var(--border)'}`,
             color: 'var(--text-primary)', outline: 'none', boxSizing: 'border-box',
           }}
         />
+        {error === "required" && !subject.trim() && <p className="text-xs text-red-500 mt-1 font-medium">Subject is required.</p>}
       </div>
 
       {/* Receiver */}
@@ -531,7 +541,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
           paddingBottom: 4,
         }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Content *
+            Content <span className={shakeError && !hasContent ? 'shake' : ''} style={{ color: '#ef4444' }}>*</span>
           </label>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, position: 'relative' }} data-emoji-container>
             {/* Emoji */}
@@ -629,6 +639,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
           onInput={() => {
             const el = editorRef.current
             setHasContent(!!(el?.textContent?.trim() || el?.querySelector('[data-r2url]')))
+            setError("")
           }}
           onKeyDown={(e) => {
             // Save selection on every keystroke so toolbar buttons can restore it
@@ -648,7 +659,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
             padding: '10px 12px',
             borderRadius: 10, fontSize: 14,
             background: 'var(--surface-hover)',
-            border: '1.5px solid var(--border)',
+            border: `1.5px solid ${error === "required" && !hasContent ? '#ef4444' : 'var(--border)'}`,
             color: 'var(--text-primary)',
             outline: 'none',
             lineHeight: 1.6,
@@ -660,6 +671,7 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
             whiteSpace: 'pre-wrap',
           }}
         />
+        {error === "required" && !hasContent && <p className="text-xs text-red-500 mt-1 font-medium">Content is required.</p>}
         {/* CSS-powered placeholder */}
         <style>{`
           [data-placeholder]:empty::before {
@@ -716,12 +728,12 @@ function ComposeBox({ currentUser, employees, onPosted, focused = false, onCance
         <button
           id="tour-announcements-post"
           onClick={handlePost}
-          disabled={!subject.trim() || !hasContent || submitting || isUploading}
+          disabled={submitting || isUploading}
           style={{
             flex: 1, padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: (!subject.trim() || !hasContent || submitting || isUploading)
+            background: (submitting || isUploading)
               ? 'var(--surface-hover)' : 'var(--theme-500)',
-            color: (!subject.trim() || !hasContent || submitting || isUploading)
+            color: (submitting || isUploading)
               ? 'var(--text-secondary)' : '#fff',
             fontWeight: 500, fontSize: 14, transition: 'all 200ms',
           }}
