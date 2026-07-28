@@ -392,7 +392,7 @@ const MessageItem = memo(function MessageItem({
                       <span className="font-semibold">{users.length}</span>
                     </button>
                     {/* Custom Tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] px-2 py-1 rounded shadow-lg">
+                    <div className={`absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] px-2 py-1 rounded shadow-lg ${isMe ? 'right-0' : 'left-0'}`}>
                       {users.map(u => u.userName).join(', ')}
                     </div>
                   </div>

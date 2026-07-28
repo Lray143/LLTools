@@ -517,7 +517,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
     .filter(e => {
       const matchSearch = e.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
                           (e.employee_no && e.employee_no.toLowerCase().includes(debouncedSearch.toLowerCase()))
-      const matchDept = dept === "all" || e.dept === dept
+      const matchDept = dept === "all" || (dept === "no-dept" ? !e.dept?.trim() : e.dept === dept)
       const matchStatus = statusFilter === "all" ||
         e.liveStatus === statusFilter ||
         (statusFilter === "On Leave" && e.liveStatus !== "Active")
@@ -537,6 +537,7 @@ function Employees({ refreshKey = 0, currentUser, onNavigate }) {
   const deptOptions = [
     { label: 'All Departments', value: 'all' },
     ...DEPTS.map(d => ({ label: d, value: d })),
+    { label: 'No Department', value: 'no-dept' },
   ]
   const statusOptions = [
     { label: 'All Statuses', value: 'all' },
