@@ -335,6 +335,50 @@ export function saveTheme(themeId) {
 
 // ── Apply theme to document ──────────────────────────────────────────────────
 
+// Derive the full theme-50…900 palette from a hex accent colour.
+// For light themes: lighter shades = accent blended toward white.
+// For dark themes:  lighter shades = accent blended toward the surface colour.
+function hexToRgb(hex) {
+  const h = hex.replace('#', '')
+  const full = h.length === 3
+    ? h.split('').map(c => c + c).join('')
+    : h
+  return {
+    r: parseInt(full.slice(0, 2), 16),
+    g: parseInt(full.slice(2, 4), 16),
+    b: parseInt(full.slice(4, 6), 16),
+  }
+}
+
+function blendHex(hex1, hex2, t) {
+  const a = hexToRgb(hex1)
+  const b = hexToRgb(hex2)
+  const r = Math.round(a.r + (b.r - a.r) * t)
+  const g = Math.round(a.g + (b.g - a.g) * t)
+  const bl = Math.round(a.b + (b.b - a.b) * t)
+  return `#${[r, g, bl].map(v => v.toString(16).padStart(2, '0')).join('')}`
+}
+
+function deriveThemePalette(accentBg, isDark, surface) {
+  // For light: blend accent toward white for lighter shades, toward black for darker.
+  // For dark: blend accent toward surface colour for lighter shades, toward black for darker.
+  const lightBase  = isDark ? (surface || '#1e2128') : '#ffffff'
+  const darkBase   = '#000000'
+
+  return {
+    '--theme-50':  blendHex(accentBg, lightBase, 0.92),
+    '--theme-100': blendHex(accentBg, lightBase, 0.82),
+    '--theme-200': blendHex(accentBg, lightBase, 0.65),
+    '--theme-300': blendHex(accentBg, lightBase, 0.45),
+    '--theme-400': blendHex(accentBg, lightBase, 0.22),
+    '--theme-500': accentBg,
+    '--theme-600': blendHex(accentBg, darkBase, 0.12),
+    '--theme-700': blendHex(accentBg, darkBase, 0.26),
+    '--theme-800': blendHex(accentBg, darkBase, 0.42),
+    '--theme-900': blendHex(accentBg, darkBase, 0.58),
+  }
+}
+
 export function applyThemeToDocument(themeId) {
   const root = document.documentElement
   
@@ -359,9 +403,15 @@ export function applyThemeToDocument(themeId) {
   root.style.setProperty('--sidebar-bg',     theme.colors.sidebarBg)
   root.style.setProperty('--sidebar-active', theme.colors.sidebarActive)
 
-  // Provide a fallback for legacy --theme-500 just in case it's used elsewhere
-  root.style.setProperty('--theme-500',      theme.colors.accentBg)
-  root.style.setProperty('--theme-600',      theme.colors.accentHover)
+  // Derive and apply the full theme palette so bg-theme-*, border-theme-*, text-theme-* all update
+  const palette = deriveThemePalette(
+    theme.colors.accentBg,
+    theme.type === 'dark',
+    theme.colors.surface
+  )
+  for (const [prop, value] of Object.entries(palette)) {
+    root.style.setProperty(prop, value)
+  }
 
   // Mascot images (empty string if not a mascot theme)
   root.style.setProperty('--mascot-sidebar', theme.mascotSidebar ? `url('${theme.mascotSidebar}')` : 'none')
@@ -376,3 +426,4 @@ export function applyThemeToDocument(themeId) {
     root.classList.remove('dark')
   }
 }
+

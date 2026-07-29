@@ -224,16 +224,12 @@ export function AccountSection({ currentUser }) {
         </div>
       </div>
 
-      <SettingRow label="Employee Name" description="Your registered full name.">
-        <InfoChip value={currentUser?.employeeName ?? '—'} />
-      </SettingRow>
-
       <SettingRow label="Employee ID" description="Your unique company identification number.">
-        <InfoChip value={currentUser?.employeeNo ?? currentUser?.employeeId ?? '—'} highlight />
+        <div style={{ display: 'flex' }}><InfoChip value={currentUser?.employeeNo ?? currentUser?.employeeId ?? '—'} highlight /></div>
       </SettingRow>
 
       <SettingRow label="Username" description="Your login username.">
-        <InfoChip value={currentUser?.username ?? '—'} highlight />
+        <div style={{ display: 'flex' }}><InfoChip value={currentUser?.username ?? '—'} highlight /></div>
       </SettingRow>
 
       <SettingRow label="Account Credentials" description="Update your login username or password.">
@@ -362,11 +358,11 @@ export function AccountSection({ currentUser }) {
       </Dialog>
 
       <SettingRow label="Department" description="Your designated department.">
-        <InfoChip value={currentUser?.department ?? '—'} />
+        <div style={{ display: 'flex' }}><InfoChip value={currentUser?.department ?? '—'} /></div>
       </SettingRow>
 
       <SettingRow label="Position" description="Your current job title.">
-        <InfoChip value={currentUser?.position ?? '—'} />
+        <div style={{ display: 'flex' }}><InfoChip value={currentUser?.position ?? '—'} /></div>
       </SettingRow>
 
       {currentUser?.username === 'admin@doublel.com' && (
@@ -571,11 +567,11 @@ function InfoChip({ value, highlight }) {
       alignItems: 'center',
       padding: '7px 14px',
       borderRadius: '10px',
-      background: highlight ? 'var(--page-bg-alt)' : 'var(--surface-hover)',
-      border: `1px solid var(--border)`,
+      background: 'var(--theme-50)',
+      border: '1px solid var(--theme-200)',
       fontSize: '13px',
-      fontWeight: 500,
-      color: highlight ? 'var(--accent-bg)' : 'var(--text-primary)',
+      fontWeight: highlight ? 600 : 500,
+      color: 'var(--theme-700)',
     }}>
       {value}
     </div>

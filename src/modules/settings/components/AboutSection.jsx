@@ -98,27 +98,46 @@ export function AboutSection() {
           marginLeft: 'auto',
           padding: '5px 12px',
           borderRadius: '99px',
-          background: 'var(--page-bg-alt)',
-          border: '1px solid var(--border)',
+          background: 'var(--theme-50)',
+          border: '1px solid var(--theme-200)',
           fontSize: '12px',
           fontWeight: 600,
-          color: 'var(--accent-bg)',
+          color: 'var(--theme-700)',
         }}>
           v{appVersion}
         </div>
       </div>
 
       <SettingRow label="Version" description="Current installed version of LLTools.">
-        <InfoChip value={`v${appVersion}`} />
+        <div style={{ display: 'flex' }}>
+          <InfoChip value={`v${appVersion}`} />
+        </div>
       </SettingRow>
 
       <SettingRow label="Developer" description="Built and maintained by the LLTools team.">
-        <InfoChip value="Lester Raymond M. Gulferic and Lawrence O. Dullo (Interns)" />
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {['Lester Raymond M. Gulferic', 'Lawrence O. Dullo'].map(name => (
+            <InfoChip key={name} value={name} />
+          ))}
+        </div>
+      </SettingRow>
+
+      <SettingRow label="Acknowledgements" description="Special thanks to our interns and extra contributors.">
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {[
+            'Sevillano, Maria Kristina N.',
+            'Tamba, John Richter Clyde D.',
+            'Estacio, Rexyl Kyle',
+            'Giles, Erica Joy M.'
+          ].map(name => (
+            <InfoChip key={name} value={name} />
+          ))}
+        </div>
       </SettingRow>
 
       <SettingRow label="Platform" description="Running on Electron + React + Vite.">
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {['Electron', 'React', 'Vite', 'SQLite'].map(p => (
+          {['Electron', 'React', 'Vite', 'SQLite', 'Turso (Cloud)', 'Pusher', 'Cloudflare'].map(p => (
             <InfoChip key={p} value={p} />
           ))}
         </div>
@@ -167,11 +186,11 @@ function InfoChip({ value }) {
       alignItems: 'center',
       padding: '7px 14px',
       borderRadius: '10px',
-      background: 'var(--surface-hover)',
-      border: '1px solid var(--border)',
+      background: 'var(--theme-50)',
+      border: '1px solid var(--theme-200)',
       fontSize: '13px',
       fontWeight: 500,
-      color: 'var(--text-primary)',
+      color: 'var(--theme-700)',
     }}>
       {value}
     </div>

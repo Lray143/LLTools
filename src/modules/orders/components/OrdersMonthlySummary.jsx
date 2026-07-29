@@ -11,6 +11,7 @@ import {
 import { Button } from '../../../components/ui/button'
 import OrderArchiveDrawer from './OrderArchiveDrawer'
 import ExcelJS from 'exceljs'
+import { exportMonthInvoiceToXLSX } from './exportInvoiceXLSX'
 
 // ── Formatting helpers ────────────────────────────────────────────
 const fmt = (n) =>
@@ -784,11 +785,6 @@ export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type
   const handleExport = async (e, month) => {
     e.stopPropagation() // don't toggle expand when clicking export
     if (exportingMonth) return
-    if (type === 'Invoice') {
-      // Stub: Do nothing for invoice for now
-      console.log('Invoice export not implemented yet')
-      return
-    }
     setExportingMonth(month.key)
     try {
       // Fetch all outlets so we can resolve outlet → region for each order
@@ -801,13 +797,19 @@ export default function OrdersMonthlySummary({ currentUser, refreshKey = 0, type
       } catch (outletErr) {
         console.warn('Could not load outlets for export:', outletErr)
       }
-      await exportMonthToXLSX(formatMonthKey(month.key), month.orders, outletMap)
+      
+      if (type === 'Invoice') {
+        await exportMonthInvoiceToXLSX(formatMonthKey(month.key), month.orders, outletMap)
+      } else {
+        await exportMonthToXLSX(formatMonthKey(month.key), month.orders, outletMap)
+      }
     } catch (err) {
       console.error('Export failed:', err)
     } finally {
       setExportingMonth(null)
     }
   }
+
 
   // Group orders by YYYY-MM, sorted newest first
   const monthGroups = useMemo(() => {

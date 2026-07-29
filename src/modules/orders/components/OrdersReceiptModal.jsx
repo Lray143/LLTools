@@ -256,6 +256,15 @@ export default function OrdersReceiptModal({
                   </button>
                 </div>
 
+                {/* Outlet Display */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-gray-400">Outlet</label>
+                  <div className="border border-gray-100 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-600 flex items-center gap-2">
+                    <Store size={14} className="text-gray-400" />
+                    {outletName ?? 'None (Default Prices)'}
+                  </div>
+                </div>
+
                 {/* Date picker */}
                 <div className="flex flex-col gap-1">
                   <label className="text-xs text-gray-400">Order Date</label>
